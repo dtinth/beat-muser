@@ -2,6 +2,12 @@ import { createBrowserRouter, Outlet } from "react-router";
 import { Theme } from "@radix-ui/themes";
 import { ProjectListPage } from "./packlets/project-list";
 import { ProjectViewPage } from "./packlets/project-view";
+import {
+  listProjects,
+  getProjectBySlug,
+  DEMO_SLUG,
+  createDemoProject,
+} from "./packlets/project-store";
 
 export const router = createBrowserRouter([
   {
@@ -13,10 +19,21 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
+        loader: async () => listProjects(),
         element: <ProjectListPage />,
       },
       {
         path: ":slug",
+        loader: async ({ params }) => {
+          if (params.slug === DEMO_SLUG) {
+            return createDemoProject("demo1");
+          }
+          const project = await getProjectBySlug(params.slug!);
+          if (!project) {
+            throw new Response("Project not found", { status: 404 });
+          }
+          return project;
+        },
         element: <ProjectViewPage />,
       },
     ],

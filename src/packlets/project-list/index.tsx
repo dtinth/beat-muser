@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLoaderData, useRevalidator } from "react-router";
 import {
   Box,
   Button,
@@ -16,11 +16,10 @@ import { showDirectoryPicker } from "../file-system";
 import type { Project } from "../project-store/types";
 
 export function ProjectListPage() {
+  const projects = useLoaderData() as Project[];
   const navigate = useNavigate();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const revalidator = useRevalidator();
   const [demoOpen, setDemoOpen] = useState(false);
-
-  // TODO: load projects on mount or via route loader
 
   const handleOpenFolder = useCallback(async () => {
     try {
@@ -48,10 +47,13 @@ export function ProjectListPage() {
     [navigate],
   );
 
-  const handleRemove = useCallback(async (slug: string) => {
-    await removeProject(slug);
-    setProjects((prev) => prev.filter((p) => p.slug !== slug));
-  }, []);
+  const handleRemove = useCallback(
+    async (slug: string) => {
+      await removeProject(slug);
+      void revalidator.revalidate();
+    },
+    [revalidator],
+  );
 
   return (
     <Box p="4">
