@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:5174",
+    baseURL: "http://localhost:15036",
     trace: "on-first-retry",
   },
   projects: [
@@ -17,9 +17,4 @@ export default defineConfig({
       use: { browserName: "chromium" },
     },
   ],
-  webServer: {
-    command: "vp dev --port 5174",
-    url: "http://localhost:5174",
-    reuseExistingServer: !process.env.CI,
-  },
 });
