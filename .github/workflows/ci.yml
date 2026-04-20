@@ -32,6 +32,6 @@ jobs:
       - uses: voidzero-dev/setup-vp@v1
         with:
           cache: true
-      - run: npx playwright install --with-deps chromium
+      - uses: dtinth/setup-playwright-test-docker@main
       - run: vp dev &
       - run: npx playwright test
