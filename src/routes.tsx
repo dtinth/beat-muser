@@ -1,19 +1,23 @@
 import { createBrowserRouter, Outlet } from "react-router";
-import App from "./App";
+import { Theme } from "@radix-ui/themes";
+import { ProjectListPage } from "./packlets/project-list";
+import { ProjectViewPage } from "./packlets/project-view";
 
 export const router = createBrowserRouter([
   {
-    element: <App />,
+    element: (
+      <Theme appearance="dark" accentColor="lime">
+        <Outlet />
+      </Theme>
+    ),
     children: [
       {
-        path: "/",
-        element: <Outlet />,
-        children: [
-          {
-            index: true,
-            element: <div>Home</div>,
-          },
-        ],
+        index: true,
+        element: <ProjectListPage />,
+      },
+      {
+        path: ":slug",
+        element: <ProjectViewPage />,
       },
     ],
   },
