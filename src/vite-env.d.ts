@@ -1,11 +1,16 @@
-/// <reference types="vite/client" />
-
 declare module "*.css" {
   const src: string;
   export default src;
 }
 
-declare module "@radix-ui/themes/styles.css" {
+declare module "*.svg" {
   const src: string;
   export default src;
 }
+
+declare module "*.png" {
+  const src: string;
+  export default src;
+}
+
+declare module "@radix-ui/themes/styles.css" {}

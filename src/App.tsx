@@ -1,9 +1,10 @@
-import { Box, Text } from "@radix-ui/themes";
+import { Outlet } from "react-router";
+import { Box } from "@radix-ui/themes";
 
 export default function App() {
   return (
     <Box p="4">
-      <Text>Hello World</Text>
+      <Outlet />
     </Box>
   );
 }
