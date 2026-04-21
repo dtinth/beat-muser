@@ -6,7 +6,16 @@
  * Groups are separated by vertical dividers.
  */
 
-import { Box, Flex, Text, DropdownMenu } from "@radix-ui/themes";
+import {
+  Box,
+  Flex,
+  Text,
+  DropdownMenu,
+  SegmentedControl,
+  Button,
+  Separator,
+  Card,
+} from "@radix-ui/themes";
 import {
   MousePointer2,
   Pencil,
@@ -31,7 +40,7 @@ interface ToolbarGroupProps {
 function ToolbarGroup({ label, children }: ToolbarGroupProps) {
   return (
     <Flex direction="column" align="center" gap="1" px="3">
-      <Flex align="center" gap="1">
+      <Flex align="center" gap="1" style={{ height: 32 }}>
         {children}
       </Flex>
       <Text size="1" color="gray" weight="medium">
@@ -49,71 +58,65 @@ interface ToolbarButtonProps {
 
 function ToolbarButton({ icon, label, active }: ToolbarButtonProps) {
   return (
-    <Box
-      role="button"
-      tabIndex={0}
+    <Button
+      variant="surface"
+      size="1"
+      color="gray"
       title={label}
       style={{
+        width: 32,
+        height: 32,
+        padding: 0,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        width: 32,
-        height: 32,
-        borderRadius: 4,
-        border: "none",
-        background: active ? "var(--accent-5)" : "transparent",
-        color: active ? "var(--accent-11)" : "var(--gray-11)",
-        cursor: "pointer",
-        transition: "background 100ms, color 100ms",
-      }}
-      onMouseEnter={(e) => {
-        if (!active) {
-          (e.currentTarget as HTMLElement).style.background = "var(--gray-3)";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          (e.currentTarget as HTMLElement).style.background = "transparent";
-        }
+        background: active ? "var(--accent-5)" : undefined,
+        color: active ? "var(--accent-11)" : undefined,
       }}
     >
       {icon}
-    </Box>
+    </Button>
   );
 }
 
 function Divider() {
-  return (
-    <Box
-      style={{
-        width: 1,
-        height: 40,
-        background: "var(--gray-5)",
-        margin: "0 4px",
-        alignSelf: "center",
-      }}
-    />
-  );
+  return <Separator orientation="vertical" style={{ margin: "0 4px" }} />;
 }
 
 function TransportDisplay() {
+  const items = [
+    { label: "Time", value: "00:00.000" },
+    { label: "Pulse", value: "0" },
+    { label: "Measure", value: "1:1" },
+  ];
+
   return (
-    <Flex gap="3" px="2" align="center">
-      {[
-        { label: "Time", value: "00:00.000" },
-        { label: "Pulse", value: "0" },
-        { label: "Measure", value: "1:1" },
-      ].map((item) => (
-        <Flex key={item.label} direction="column" align="center">
-          <Text size="1" color="gray">
-            {item.label}
-          </Text>
-          <Text size="2" weight="bold" style={{ fontFamily: "monospace" }}>
-            {item.value}
-          </Text>
-        </Flex>
-      ))}
-    </Flex>
+    <Card size="1" style={{ height: 32, padding: 0, overflow: "hidden" }}>
+      <Flex style={{ height: "100%" }}>
+        {items.map((item, i) => (
+          <Flex
+            key={item.label}
+            direction="column"
+            align="center"
+            justify="center"
+            style={{
+              flex: 1,
+              height: 32,
+              padding: "0 8px",
+              minWidth: 56,
+              borderRight: i < items.length - 1 ? "1px solid var(--gray-5)" : "none",
+            }}
+          >
+            <Text size="1" color="gray" style={{ lineHeight: 1 }}>
+              {item.label}
+            </Text>
+            <Text size="2" weight="bold" style={{ fontFamily: "monospace", lineHeight: 1 }}>
+              {item.value}
+            </Text>
+          </Flex>
+        ))}
+      </Flex>
+    </Card>
   );
 }
 
@@ -129,10 +132,25 @@ export function Toolbar() {
       <Flex align="center" gap="0">
         {/* Mode group */}
         <ToolbarGroup label="Mode">
-          <ToolbarButton icon={<MousePointer2 size={16} />} label="Select" active />
-          <ToolbarButton icon={<Pencil size={16} />} label="Pencil" />
-          <ToolbarButton icon={<Eraser size={16} />} label="Erase" />
-          <ToolbarButton icon={<Hand size={16} />} label="Pan" />
+          <SegmentedControl.Root
+            defaultValue="select"
+            variant="classic"
+            size="1"
+            style={{ height: 32 }}
+          >
+            <SegmentedControl.Item value="select">
+              <MousePointer2 size={14} />
+            </SegmentedControl.Item>
+            <SegmentedControl.Item value="pencil">
+              <Pencil size={14} />
+            </SegmentedControl.Item>
+            <SegmentedControl.Item value="erase">
+              <Eraser size={14} />
+            </SegmentedControl.Item>
+            <SegmentedControl.Item value="pan">
+              <Hand size={14} />
+            </SegmentedControl.Item>
+          </SegmentedControl.Root>
         </ToolbarGroup>
 
         <Divider />
