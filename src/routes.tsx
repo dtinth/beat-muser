@@ -13,9 +13,29 @@ import {
 export const router = createBrowserRouter([
   {
     element: (
-      <Theme appearance="dark" accentColor="lime">
+      <Theme
+        appearance="dark"
+        accentColor="lime"
+        style={{
+          position: "fixed",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
         <AppHeader />
-        <Outlet />
+        <div
+          style={{
+            flex: 1,
+            overflow: "auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Outlet />
+        </div>
       </Theme>
     ),
     children: [
