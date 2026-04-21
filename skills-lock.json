@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "packlets": {
+      "source": "dtinth/agent-skills",
+      "sourceType": "github",
+      "computedHash": "505654d12eaaaa59bf794e17a08088caa7ea3436b972774281158600659de5fe"
+    }
+  }
+}
