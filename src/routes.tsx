@@ -1,5 +1,6 @@
 import { createBrowserRouter, Outlet } from "react-router";
 import { Theme } from "@radix-ui/themes";
+import { AppHeader } from "./packlets/app-header";
 import { ProjectListPage } from "./packlets/project-list";
 import { ProjectViewPage } from "./packlets/project-view";
 import {
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
   {
     element: (
       <Theme appearance="dark" accentColor="lime">
+        <AppHeader />
         <Outlet />
       </Theme>
     ),
