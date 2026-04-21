@@ -45,7 +45,7 @@ export const router = createBrowserRouter([
         element: <ProjectListPage />,
       },
       {
-        path: ":slug",
+        path: "projects/:slug",
         loader: async ({ params }) => {
           if (params.slug === DEMO_SLUG) {
             return createDemoProject("demo1");

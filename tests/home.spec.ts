@@ -24,6 +24,6 @@ test("selecting demo navigates to project page", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Try Demo" }).click();
   await page.getByRole("button", { name: "Demo 1" }).click();
-  await expect(page).toHaveURL(/\/demo1$/);
+  await expect(page).toHaveURL(/\/projects\/demo1$/);
   await expect(page.getByRole("heading", { name: "demo1" })).toBeVisible();
 });

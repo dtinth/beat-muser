@@ -30,7 +30,7 @@ export function ProjectListPage() {
         provider: "filesystem",
         handle,
       });
-      void navigate(`/${project.slug}`);
+      void navigate(`/projects/${project.slug}`);
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
         showError({
@@ -49,7 +49,7 @@ export function ProjectListPage() {
           name,
         });
         setDemoOpen(false);
-        void navigate(`/${project.slug}`);
+        void navigate(`/projects/${project.slug}`);
       } catch (error) {
         showError({
           title: "Failed to create demo project",
@@ -89,7 +89,7 @@ export function ProjectListPage() {
           {projects.map((project) => (
             <Card
               key={project.slug}
-              onClick={() => navigate(`/${project.slug}`)}
+              onClick={() => navigate(`/projects/${project.slug}`)}
               style={{ cursor: "pointer" }}
             >
               <Flex justify="between" align="center">
