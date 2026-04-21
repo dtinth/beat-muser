@@ -1,3 +1,77 @@
+# Beat Muser
+
+Rhythm game notechart/beatmap editor web app.
+
+## Commands
+
+```
+vp run dev          # Start dev server on port 15036
+vp run check        # Format + lint + typecheck (run before commit)
+vp run check --fix  # Auto-fix formatting
+vp run test         # Run Vitest unit tests (colocated *.test.ts)
+vp run test --run   # Non-watch mode
+vp exec playwright test  # E2E tests (Chromium only, dev server must be running)
+```
+
+Always use `vp run` for scripts and `vp exec` for binaries. Do not use `pnpm`/`npm`/`yarn` directly.
+
+## Architecture
+
+### Packlets (`src/packlets/<name>/index.ts`)
+
+Packlets are the module boundary system. Each packlet exports from `index.ts`. Packlets may only import other packlets or npm packages — no circular deps. Enforced manually (Oxlint can't run ESLint packlet plugins).
+
+| Packlet          | Purpose                                                                                                         |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| `project-store`  | IndexedDB CRUD, slugify, `Project`/`ProjectSource` types                                                        |
+| `file-system`    | VFS interface (`listFiles`, `readFile`), real FS + demo FS                                                      |
+| `project-format` | TypeBox schemas for `beat-muser-project.json` format                                                            |
+| `project-list`   | Home page UI — project cards, "Open Folder", "Try Demo" dialog                                                  |
+| `project-view`   | Project page — wraps `ProjectLayout`                                                                            |
+| `project-layout` | Composition layout — accepts `toolbar`, `leftPanels`, `timeline`, `rightPanels`, `statusBar` as ReactNode props |
+| `app-header`     | Fixed top bar — "Beat Muser" title + project breadcrumb                                                         |
+| `toolbar`        | Ribbon-style toolbar with mode/history/transport/snap/zoom groups                                               |
+| `toast`          | Sonner toast provider + `useToast()` hook                                                                       |
+
+### Routing
+
+Defined in `src/routes.tsx`.
+
+### Layout
+
+Fixed full-viewport flex column with header, toolbar, panels, timeline, and status bar. Implemented in `src/routes.tsx` and `src/packlets/project-layout/index.tsx`.
+
+### Project File Format (`beat-muser-project.json`)
+
+Event-based chart format (PPQN 960, default BPM 60) with versioned metadata, charts, and open-ended entities. Schemas in `src/packlets/project-format/schema.ts`.
+
+### Provider Abstraction
+
+- `{ provider: 'filesystem', handle: FileSystemDirectoryHandle }`
+- `{ provider: 'examples', name: string }`
+- `__demo__` slug bypasses IndexedDB, loads from demo VFS
+
+## Testing
+
+- **Unit**: colocated `*.test.ts` in `src/`, run with `vp test`
+- **E2E**: `tests/*.spec.ts`, Chromium only, `baseURL: "http://localhost:15036"`
+- Playwright config must **not** spawn its own `webServer` — dev server runs manually
+- Vitest excludes `**/tests/**` and `**/node_modules/**`
+
+## CI
+
+`.github/workflows/ci.yml` — three jobs: `check`, `test`, `e2e`.
+
+- Uses `voidzero-dev/setup-vp@v1` and `actions/checkout@v6`
+- E2E uses `dtinth/setup-playwright-test-docker@main` (2x faster than `playwright install`)
+
+## Conventions
+
+- Radix Themes: dark mode, lime accent
+- Icon library: `lucide-react`
+- Toolbar buttons: `<Button variant="surface" size="1" color="gray">` at 32×32
+- `moduleDetection: "auto"` in `tsconfig.json` required for CSS module declarations
+
 <!--VITE PLUS START-->
 
 # Using Vite+, the Unified Toolchain for the Web

@@ -1,43 +1,53 @@
 /**
  * Ribbon-style toolbar component.
  *
- * Displays groups of toolbar buttons with labels below each group.
- * Layout: two rows — buttons on top, labels on bottom.
- * Groups are separated by vertical dividers.
+ * A generic container that accepts `ToolbarGroup` children and
+ * automatically inserts vertical dividers between them.
+ *
+ * Usage:
+ * ```tsx
+ * <Toolbar>
+ *   <ToolbarGroup label="Mode">
+ *     <ToolbarButton icon={<MousePointer2 size={16} />} label="Select" active />
+ *   </ToolbarGroup>
+ *   <ToolbarDivider />
+ *   <ToolbarGroup label="History">
+ *     <ToolbarButton icon={<Undo2 size={16} />} label="Undo" />
+ *   </ToolbarGroup>
+ * </Toolbar>
+ * ```
  */
 
-import {
-  Box,
-  Flex,
-  Text,
-  DropdownMenu,
-  SegmentedControl,
-  Button,
-  Separator,
-  Card,
-} from "@radix-ui/themes";
-import {
-  MousePointer2,
-  Pencil,
-  Eraser,
-  Hand,
-  Undo2,
-  Redo2,
-  Save,
-  Play,
-  Pause,
-  ZoomOut,
-  ZoomIn,
-  ChevronDown,
-} from "lucide-react";
+import { Box, Flex, Text, DropdownMenu, Button, Separator, Card } from "@radix-ui/themes";
+import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
+
+interface ToolbarProps {
+  children: ReactNode;
+}
+
+export function Toolbar({ children }: ToolbarProps) {
+  return (
+    <Box
+      style={{
+        borderBottom: "1px solid var(--gray-5)",
+        padding: "8px 12px",
+        flexShrink: 0,
+      }}
+    >
+      <Flex align="center" gap="0">
+        {children}
+      </Flex>
+    </Box>
+  );
+}
 
 interface ToolbarGroupProps {
   label: string;
   children: ReactNode;
 }
 
-function ToolbarGroup({ label, children }: ToolbarGroupProps) {
+export function ToolbarGroup({ label, children }: ToolbarGroupProps) {
   return (
     <Flex direction="column" align="center" gap="1" px="3">
       <Flex align="center" gap="1" style={{ height: 32 }}>
@@ -50,13 +60,17 @@ function ToolbarGroup({ label, children }: ToolbarGroupProps) {
   );
 }
 
+export function ToolbarDivider() {
+  return <Separator orientation="vertical" style={{ margin: "0 4px" }} />;
+}
+
 interface ToolbarButtonProps {
   icon: ReactNode;
   label?: string;
   active?: boolean;
 }
 
-function ToolbarButton({ icon, label, active }: ToolbarButtonProps) {
+export function ToolbarButton({ icon, label, active }: ToolbarButtonProps) {
   return (
     <Button
       variant="surface"
@@ -79,11 +93,48 @@ function ToolbarButton({ icon, label, active }: ToolbarButtonProps) {
   );
 }
 
-function Divider() {
-  return <Separator orientation="vertical" style={{ margin: "0 4px" }} />;
+interface DropdownSelectProps {
+  value: string;
+  options: string[];
+  onSelect?: (value: string) => void;
 }
 
-function TransportDisplay() {
+export function ToolbarDropdown({ value, options, onSelect }: DropdownSelectProps) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger>
+        <Box
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            minWidth: 56,
+            height: 32,
+            borderRadius: 4,
+            background: "var(--gray-3)",
+            color: "var(--gray-11)",
+            cursor: "pointer",
+            padding: "0 8px",
+          }}
+        >
+          <Text size="2" weight="bold" style={{ fontFamily: "monospace" }}>
+            {value}
+          </Text>
+          <ChevronDown size={12} />
+        </Box>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content>
+        {options.map((option) => (
+          <DropdownMenu.Item key={option} onSelect={() => onSelect?.(option)}>
+            {option}
+          </DropdownMenu.Item>
+        ))}
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
+  );
+}
+
+export function TransportDisplay() {
   const items = [
     { label: "Time", value: "00:00.000" },
     { label: "Pulse", value: "0" },
@@ -117,134 +168,5 @@ function TransportDisplay() {
         ))}
       </Flex>
     </Card>
-  );
-}
-
-export function Toolbar() {
-  return (
-    <Box
-      style={{
-        borderBottom: "1px solid var(--gray-5)",
-        padding: "8px 12px",
-        flexShrink: 0,
-      }}
-    >
-      <Flex align="center" gap="0">
-        {/* Mode group */}
-        <ToolbarGroup label="Mode">
-          <SegmentedControl.Root
-            defaultValue="select"
-            variant="classic"
-            size="1"
-            style={{ height: 32 }}
-          >
-            <SegmentedControl.Item value="select">
-              <MousePointer2 size={14} />
-            </SegmentedControl.Item>
-            <SegmentedControl.Item value="pencil">
-              <Pencil size={14} />
-            </SegmentedControl.Item>
-            <SegmentedControl.Item value="erase">
-              <Eraser size={14} />
-            </SegmentedControl.Item>
-            <SegmentedControl.Item value="pan">
-              <Hand size={14} />
-            </SegmentedControl.Item>
-          </SegmentedControl.Root>
-        </ToolbarGroup>
-
-        <Divider />
-
-        {/* History group */}
-        <ToolbarGroup label="History">
-          <ToolbarButton icon={<Undo2 size={16} />} label="Undo" />
-          <ToolbarButton icon={<Redo2 size={16} />} label="Redo" />
-          <ToolbarButton icon={<Save size={16} />} label="Save" />
-        </ToolbarGroup>
-
-        <Divider />
-
-        {/* Transport group */}
-        <ToolbarGroup label="Transport">
-          <ToolbarButton icon={<Play size={16} />} label="Play" />
-          <ToolbarButton icon={<Pause size={16} />} label="Pause" />
-          <TransportDisplay />
-        </ToolbarGroup>
-
-        <Divider />
-
-        {/* Snap group */}
-        <ToolbarGroup label="Snap">
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger>
-              <Box
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
-                  minWidth: 56,
-                  height: 32,
-                  borderRadius: 4,
-                  background: "var(--gray-3)",
-                  color: "var(--gray-11)",
-                  cursor: "pointer",
-                  padding: "0 8px",
-                }}
-              >
-                <Text size="2" weight="bold" style={{ fontFamily: "monospace" }}>
-                  1/16
-                </Text>
-                <ChevronDown size={12} />
-              </Box>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Content>
-              {["1/1", "1/2", "1/4", "1/8", "1/12", "1/16", "1/32", "1/64"].map((snap) => (
-                <DropdownMenu.Item key={snap} onSelect={() => {}}>
-                  {snap}
-                </DropdownMenu.Item>
-              ))}
-            </DropdownMenu.Content>
-          </DropdownMenu.Root>
-        </ToolbarGroup>
-
-        <Divider />
-
-        {/* Zoom group */}
-        <ToolbarGroup label="Zoom">
-          <ToolbarButton icon={<ZoomOut size={16} />} label="Zoom Out" />
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger>
-              <Box
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
-                  minWidth: 56,
-                  height: 32,
-                  borderRadius: 4,
-                  background: "var(--gray-3)",
-                  color: "var(--gray-11)",
-                  cursor: "pointer",
-                  padding: "0 8px",
-                }}
-              >
-                <Text size="2" weight="bold" style={{ fontFamily: "monospace" }}>
-                  100%
-                </Text>
-                <ChevronDown size={12} />
-              </Box>
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Content>
-              {["25%", "50%", "75%", "100%", "125%", "150%", "200%", "400%"].map((zoom) => (
-                <DropdownMenu.Item key={zoom} onSelect={() => {}}>
-                  {zoom}
-                </DropdownMenu.Item>
-              ))}
-            </DropdownMenu.Content>
-          </DropdownMenu.Root>
-          <ToolbarButton icon={<ZoomIn size={16} />} label="Zoom In" />
-        </ToolbarGroup>
-      </Flex>
-    </Box>
   );
 }
