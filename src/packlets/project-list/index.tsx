@@ -13,46 +13,66 @@ import {
 } from "@radix-ui/themes";
 import { addProject, removeProject } from "../project-store";
 import { showDirectoryPicker } from "../file-system";
+import { useToast } from "../toast";
 import type { Project } from "../project-store/types";
 
 export function ProjectListPage() {
   const projects = useLoaderData() as Project[];
   const navigate = useNavigate();
   const revalidator = useRevalidator();
+  const { showError } = useToast();
   const [demoOpen, setDemoOpen] = useState(false);
 
   const handleOpenFolder = useCallback(async () => {
     try {
       const handle = await showDirectoryPicker();
-      // TODO: request permission and handle denial
       const project = await addProject(handle.name, {
         provider: "filesystem",
         handle,
       });
       void navigate(`/${project.slug}`);
-    } catch {
-      // User cancelled
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        showError({
+          title: "Failed to open folder",
+          description: (error as Error).message,
+        });
+      }
     }
-  }, [navigate]);
+  }, [navigate, showError]);
 
   const handleTryDemo = useCallback(
     async (name: string) => {
-      const project = await addProject(name, {
-        provider: "examples",
-        name,
-      });
-      setDemoOpen(false);
-      void navigate(`/${project.slug}`);
+      try {
+        const project = await addProject(name, {
+          provider: "examples",
+          name,
+        });
+        setDemoOpen(false);
+        void navigate(`/${project.slug}`);
+      } catch (error) {
+        showError({
+          title: "Failed to create demo project",
+          description: (error as Error).message,
+        });
+      }
     },
-    [navigate],
+    [navigate, showError],
   );
 
   const handleRemove = useCallback(
     async (slug: string) => {
-      await removeProject(slug);
-      void revalidator.revalidate();
+      try {
+        await removeProject(slug);
+        void revalidator.revalidate();
+      } catch (error) {
+        showError({
+          title: "Failed to remove project",
+          description: (error as Error).message,
+        });
+      }
     },
-    [revalidator],
+    [revalidator, showError],
   );
 
   return (
