@@ -53,13 +53,12 @@ export function ProjectLayout({
           style={{
             width: 256,
             borderRight: "1px solid var(--gray-5)",
-            padding: "8px 12px",
             overflow: "auto",
             flexShrink: 0,
           }}
         >
           {leftPanels ?? (
-            <Text size="2" color="gray">
+            <Text size="2" color="gray" style={{ padding: "8px 12px" }}>
               Left Panels
             </Text>
           )}

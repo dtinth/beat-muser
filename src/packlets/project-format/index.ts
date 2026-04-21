@@ -1,9 +1,13 @@
 export {
   EntitySchema,
   DeletedEntitySchema,
-  ChartMetadataSchema,
-  ChartSchema,
-  DeletedChartSchema,
+  EventComponentSchema,
+  ChartComponentSchema,
+  ChartRefComponentSchema,
+  NoteComponentSchema,
+  BpmChangeComponentSchema,
+  SoundComponentSchema,
+  SoundRefComponentSchema,
   ProjectMetadataSchema,
   ProjectFileSchema,
 } from "./schema";
@@ -11,9 +15,13 @@ export {
 export type {
   Entity,
   DeletedEntity,
-  ChartMetadata,
-  Chart,
-  DeletedChart,
+  EventComponent,
+  ChartComponent,
+  ChartRefComponent,
+  NoteComponent,
+  BpmChangeComponent,
+  SoundComponent,
+  SoundRefComponent,
   ProjectMetadata,
   ProjectFile,
 } from "./types";

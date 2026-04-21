@@ -4,54 +4,82 @@
  * ## File Format Overview
  *
  * A Beat Muser project is stored as `beat-muser-project.json` in a project
- * directory. The format is event-driven (like MIDI) and uses **pulses** as
- * the timeline unit, with a default PPQN (pulses per quarter note) of 960.
+ * directory. The format uses an **ECS-lite** entity model at the project level.
  *
  * ## Design Principles
  *
- * - **Event-based**: All timeline items (notes, BPM changes, scroll changes,
- *   sound events) are stored as `Entity` records with a `y` (pulse position)
- *   and a `type` string.
- * - **CRDT-ready**: Every entity and chart has a UUIDv7 `id` and `version`.
+ * - **ECS-lite**: Entities are just `{id, version, components}`. An entity's
+ *   kind is determined by the components it carries, not by a type hierarchy.
+ * - **Flat**: All project data lives in a single top-level `entities` array.
+ *   Charts, notes, BPM changes, sound channel definitions — everything is an
+ *   entity. Relationships are expressed through reference components.
+ * - **CRDT-ready**: Every entity has a UUIDv7 `id` and `version`.
  *   Merge is simple: union by `id`, higher `version` wins. Tombstones live
- *   in separate `deletedEntities`/`deletedCharts` arrays.
- * - **Open schema**: All objects allow `additionalProperties: true` so plugins
- *   and game modes can attach arbitrary attributes without breaking validation.
+ *   in `deletedEntities`.
+ * - **Open schema**: Component objects allow `additionalProperties: true` so
+ *   plugins and game modes can attach arbitrary attributes.
  * - **Versioned**: `schemaVersion` is a number for migration support.
  *   `version` is a UUIDv7 timestamp for collaborative editing.
  *
- * ## Entity Model (inspired by Sonolus and BMSON)
+ * ## Core Components
  *
- * Entities are the atomic building blocks of a chart. Each entity has:
- * - `id` — UUIDv7 unique identifier, immutable once created
- * - `y` — position on the timeline in pulses (PPQN = 960, default BPM = 60)
- * - `type` — a string identifying the kind of event (e.g. `"note"`, `"bpm-change"`)
- * - `version` — UUIDv7 revision timestamp, updated on every edit
- * - Additional properties — plugin-specific attributes like `lane`, `channel`,
- *   `bpm`, `sound`, etc.
+ * The base format defines a small set of core components. Plugins may add
+ * their own component names without restriction.
  *
- * Long notes are represented as separate start/end events. How they are paired
- * (shared ID, implicit lane ordering, channel chaining) is determined by the
- * game mode plugin.
+ * | Component      | Presence implies...                                     |
+ * | -------------- | ------------------------------------------------------- |
+ * | `chart`        | This entity is a chart (difficulty).                    |
+ * | `event`        | This entity is timed on the timeline (`y` in pulses).   |
+ * | `chartRef`     | This entity belongs to a specific chart.                |
+ * | `note`         | This entity is a playable note.                         |
+ * | `bpmChange`    | This entity changes the BPM.                            |
+ * | `sound`        | This entity is a keysound event or sound definition.    |
+ * | `soundRef`     | This entity references a sound channel by UUID.         |
  *
- * ## JSON Schema
+ * ## Example Entities
  *
- * These schemas can be compiled to JSON Schema for external use:
- * ```ts
- * import { Build } from "typebox/schema";
- * import { ProjectFileSchema } from "./schema";
- * const schema = Build(ProjectFileSchema);
- * // Deploy to https://beat-muser.pages.dev/schemas/beat-muser-project.schema.json
- * ```
- *
- * Consumers can then use `$schema` in their project files for IDE validation:
+ * A chart:
  * ```json
  * {
- *   "$schema": "https://beat-muser.pages.dev/schemas/beat-muser-project.schema.json",
- *   "schemaVersion": 1,
- *   ...
+ *   "id": "01H...",
+ *   "version": "01H...",
+ *   "components": {
+ *     "chart": { "name": "Hard", "mode": "4k" }
+ *   }
  * }
  * ```
+ *
+ * A note on that chart:
+ * ```json
+ * {
+ *   "id": "01H...",
+ *   "version": "01H...",
+ *   "components": {
+ *     "event": { "y": 960 },
+ *     "chartRef": { "chartId": "01H..." },
+ *     "note": { "lane": 0 },
+ *     "soundRef": { "channelId": "01H..." }
+ *   }
+ * }
+ * ```
+ *
+ * A sound channel definition (untimed):
+ * ```json
+ * {
+ *   "id": "01H...",
+ *   "version": "01H...",
+ *   "components": {
+ *     "soundChannel": { "name": "Kick", "path": "audio/kick.wav" }
+ *   }
+ * }
+ * ```
+ *
+ * ## Merge Rule
+ *
+ * Entities are merged by `id`. If the same `id` exists in two versions,
+ * the entity with the lexicographically higher `version` wins.
+ * Deletion is represented by moving the entity to `deletedEntities` with a
+ * new `version`.
  */
 
 import { Type } from "typebox";
@@ -62,51 +90,33 @@ import { Type } from "typebox";
 const UUIDv7Desc = "UUIDv7 identifier. Time-ordered, sortable, globally unique.";
 
 /**
- * An entity is a single event placed on a chart timeline.
+ * An entity is a uniquely identified object with a versioned bag of components.
  *
  * Required fields:
  * - `id`: UUIDv7 unique identifier, immutable once created.
- * - `y`: Pulse position on the timeline (PPQN = 960). 0 = song start.
- * - `type`: String identifying the event kind. Common types:
- *   - `"note"` — a hit note (may include `lane: number`)
- *   - `"bpm-change"` — a BPM change (includes `bpm: number`)
- *   - `"scroll-change"` — a scroll speed change (includes `speed: number`)
- *   - `"sound"` — a keysound event (includes `sound: string` path)
- *   - `"tombstone"` — a deleted entity (preserves `y` and `id`, strips other props)
  * - `version`: UUIDv7 revision timestamp, updated on every edit.
+ * - `components`: Record of component names to component data objects.
  *
- * Additional properties are allowed and interpreted by game mode plugins.
- * For example, a 4K mode plugin might add `lane: 0` for a note in lane 0,
- * while a chain-based mode might add `channel: "A"` to link notes together.
- *
- * Long notes use separate start and end events. Pairing strategy is
- * plugin-dependent (shared ID, lane ordering, channel, etc.).
- *
- * ## Merge Rule
- * Entities are merged by `id`. If the same `id` exists in two versions,
- * the entity with the lexicographically higher `version` wins.
- * Deletion is represented by `type: "tombstone"` with a new `version`.
+ * An entity has no `type` field. Its kind is determined by the components
+ * it carries (e.g., an entity with a `chart` component is a chart).
  */
 export const EntitySchema = Type.Object(
   {
     id: Type.String({
       description: UUIDv7Desc,
     }),
-    y: Type.Number({
-      description: "Pulse position on the timeline. PPQN = 960. 0 = song start.",
-    }),
-    type: Type.String({
-      description:
-        'Event type identifier. Examples: "note", "bpm-change", "scroll-change", "sound". Use "tombstone" for deleted entities.',
-    }),
     version: Type.String({
       description: "UUIDv7 revision timestamp. Updated on every edit. Higher value wins on merge.",
     }),
+    components: Type.Record(Type.String(), Type.Any(), {
+      description:
+        "ECS-style component bag. Keys are component names (e.g., 'chart', 'event', 'note'). Values are component-specific objects.",
+    }),
   },
   {
-    additionalProperties: true,
+    additionalProperties: false,
     description:
-      "Additional properties are plugin-specific attributes (e.g., lane, channel, bpm, sound).",
+      "An entity is a uniquely identified object with a versioned bag of components. No 'type' field — an entity's kind is determined by its components.",
   },
 );
 
@@ -128,99 +138,133 @@ export const DeletedEntitySchema = Type.Object(
   },
 );
 
+// ---------------------------------------------------------------------------
+// Core Component Schemas
+// ---------------------------------------------------------------------------
+
 /**
- * Metadata describing a single chart (difficulty).
+ * Core component: identifies a timed event.
  *
- * Required fields:
- * - `name`: Display name of the chart (e.g., "Hard", "Expert")
- * - `mode`: Game mode identifier (e.g., "4k", "7k", "sdvx").
- *   The mode determines how entities are interpreted.
- *
- * Additional properties are allowed for mode-specific configuration
- * (e.g., `difficulty: 12`, `rating: "★10"`).
+ * Entities carrying this component appear on the timeline at the given
+ * pulse position. Other components (e.g., `note`, `bpmChange`) provide
+ * the specific event kind.
  */
-export const ChartMetadataSchema = Type.Object(
+export const EventComponentSchema = Type.Object(
+  {
+    y: Type.Number({
+      description: "Pulse position on the timeline. PPQN = 960. 0 = song start.",
+    }),
+  },
+  {
+    additionalProperties: false,
+    description:
+      "Identifies a timed event. Entities with this component appear on the timeline at the given pulse position.",
+  },
+);
+
+/**
+ * Core component: identifies a chart (difficulty).
+ */
+export const ChartComponentSchema = Type.Object(
   {
     name: Type.String({
       description: 'Display name of the chart, e.g., "Hard", "Expert".',
     }),
     mode: Type.String({
       description:
-        'Game mode identifier, e.g., "4k", "7k", "sdvx". Determines entity interpretation.',
+        'Game mode identifier, e.g., "4k", "7k", "sdvx". Determines how related entities are interpreted.',
     }),
   },
   {
     additionalProperties: true,
-    description: "Additional properties for mode-specific configuration.",
+    description:
+      "Identifies a chart (difficulty) entity. A chart is just an entity that carries this component.",
   },
 );
 
 /**
- * A tombstone reference for a deleted chart.
- * Only stores `id` and `version` — the chart data is stripped.
+ * Core component: links an entity to a specific chart.
  */
-export const DeletedChartSchema = Type.Object(
+export const ChartRefComponentSchema = Type.Object(
   {
-    id: Type.String({
-      description: UUIDv7Desc,
-    }),
-    version: Type.String({
-      description: "UUIDv7 revision timestamp at time of deletion.",
+    chartId: Type.String({
+      description: "UUID of the parent chart entity.",
     }),
   },
   {
     additionalProperties: false,
+    description: "Links an entity (e.g., a note) to a specific chart.",
   },
 );
 
 /**
- * A single chart (difficulty) within a project.
- *
- * Contains:
- * - `id`: UUIDv7 unique identifier, immutable once created.
- * - `version`: UUIDv7 revision timestamp, updated on every edit.
- * - `metadata`: Chart-level metadata (name, mode, etc.)
- * - `entities`: Array of active events on the chart timeline, sorted by `y`.
- *   Includes notes, BPM changes, scroll changes, sound events, etc.
- * - `deletedEntities`: Array of tombstone references for deleted entities.
- *
- * ## Merge Rule
- * Charts are merged by `id`. If the same `id` exists in two versions,
- * the chart with the lexicographically higher `version` wins.
- * Deletion moves the chart to `deletedCharts` with a new `version`.
+ * Core component: identifies a playable note.
  */
-export const ChartSchema = Type.Object(
+export const NoteComponentSchema = Type.Object(
   {
-    id: Type.String({
-      description: UUIDv7Desc,
+    lane: Type.Optional(
+      Type.Number({
+        description: "Lane index for lane-based modes.",
+      }),
+    ),
+  },
+  {
+    additionalProperties: true,
+    description: "Identifies a note entity.",
+  },
+);
+
+/**
+ * Core component: identifies a BPM change event.
+ */
+export const BpmChangeComponentSchema = Type.Object(
+  {
+    bpm: Type.Number({
+      description: "New BPM value.",
     }),
-    version: Type.String({
-      description: "UUIDv7 revision timestamp. Updated on every edit. Higher value wins on merge.",
-    }),
-    metadata: ChartMetadataSchema,
-    entities: Type.Array(EntitySchema, {
-      description: "Array of active timeline events. Should be sorted by `y` ascending.",
-    }),
-    deletedEntities: Type.Array(DeletedEntitySchema, {
-      description: "Array of tombstone references for deleted entities.",
+  },
+  {
+    additionalProperties: false,
+    description: "Identifies a BPM change event.",
+  },
+);
+
+/**
+ * Core component: identifies a sound event (keysound) or sound definition.
+ */
+export const SoundComponentSchema = Type.Object(
+  {
+    path: Type.String({
+      description: "Relative path to the audio file (e.g., 'audio/kick.wav').",
     }),
   },
   {
     additionalProperties: true,
-    description: "Additional chart-level properties (e.g., per-chart audio override).",
+    description: "Identifies a sound event (keysound) or sound channel definition.",
   },
 );
 
 /**
+ * Core component: references a sound channel entity by UUID.
+ */
+export const SoundRefComponentSchema = Type.Object(
+  {
+    channelId: Type.String({
+      description: "UUID of the referenced sound channel entity.",
+    }),
+  },
+  {
+    additionalProperties: false,
+    description: "Links a note or event to a sound channel entity.",
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Project Metadata & Root Schema
+// ---------------------------------------------------------------------------
+
+/**
  * Project-level metadata describing the song.
- *
- * Required fields:
- * - `title`: Song title
- * - `artist`: Artist/creator name
- * - `genre`: Music genre classification
- *
- * Additional properties are allowed for future extensibility
- * (e.g., `bpm`, `previewStart`, `cover`).
  */
 export const ProjectMetadataSchema = Type.Object(
   {
@@ -247,46 +291,49 @@ export const ProjectMetadataSchema = Type.Object(
  * ```json
  * {
  *   "$schema": "https://beat-muser.pages.dev/schemas/beat-muser-project.schema.json",
- *   "schemaVersion": 1,
+ *   "schemaVersion": 2,
  *   "version": "01H...",
  *   "metadata": {
  *     "title": "Song Name",
  *     "artist": "Artist",
  *     "genre": "Genre"
  *   },
- *   "charts": [
+ *   "entities": [
  *     {
  *       "id": "01H...",
  *       "version": "01H...",
- *       "metadata": { "name": "Hard", "mode": "4k" },
- *       "entities": [
- *         { "id": "01H...", "y": 0, "type": "bpm-change", "bpm": 120, "version": "01H..." },
- *         { "id": "01H...", "y": 960, "type": "note", "lane": 0, "version": "01H..." },
- *         { "id": "01H...", "y": 1920, "type": "note", "lane": 1, "version": "01H..." }
- *       ],
- *       "deletedEntities": []
+ *       "components": {
+ *         "chart": { "name": "Hard", "mode": "4k" }
+ *       }
+ *     },
+ *     {
+ *       "id": "01H...",
+ *       "version": "01H...",
+ *       "components": {
+ *         "event": { "y": 960 },
+ *         "chartRef": { "chartId": "01H..." },
+ *         "note": { "lane": 0 }
+ *       }
  *     }
  *   ],
- *   "deletedCharts": []
+ *   "deletedEntities": []
  * }
  * ```
  *
  * Key details:
- * - `schemaVersion`: Number for schema migration support.
+ * - `schemaVersion`: Number for schema migration support. Current version: 2.
  * - `version`: UUIDv7 project-level revision timestamp.
  * - `metadata`: Song-level metadata (title, artist, genre).
- * - `charts`: Array of charts/difficulties, each with its own entity timeline.
- * - `deletedCharts`: Array of tombstone references for deleted charts.
+ * - `entities`: Flat array of all active project entities.
+ * - `deletedEntities`: Array of tombstone references for deleted entities.
  * - All objects allow additional properties for plugin extensibility.
- * - Asset paths (audio, images) use `/` as separator and are relative to the
- *   project directory. Nested subdirectories are supported.
+ * - Asset paths use `/` as separator and are relative to the project directory.
  * - Default BPM is 60. PPQN is 960 (aligned with MIDI standard).
  *
  * ## Merge Rule
- * Merge two project versions by unioning `id`s at each level:
- * - Charts: higher `version` wins. Deleted charts go to `deletedCharts`.
+ * Merge two project versions by unioning `id`s:
  * - Entities: higher `version` wins. Deleted entities go to `deletedEntities`.
- * - No special cases — deletion is just another write with `type: "tombstone"`.
+ * - No special cases — deletion is just another write with a tombstone.
  */
 export const ProjectFileSchema = Type.Object(
   {
@@ -297,17 +344,17 @@ export const ProjectFileSchema = Type.Object(
       }),
     ),
     schemaVersion: Type.Number({
-      description: "Schema version number for migration support. Current version: 1.",
+      description: "Schema version number for migration support. Current version: 2.",
     }),
     version: Type.String({
       description: "UUIDv7 project-level revision timestamp.",
     }),
     metadata: ProjectMetadataSchema,
-    charts: Type.Array(ChartSchema, {
-      description: "Array of charts/difficulties. A project may contain multiple charts.",
+    entities: Type.Array(EntitySchema, {
+      description: "Flat array of all active entities in the project.",
     }),
-    deletedCharts: Type.Array(DeletedChartSchema, {
-      description: "Array of tombstone references for deleted charts.",
+    deletedEntities: Type.Array(DeletedEntitySchema, {
+      description: "Array of tombstone references for deleted entities.",
     }),
   },
   {

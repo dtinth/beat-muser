@@ -66,65 +66,98 @@ const mockChartStats = {
 
 function LeftPanels() {
   return (
-    <Flex direction="column" style={{ gap: 16 }}>
-      <SidebarPanel title="Project Information">
-        <Field label="Title" value={mockProject.title} />
-        <Field label="Artist" value={mockProject.artist} />
-        <Field label="Genre" value={mockProject.genre} />
-      </SidebarPanel>
+    <Flex direction="column">
+      <SidebarPanel
+        tabs={[
+          {
+            label: "Project Information",
+            content: (
+              <>
+                <Field label="Title" value={mockProject.title} />
+                <Field label="Artist" value={mockProject.artist} />
+                <Field label="Genre" value={mockProject.genre} />
+              </>
+            ),
+          },
+        ]}
+      />
 
-      <SidebarPanel title="Chart List">
-        <Flex direction="column" style={{ gap: 4 }}>
-          {mockCharts.map((chart) => (
-            <Flex
-              key={chart.name}
-              justify="between"
-              align="center"
-              style={{
-                padding: "4px 8px",
-                borderRadius: 4,
-                cursor: "pointer",
-                backgroundColor:
-                  chart.name === mockChartInfo.difficulty ? "var(--accent-3)" : "transparent",
-              }}
-            >
-              <Text size="2">{chart.name}</Text>
-              <Text size="1" color="gray">
-                Lv. {chart.level}
-              </Text>
-            </Flex>
-          ))}
-        </Flex>
-        <Flex
-          justify="center"
-          style={{
-            marginTop: 8,
-            padding: "4px 8px",
-            borderRadius: 4,
-            cursor: "pointer",
-            border: "1px dashed var(--gray-6)",
-          }}
-        >
-          <Plus size={14} style={{ marginRight: 4 }} />
-          <Text size="1" color="gray">
-            Add Chart
-          </Text>
-        </Flex>
-      </SidebarPanel>
+      <SidebarPanel
+        tabs={[
+          {
+            label: "Chart List",
+            content: (
+              <>
+                <Flex direction="column" style={{ gap: 4 }}>
+                  {mockCharts.map((chart) => (
+                    <Flex
+                      key={chart.name}
+                      justify="between"
+                      align="center"
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        backgroundColor:
+                          chart.name === mockChartInfo.difficulty
+                            ? "var(--accent-3)"
+                            : "transparent",
+                      }}
+                    >
+                      <Text size="2">{chart.name}</Text>
+                      <Text size="1" color="gray">
+                        Lv. {chart.level}
+                      </Text>
+                    </Flex>
+                  ))}
+                </Flex>
+                <Flex
+                  justify="center"
+                  style={{
+                    marginTop: 8,
+                    padding: "4px 8px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    border: "1px dashed var(--gray-6)",
+                  }}
+                >
+                  <Plus size={14} style={{ marginRight: 4 }} />
+                  <Text size="1" color="gray">
+                    Add Chart
+                  </Text>
+                </Flex>
+              </>
+            ),
+          },
+        ]}
+      />
 
-      <SidebarPanel title="Chart Info">
-        <Field label="Difficulty" value={mockChartInfo.difficulty} />
-        <Field label="Level" value={mockChartInfo.level} />
-        <Field label="Charter" value={mockChartInfo.charter} />
-      </SidebarPanel>
-
-      <SidebarPanel title="Chart Stats">
-        <Field label="Total notes" value={mockChartStats.totalNotes} />
-        <Field label="Long notes" value={mockChartStats.longNotes} />
-        <Field label="Peak NPS" value={mockChartStats.peakNPS} />
-        <Field label="Measures" value={mockChartStats.measures} />
-        <Field label="BPM range" value={mockChartStats.bpmRange} />
-      </SidebarPanel>
+      <SidebarPanel
+        tabs={[
+          {
+            label: "Chart Info",
+            content: (
+              <>
+                <Field label="Difficulty" value={mockChartInfo.difficulty} />
+                <Field label="Level" value={mockChartInfo.level} />
+                <Field label="Charter" value={mockChartInfo.charter} />
+              </>
+            ),
+          },
+          {
+            label: "Stats",
+            content: (
+              <>
+                <Field label="Total notes" value={mockChartStats.totalNotes} />
+                <Field label="Long notes" value={mockChartStats.longNotes} />
+                <Field label="Peak NPS" value={mockChartStats.peakNPS} />
+                <Field label="Measures" value={mockChartStats.measures} />
+                <Field label="BPM range" value={mockChartStats.bpmRange} />
+              </>
+            ),
+          },
+        ]}
+      />
     </Flex>
   );
 }
