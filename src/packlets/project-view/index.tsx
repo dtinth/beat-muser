@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { Box, Heading } from "@radix-ui/themes";
 import { useParams, useRouteError } from "react-router";
 import { useToast } from "../toast";
+import { ProjectLayout } from "../project-layout";
 
 export function ProjectViewPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug: _slug } = useParams<{ slug: string }>();
   const error = useRouteError() as Error | undefined;
   const { showError } = useToast();
 
@@ -17,9 +17,5 @@ export function ProjectViewPage() {
     }
   }, [error, showError]);
 
-  return (
-    <Box p="4">
-      <Heading size="6">{slug}</Heading>
-    </Box>
-  );
+  return <ProjectLayout />;
 }
