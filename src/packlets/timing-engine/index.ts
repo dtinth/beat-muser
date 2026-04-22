@@ -17,9 +17,9 @@
  * - **BPM is independent from time signature** — Measure boundaries are
  *   determined solely by time signatures; BPM only affects real-time
  *   conversion.
- * - **Linear scan internally** — The engine walks measures on demand. The
- *   public interface is clean so the index strategy can be swapped later
- *   without changing callers or tests.
+ * - **Precomputed arrays with binary search** — Measure boundaries and BPM
+ *   segments are stored as sorted arrays. Queries use binary search for
+ *   O(log n) lookup.
  */
 
 const PPQN = 240;
@@ -69,6 +69,54 @@ function parseSnapInterval(snap: string): number {
   return interval;
 }
 
+function bisectLeft(arr: number[], x: number): number {
+  let lo = 0;
+  let hi = arr.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (arr[mid] < x) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
+function bisectRight(arr: number[], x: number): number {
+  let lo = 0;
+  let hi = arr.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (arr[mid] <= x) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
+interface BpmSegment {
+  startPulse: number;
+  startSeconds: number;
+  bpm: number;
+}
+
+function bisectRightBy<T>(arr: T[], x: number, getKey: (item: T) => number): number {
+  let lo = 0;
+  let hi = arr.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (getKey(arr[mid]) <= x) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
 export function createTimingEngine(
   bpmChanges: BpmChange[],
   timeSignatures: TimeSignature[],
@@ -86,152 +134,135 @@ export function createTimingEngine(
       ? sortedSigs
       : [{ pulse: 0, numerator: 4, denominator: 4 }, ...sortedSigs];
 
-  /**
-   * Generates every measure start pulse, accounting for time-signature
-   * interruptions. Yields indefinitely — callers must break when they have
-   * enough values.
-   */
-  function* measureBoundariesGenerator(): Generator<number> {
-    let sigIndex = 0;
-    let measureStart = effectiveSigs[0].pulse;
-
-    while (true) {
-      yield measureStart;
-
-      // Advance to the time signature active at this measure start.
-      while (
-        sigIndex + 1 < effectiveSigs.length &&
-        effectiveSigs[sigIndex + 1].pulse <= measureStart
-      ) {
-        sigIndex++;
-      }
-
-      const sig = effectiveSigs[sigIndex];
-      const length = getMeasureLength(sig);
-      const nextMeasureStart = measureStart + length;
-
-      // If the next time signature falls strictly inside this measure,
-      // the measure is interrupted.
-      if (
-        sigIndex + 1 < effectiveSigs.length &&
-        effectiveSigs[sigIndex + 1].pulse < nextMeasureStart
-      ) {
-        sigIndex++;
-        measureStart = effectiveSigs[sigIndex].pulse;
-      } else {
-        measureStart = nextMeasureStart;
-      }
+  // Precompute BPM segments.
+  const bpmSegments: BpmSegment[] = [];
+  let accumulatedSeconds = 0;
+  for (let i = 0; i < sortedBpms.length; i++) {
+    bpmSegments.push({
+      startPulse: sortedBpms[i].pulse,
+      startSeconds: accumulatedSeconds,
+      bpm: sortedBpms[i].bpm,
+    });
+    if (i + 1 < sortedBpms.length) {
+      const deltaPulse = sortedBpms[i + 1].pulse - sortedBpms[i].pulse;
+      accumulatedSeconds += (deltaPulse / PPQN) * (60 / sortedBpms[i].bpm);
     }
   }
 
-  /**
-   * Generates every snap grid point for the given interval, resetting at
-   * each measure boundary (including interrupted ones).
-   */
-  function* snapPointsGenerator(interval: number): Generator<number> {
-    let sigIndex = 0;
-    let measureStart = effectiveSigs[0].pulse;
+  // Lazily-computed measure boundaries.
+  const boundaries: number[] = [];
+  let boundariesComputedUpTo = -Infinity;
 
-    while (true) {
-      // Advance to the time signature active at this measure start.
-      while (
-        sigIndex + 1 < effectiveSigs.length &&
-        effectiveSigs[sigIndex + 1].pulse <= measureStart
-      ) {
-        sigIndex++;
-      }
-
-      const sig = effectiveSigs[sigIndex];
-      const length = getMeasureLength(sig);
-      const measureEnd = measureStart + length;
-
-      // The measure may be interrupted before its natural end.
-      const actualEnd =
-        sigIndex + 1 < effectiveSigs.length && effectiveSigs[sigIndex + 1].pulse < measureEnd
-          ? effectiveSigs[sigIndex + 1].pulse
-          : measureEnd;
-
-      let point = measureStart;
-      while (point < actualEnd) {
-        yield point;
-        point += interval;
-      }
-
-      if (actualEnd < measureEnd) {
-        // Interrupted — next measure starts at the new time signature.
-        sigIndex++;
-        measureStart = effectiveSigs[sigIndex].pulse;
+  function findSigIndex(pulse: number): number {
+    let lo = 0;
+    let hi = effectiveSigs.length - 1;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi + 1) / 2);
+      if (effectiveSigs[mid].pulse <= pulse) {
+        lo = mid;
       } else {
-        measureStart = measureEnd;
+        hi = mid - 1;
       }
     }
+    return lo;
+  }
+
+  function computeNextBoundary(measureStart: number, sigIndex: number): [number, number] {
+    // Advance to the time signature active at this measure start.
+    while (
+      sigIndex + 1 < effectiveSigs.length &&
+      effectiveSigs[sigIndex + 1].pulse <= measureStart
+    ) {
+      sigIndex++;
+    }
+
+    const sig = effectiveSigs[sigIndex];
+    const length = getMeasureLength(sig);
+    const nextMeasureStart = measureStart + length;
+
+    if (
+      sigIndex + 1 < effectiveSigs.length &&
+      effectiveSigs[sigIndex + 1].pulse < nextMeasureStart
+    ) {
+      return [effectiveSigs[sigIndex + 1].pulse, sigIndex + 1];
+    }
+    return [nextMeasureStart, sigIndex];
+  }
+
+  function ensureBoundariesUpTo(targetPulse: number) {
+    if (targetPulse <= boundariesComputedUpTo) return;
+
+    let measureStart: number;
+    let sigIndex: number;
+
+    if (boundaries.length === 0) {
+      measureStart = effectiveSigs[0].pulse;
+      sigIndex = 0;
+    } else {
+      measureStart = boundaries[boundaries.length - 1];
+      sigIndex = findSigIndex(measureStart);
+      [measureStart, sigIndex] = computeNextBoundary(measureStart, sigIndex);
+    }
+
+    while (measureStart <= targetPulse) {
+      boundaries.push(measureStart);
+      [measureStart, sigIndex] = computeNextBoundary(measureStart, sigIndex);
+    }
+
+    boundariesComputedUpTo = measureStart;
   }
 
   return {
     getMeasureBoundaries({ start, end }) {
-      const boundaries: number[] = [];
-      for (const boundary of measureBoundariesGenerator()) {
-        if (boundary >= end) break;
-        if (boundary >= start) boundaries.push(boundary);
-      }
-      return boundaries;
+      ensureBoundariesUpTo(end);
+      const left = bisectLeft(boundaries, start);
+      const right = bisectLeft(boundaries, end);
+      return boundaries.slice(left, right);
     },
 
     getSnapPoints(snap, { start, end }) {
       const interval = parseSnapInterval(snap);
+      ensureBoundariesUpTo(end);
+
       const points: number[] = [];
-      for (const point of snapPointsGenerator(interval)) {
-        if (point >= end) break;
-        if (point >= start) points.push(point);
+      let measureIdx = bisectRight(boundaries, start) - 1;
+      if (measureIdx < 0) measureIdx = 0;
+
+      while (measureIdx < boundaries.length && boundaries[measureIdx] < end) {
+        const measureStart = boundaries[measureIdx];
+        const measureEnd =
+          measureIdx + 1 < boundaries.length
+            ? boundaries[measureIdx + 1]
+            : computeNextBoundary(measureStart, findSigIndex(measureStart))[0];
+
+        const rangeStart = Math.max(start, measureStart);
+        let point = measureStart + Math.ceil((rangeStart - measureStart) / interval) * interval;
+
+        while (point < Math.min(end, measureEnd)) {
+          points.push(point);
+          point += interval;
+        }
+
+        measureIdx++;
       }
+
       return points;
     },
 
     pulseToSeconds(pulse) {
       if (pulse <= 0) return 0;
-
-      let seconds = 0;
-      let lastPulse = sortedBpms[0].pulse;
-      let lastBpm = sortedBpms[0].bpm;
-
-      for (let i = 1; i < sortedBpms.length; i++) {
-        const change = sortedBpms[i];
-        if (change.pulse >= pulse) break;
-
-        const deltaPulse = change.pulse - lastPulse;
-        seconds += (deltaPulse / PPQN) * (60 / lastBpm);
-        lastPulse = change.pulse;
-        lastBpm = change.bpm;
-      }
-
-      const deltaPulse = pulse - lastPulse;
-      seconds += (deltaPulse / PPQN) * (60 / lastBpm);
-      return seconds;
+      const idx = Math.max(0, bisectRightBy(bpmSegments, pulse, (s) => s.startPulse) - 1);
+      const seg = bpmSegments[idx];
+      const deltaPulse = pulse - seg.startPulse;
+      return seg.startSeconds + (deltaPulse / PPQN) * (60 / seg.bpm);
     },
 
     secondsToPulse(seconds) {
       if (seconds <= 0) return 0;
-
-      let accumulated = 0;
-      let lastPulse = sortedBpms[0].pulse;
-      let lastBpm = sortedBpms[0].bpm;
-
-      for (let i = 1; i < sortedBpms.length; i++) {
-        const change = sortedBpms[i];
-        const segmentSeconds = ((change.pulse - lastPulse) / PPQN) * (60 / lastBpm);
-
-        if (accumulated + segmentSeconds >= seconds) {
-          const remaining = seconds - accumulated;
-          return lastPulse + (remaining / (60 / lastBpm)) * PPQN;
-        }
-
-        accumulated += segmentSeconds;
-        lastPulse = change.pulse;
-        lastBpm = change.bpm;
-      }
-
-      const remaining = seconds - accumulated;
-      return lastPulse + (remaining / (60 / lastBpm)) * PPQN;
+      const idx = bisectRightBy(bpmSegments, seconds, (s) => s.startSeconds) - 1;
+      const seg = bpmSegments[idx];
+      const remaining = seconds - seg.startSeconds;
+      return seg.startPulse + (remaining / (60 / seg.bpm)) * PPQN;
     },
   };
 }
