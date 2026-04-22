@@ -174,6 +174,11 @@ export const ChartComponentSchema = Type.Object(
       description:
         'Game mode identifier, e.g., "4k", "7k", "sdvx". Determines how related entities are interpreted.',
     }),
+    size: Type.Number({
+      default: 15360,
+      description:
+        "Length of the chart in pulses. Default is 15360 (16 measures of 4/4 at 240 PPQN). Auto-extends when notes are placed past the end.",
+    }),
   },
   {
     additionalProperties: true,
@@ -211,6 +216,27 @@ export const NoteComponentSchema = Type.Object(
   {
     additionalProperties: true,
     description: "Identifies a note entity.",
+  },
+);
+
+/**
+ * Core component: identifies a time signature event.
+ *
+ * Time signatures interrupt the current measure immediately — a new measure
+ * starts at the exact pulse of this event.
+ */
+export const TimeSignatureComponentSchema = Type.Object(
+  {
+    numerator: Type.Number({
+      description: "Top number of the time signature (e.g., 3 for 3/4).",
+    }),
+    denominator: Type.Number({
+      description: "Bottom number of the time signature (e.g., 4 for 3/4).",
+    }),
+  },
+  {
+    additionalProperties: false,
+    description: "Identifies a time signature event. Interrupts the current measure immediately.",
   },
 );
 

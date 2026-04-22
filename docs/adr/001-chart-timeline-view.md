@@ -97,7 +97,7 @@ With bottom = start, should we position elements using `bottom` (anchored to bot
 ### Math
 
 ```
-trackHeight = chart.length * scale
+trackHeight = chart.size * scale
 elementTop = trackHeight - pulseY * scale
 visibleTopY = (trackHeight - scrollTop - viewportHeight) / scale
 visibleBottomY = (trackHeight - scrollTop) / scale
@@ -148,26 +148,26 @@ How should zoom work?
 
 ---
 
-## Decision 6: Chart Length — Fixed with Auto-Extend
+## Decision 6: Chart Size — Fixed with Auto-Extend
 
 ### Question
 
-Should track height be derived from `maxEventY` (dynamic, causes shifting) or from a fixed chart length?
+Should track height be derived from `maxEventY` (dynamic, causes shifting) or from a fixed chart size?
 
 ### Decision
 
-**Fixed chart length.** The `chart` component has a `length: number` field (pulses). Default is `15360` (16 measures of 4/4 at 240 PPQN).
+**Fixed chart size.** The `chart` component has a `size: number` field (pulses). Default is `15360` (16 measures of 4/4 at 240 PPQN).
 
 ### Rationale
 
 - If track height depends on `maxEventY`, every time a note is placed at the end, all existing notes shift down. Bad UX.
-- Fixed length decouples track height from note data.
-- When placing a note past the current end, auto-extend `chart.length` by some margin.
-- Chart length extension is a model mutation that goes through `applyUserActions` and is undoable.
+- Fixed size decouples track height from note data.
+- When placing a note past the current end, auto-extend `chart.size` by some margin.
+- Chart size extension is a model mutation that goes through `applyUserActions` and is undoable.
 
 ### Flicker Prevention
 
-When `chart.length` increases by `Δ`:
+When `chart.size` increases by `Δ`:
 
 1. Re-render → track height grows by `Δ * scale`.
 2. `useLayoutEffect` fires, reads `scrollHeight`, computes `delta`, writes `scrollTop += delta`.
@@ -583,12 +583,12 @@ export const TimeSignatureComponentSchema = Type.Object(
 );
 ```
 
-Also extend `ChartComponentSchema` with `length: number` (default 15360 pulses).
+Also extend `ChartComponentSchema` with `size: number` (default 15360 pulses).
 
 ### Rationale
 
 - Time signature is core to measure boundaries and snap grid behavior, not optional.
-- Chart length is required for the fixed-track-height design.
+- Chart size is required for the fixed-track-height design.
 
 ---
 
@@ -598,7 +598,7 @@ Also extend `ChartComponentSchema` with `length: number` (default 15360 pulses).
 
 1. **PPQN changed from 960 to 240** across `AGENTS.md`, `schema.ts`, and `parser.test.ts`.
 2. **`TimeSignatureComponentSchema`** will be added to `schema.ts`.
-3. **`ChartComponentSchema.length`** will be added (default 15360).
+3. **`ChartComponentSchema.size`** will be added (default 15360).
 4. **`measure` entity** is NOT needed — measures are purely derived from time signatures + pulses.
 
 ---
@@ -610,7 +610,7 @@ Also extend `ChartComponentSchema` with `length: number` (default 15360 pulses).
 - Native browser scrolling gives excellent UX (trackpads, momentum, accessibility).
 - Virtual rendering with pulse-space sections scales to large charts.
 - Top-based absolute positioning simplifies hit-testing math.
-- Fixed chart length prevents note shifting on extension.
+- Fixed chart size prevents note shifting on extension.
 - TimingEngine is fully testable and decoupled from rendering.
 - Mode-agnostic core allows future plugin architecture.
 - Raw DOM manipulation gives 60fps performance.
@@ -618,7 +618,7 @@ Also extend `ChartComponentSchema` with `length: number` (default 15360 pulses).
 ### Negative / Risks
 
 - Raw DOM manipulation bypasses React's reconciliation — potential for DOM/React state mismatch if not careful.
-- Need to manually handle scroll compensation on chart length extension.
+- Need to manually handle scroll compensation on chart size extension.
 - Hit-testing with linear search may need optimization for very dense charts.
 - Wide section buffers may over-render spanning objects.
 - No Canvas fallback for extremely dense charts (can be added later).
