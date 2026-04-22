@@ -7,7 +7,7 @@ test("home page has correct title", async ({ page }) => {
 
 test("home page shows heading and action buttons", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Beat Muser" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Beat Muser" }).nth(1)).toBeVisible();
   await expect(page.getByRole("button", { name: "Open Folder" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Try Demo" })).toBeVisible();
 });
