@@ -1,3 +1,11 @@
+/**
+ * @packageDocumentation
+ *
+ * Home page listing saved projects. Supports opening a folder via the
+ * File System API, creating a demo project, and removing projects from
+ * the local index.
+ */
+
 import { useCallback, useState } from "react";
 import { useNavigate, useLoaderData, useRevalidator } from "react-router";
 import {

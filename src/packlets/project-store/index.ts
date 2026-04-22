@@ -1,3 +1,11 @@
+/**
+ * @packageDocumentation
+ *
+ * IndexedDB persistence for project metadata (not file contents). Manages
+ * the list of known projects with CRUD operations, slug generation, and
+ * last-opened tracking.
+ */
+
 import { get, set } from "idb-keyval";
 import type { Project, ProjectSource } from "./types";
 import { slugify } from "./slugify";

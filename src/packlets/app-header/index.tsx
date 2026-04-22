@@ -1,9 +1,9 @@
 /**
- * Global app header component.
+ * @packageDocumentation
  *
- * Displays the "Beat Muser" app title and the current project name
- * when a project is open. Clicking the title navigates back to the
- * project list (with unsaved changes confirmation stubbed as @todo).
+ * Global app header component. Displays the "Beat Muser" app title and the
+ * current project name when a project is open. Clicking the title navigates
+ * back to the project list.
  */
 
 import { Box, Flex, Heading, Link } from "@radix-ui/themes";

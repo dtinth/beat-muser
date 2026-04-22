@@ -1,3 +1,11 @@
+/**
+ * @packageDocumentation
+ *
+ * Tabbed panel component for the editor sidebars. Renders a gradient
+ * header with clickable tabs and a content area that switches between
+ * the active tab's children.
+ */
+
 import { Flex } from "@radix-ui/themes";
 import { useState, type ReactNode } from "react";
 

@@ -1,3 +1,11 @@
+/**
+ * @packageDocumentation
+ *
+ * Main editor page for a loaded project. Wraps `ProjectLayout` with the
+ * editor toolbar, chart panels, and timeline. Currently rendered with
+ * mock data until the editor core integration is complete.
+ */
+
 import { useEffect } from "react";
 import { useParams, useRouteError } from "react-router";
 import {

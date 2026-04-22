@@ -1,21 +1,9 @@
 /**
- * Ribbon-style toolbar component.
+ * @packageDocumentation
  *
- * A generic container that accepts `ToolbarGroup` children and
- * automatically inserts vertical dividers between them.
- *
- * Usage:
- * ```tsx
- * <Toolbar>
- *   <ToolbarGroup label="Mode">
- *     <ToolbarButton icon={<MousePointer2 size={16} />} label="Select" active />
- *   </ToolbarGroup>
- *   <ToolbarDivider />
- *   <ToolbarGroup label="History">
- *     <ToolbarButton icon={<Undo2 size={16} />} label="Undo" />
- *   </ToolbarGroup>
- * </Toolbar>
- * ```
+ * Ribbon-style toolbar components for the editor. Provides `Toolbar`,
+ * `ToolbarGroup`, `ToolbarButton`, `ToolbarDropdown`, `ToolbarDivider`,
+ * and a mock `TransportDisplay`.
  */
 
 import { Box, Flex, Text, DropdownMenu, Button, Separator, Card } from "@radix-ui/themes";

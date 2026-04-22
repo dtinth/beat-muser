@@ -7,7 +7,8 @@
     "dev": "vp dev",
     "build": "tsc && vp build",
     "preview": "vp preview",
-    "prepare": "vp config"
+    "prepare": "vp config",
+    "list-packlets": "node bin/list-packlets.ts"
   },
   "dependencies": {
     "@radix-ui/themes": "^3.3.0",

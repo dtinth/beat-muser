@@ -21,17 +21,13 @@ Always use `vp run` for scripts and `vp exec` for binaries. Do not use `pnpm`/`n
 
 Packlets are the module boundary system. Each packlet exports from `index.ts`. Packlets may only import other packlets or npm packages — no circular deps. Enforced manually (Oxlint can't run ESLint packlet plugins).
 
-| Packlet          | Purpose                                                                                                         |
-| ---------------- | --------------------------------------------------------------------------------------------------------------- |
-| `project-store`  | IndexedDB CRUD, slugify, `Project`/`ProjectSource` types                                                        |
-| `file-system`    | VFS interface (`listFiles`, `readFile`), real FS + demo FS                                                      |
-| `project-format` | TypeBox schemas for `beat-muser-project.json` format                                                            |
-| `project-list`   | Home page UI — project cards, "Open Folder", "Try Demo" dialog                                                  |
-| `project-view`   | Project page — wraps `ProjectLayout`                                                                            |
-| `project-layout` | Composition layout — accepts `toolbar`, `leftPanels`, `timeline`, `rightPanels`, `statusBar` as ReactNode props |
-| `app-header`     | Fixed top bar — "Beat Muser" title + project breadcrumb                                                         |
-| `toolbar`        | Ribbon-style toolbar with mode/history/transport/snap/zoom groups                                               |
-| `toast`          | Sonner toast provider + `useToast()` hook                                                                       |
+Each packlet should include a `@packageDocumentation` comment at the top of its `index.ts` summarizing its purpose. Run the following command to see an up-to-date list:
+
+```
+vp run list-packlets
+```
+
+When changing a packlet's public API or responsibilities, update its `@packageDocumentation` comment so the description stays accurate.
 
 ### Routing
 

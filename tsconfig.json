@@ -22,5 +22,5 @@
     /* Types */
     "types": ["vite-plus/client", "node"]
   },
-  "include": ["src", "playwright.config.ts", "tests"]
+  "include": ["src", "bin", "playwright.config.ts", "tests"]
 }

@@ -1,3 +1,10 @@
+/**
+ * @packageDocumentation
+ *
+ * Sonner toast provider and `useToast()` hook for displaying ephemeral
+ * notifications (success, error, info) across the app.
+ */
+
 import { createContext, useCallback, useContext, type ReactNode } from "react";
 import { Toaster, toast } from "sonner";
 

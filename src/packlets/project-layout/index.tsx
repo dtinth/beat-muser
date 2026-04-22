@@ -1,13 +1,9 @@
 /**
- * Project layout with toolbar, panels, timeline, and status bar.
+ * @packageDocumentation
  *
- * Layout structure:
- * - Toolbar (top, full width)
- * - Main area (flex, fills remaining height):
- *   - Left panels (256px fixed width)
- *   - Note chart timeline (flex, fills remaining width)
- *   - Right panels (256px fixed width)
- * - Status bar (bottom, full width)
+ * Fixed full-viewport layout shell for the editor. Composes a toolbar,
+ * left/right sidebar panels, a central timeline area, and a status bar
+ * via ReactNode props.
  */
 
 import { Box, Flex, Text } from "@radix-ui/themes";
