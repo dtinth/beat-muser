@@ -91,7 +91,7 @@ describe("parseProjectFile", () => {
             id: "01HQABCDEFGHJKMNPQRSTVWXYZ3",
             version: "01HQABCDEFGHJKMNPQRSTVWXYZ3",
             components: {
-              event: { y: 960 },
+              event: { y: 240 },
               chartRef: { chartId: "01HQABCDEFGHJKMNPQRSTVWXYZ1" },
               note: { lane: 0, channel: "A" },
             },

@@ -39,7 +39,7 @@ Fixed full-viewport flex column with header, toolbar, panels, timeline, and stat
 
 ### Project File Format (`beat-muser-project.json`)
 
-Event-based chart format (PPQN 960, default BPM 60) with versioned metadata, charts, and open-ended entities. Schemas in `src/packlets/project-format/schema.ts`.
+Event-based chart format (PPQN 240, default BPM 60) with versioned metadata, charts, and open-ended entities. Schemas in `src/packlets/project-format/schema.ts`.
 
 ### Provider Abstraction
 

@@ -55,7 +55,7 @@
  *   "id": "01H...",
  *   "version": "01H...",
  *   "components": {
- *     "event": { "y": 960 },
+ *     "event": { "y": 240 },
  *     "chartRef": { "chartId": "01H..." },
  *     "note": { "lane": 0 },
  *     "soundRef": { "channelId": "01H..." }
@@ -152,7 +152,7 @@ export const DeletedEntitySchema = Type.Object(
 export const EventComponentSchema = Type.Object(
   {
     y: Type.Number({
-      description: "Pulse position on the timeline. PPQN = 960. 0 = song start.",
+      description: "Pulse position on the timeline. PPQN = 240. 0 = song start.",
     }),
   },
   {
@@ -310,7 +310,7 @@ export const ProjectMetadataSchema = Type.Object(
  *       "id": "01H...",
  *       "version": "01H...",
  *       "components": {
- *         "event": { "y": 960 },
+ *         "event": { "y": 240 },
  *         "chartRef": { "chartId": "01H..." },
  *         "note": { "lane": 0 }
  *       }
@@ -328,7 +328,7 @@ export const ProjectMetadataSchema = Type.Object(
  * - `deletedEntities`: Array of tombstone references for deleted entities.
  * - All objects allow additional properties for plugin extensibility.
  * - Asset paths use `/` as separator and are relative to the project directory.
- * - Default BPM is 60. PPQN is 960 (aligned with MIDI standard).
+ * - Default BPM is 60. PPQN is 240 (bmson standard).
  *
  * ## Merge Rule
  * Merge two project versions by unioning `id`s:
