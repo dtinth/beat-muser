@@ -22,6 +22,8 @@
  *   O(log n) lookup.
  */
 
+import { bisectLeft, bisectRight, bisectRightBy } from "../binary-search";
+
 const PPQN = 240;
 
 export interface BpmChange {
@@ -69,52 +71,10 @@ function parseSnapInterval(snap: string): number {
   return interval;
 }
 
-function bisectLeft(arr: number[], x: number): number {
-  let lo = 0;
-  let hi = arr.length;
-  while (lo < hi) {
-    const mid = Math.floor((lo + hi) / 2);
-    if (arr[mid] < x) {
-      lo = mid + 1;
-    } else {
-      hi = mid;
-    }
-  }
-  return lo;
-}
-
-function bisectRight(arr: number[], x: number): number {
-  let lo = 0;
-  let hi = arr.length;
-  while (lo < hi) {
-    const mid = Math.floor((lo + hi) / 2);
-    if (arr[mid] <= x) {
-      lo = mid + 1;
-    } else {
-      hi = mid;
-    }
-  }
-  return lo;
-}
-
 interface BpmSegment {
   startPulse: number;
   startSeconds: number;
   bpm: number;
-}
-
-function bisectRightBy<T>(arr: T[], x: number, getKey: (item: T) => number): number {
-  let lo = 0;
-  let hi = arr.length;
-  while (lo < hi) {
-    const mid = Math.floor((lo + hi) / 2);
-    if (getKey(arr[mid]) <= x) {
-      lo = mid + 1;
-    } else {
-      hi = mid;
-    }
-  }
-  return lo;
 }
 
 export function createTimingEngine(
