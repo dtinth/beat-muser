@@ -190,7 +190,7 @@ export function createTimelineBehaviorFactory(
           objects.push({
             key: `column-${col.id}`,
             x: col.x,
-            y: height,
+            y: 0,
             width: col.width,
             height,
             renderer: columnRenderer,
@@ -208,7 +208,7 @@ export function createTimelineBehaviorFactory(
         objects.push({
           key: "trailing-border",
           x: timelineWidth - 1,
-          y: height,
+          y: 0,
           width: 1,
           height,
           renderer: trailingBorderRenderer,
