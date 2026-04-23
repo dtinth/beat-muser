@@ -29,9 +29,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v2
       - uses: voidzero-dev/setup-vp@v1
         with:
           cache: true
       - uses: dtinth/setup-playwright-test-docker@main
-      - run: vp dev &
+      - run: pitchfork start dev
       - run: npx playwright test
