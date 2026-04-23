@@ -75,6 +75,8 @@ export interface RenderObject {
   data: unknown;
   /** Optional test ID applied as `data-testid` for debugging/testing. */
   testId?: string;
+  /** Rendering layer. `"scroll"` (default) scrolls with content. `"sticky"` stays fixed to viewport top while scrolling horizontally. */
+  layer?: "scroll" | "sticky";
 }
 
 /**
@@ -124,12 +126,16 @@ interface ScrollableCanvasProps {
 
 export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const stickyLayerRef = useRef<HTMLDivElement>(null);
+  const scrollLayerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    const stickyLayer = stickyLayerRef.current;
+    const scrollLayer = scrollLayerRef.current;
+    if (!container || !stickyLayer || !scrollLayer) return;
 
-    return mountScrollableCanvas(container, behaviorFactory);
+    return mountScrollableCanvas(container, stickyLayer, scrollLayer, behaviorFactory);
   }, [behaviorFactory]);
 
   return (
@@ -143,7 +149,22 @@ export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvas
         height: "100%",
       }}
     >
+      {/* Sticky layer: rendered first so it sits above scroll layer. */}
       <div
+        ref={stickyLayerRef}
+        data-testid="sticky-layer"
+        style={{
+          position: "sticky",
+          top: 0,
+          height: 0,
+          overflow: "visible",
+          zIndex: 1,
+        }}
+      />
+      {/* Scroll layer: main content area. */}
+      <div
+        ref={scrollLayerRef}
+        data-testid="scroll-layer"
         style={{
           position: "relative",
           overflow: "hidden",
@@ -155,6 +176,8 @@ export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvas
 
 function mountScrollableCanvas(
   container: HTMLDivElement,
+  stickyLayer: HTMLDivElement,
+  scrollLayer: HTMLDivElement,
   behaviorFactory: ScrollableCanvasBehaviorFactory,
 ) {
   let pendingRaf: number | null = null;
@@ -164,12 +187,6 @@ function mountScrollableCanvas(
   let isDisposed = false;
   let hasConnected = false;
   const handles = new Map<string, RenderHandle>();
-
-  // The content wrapper is the only child of the container. Rendered
-  // elements are appended to it. Its explicit width/height create the
-  // scrollable area, and position:relative makes it the containing block
-  // for absolutely-positioned children.
-  const scrollableContent = container.firstElementChild as HTMLElement | null;
 
   const ctx: ScrollableCanvasContext = {
     viewportToContent(x, y) {
@@ -226,12 +243,16 @@ function mountScrollableCanvas(
     isRefreshing = true;
 
     try {
-      // Size the spacer first so that onConnected and pending scroll
-      // have a meaningful scrollable area to work with.
+      // Size both layers so that onConnected and pending scroll have a
+      // meaningful scrollable area to work with.
       const contentSize = behaviorInstance.getContentSize();
-      if (scrollableContent) {
-        scrollableContent.style.width = `${contentSize.width}px`;
-        scrollableContent.style.height = `${contentSize.height}px`;
+      if (stickyLayer) {
+        stickyLayer.style.width = `${contentSize.width}px`;
+        stickyLayer.style.height = "0px";
+      }
+      if (scrollLayer) {
+        scrollLayer.style.width = `${contentSize.width}px`;
+        scrollLayer.style.height = `${contentSize.height}px`;
       }
 
       if (!hasConnected) {
@@ -254,6 +275,7 @@ function mountScrollableCanvas(
       for (const obj of visibleObjects) {
         activeKeys.add(obj.key);
         const existing = handles.get(obj.key);
+        const layer = obj.layer === "sticky" ? stickyLayer : scrollLayer;
 
         if (existing) {
           existing.update(obj.data);
@@ -262,7 +284,7 @@ function mountScrollableCanvas(
           const handle = obj.renderer(obj.data);
           handles.set(obj.key, handle);
           positionElement(handle.dom, obj);
-          scrollableContent?.appendChild(handle.dom);
+          layer?.appendChild(handle.dom);
         }
       }
 

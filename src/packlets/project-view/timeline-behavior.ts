@@ -73,16 +73,14 @@ function createGridLineRenderer(): (data: unknown) => RenderHandle<GridLineData>
   };
 }
 
-interface ColumnData {
-  title: string;
-  scrollTop: number;
+interface ColumnBgData {
   backgroundColor?: string;
   showBorder: boolean;
 }
 
-function createColumnRenderer(): (data: unknown) => RenderHandle<ColumnData> {
+function createColumnBgRenderer(): (data: unknown) => RenderHandle<ColumnBgData> {
   return (data: unknown) => {
-    const d = data as ColumnData;
+    const d = data as ColumnBgData;
     const el = document.createElement("div");
     if (d.backgroundColor) {
       el.style.backgroundColor = d.backgroundColor;
@@ -100,28 +98,40 @@ function createColumnRenderer(): (data: unknown) => RenderHandle<ColumnData> {
       el.appendChild(border);
     }
 
-    // Title, positioned at scrollTop to stay visible while scrolling
-    const title = document.createElement("div");
-    title.textContent = d.title;
-    title.style.position = "absolute";
-    title.style.top = `${d.scrollTop}px`;
-    title.style.left = "0";
-    title.style.width = "100%";
-    title.style.textAlign = "center";
-    title.style.fontSize = "10px";
-    title.style.color = "var(--gray-11)";
-    title.style.fontFamily = "sans-serif";
-    title.style.pointerEvents = "none";
-    el.appendChild(title);
+    return {
+      dom: el,
+      update(newData: unknown) {
+        const nd = newData as ColumnBgData;
+        if (nd.backgroundColor) {
+          el.style.backgroundColor = nd.backgroundColor;
+        }
+      },
+    };
+  };
+}
+
+interface ColumnTitleData {
+  title: string;
+}
+
+function createColumnTitleRenderer(): (data: unknown) => RenderHandle<ColumnTitleData> {
+  return (data: unknown) => {
+    const d = data as ColumnTitleData;
+    const el = document.createElement("div");
+    el.textContent = d.title;
+    el.style.display = "flex";
+    el.style.alignItems = "center";
+    el.style.justifyContent = "center";
+    el.style.fontSize = "10px";
+    el.style.color = "var(--gray-11)";
+    el.style.fontFamily = "sans-serif";
+    el.style.pointerEvents = "none";
 
     return {
       dom: el,
       update(newData: unknown) {
-        const nd = newData as ColumnData;
-        title.style.top = `${nd.scrollTop}px`;
-        if (nd.backgroundColor) {
-          el.style.backgroundColor = nd.backgroundColor;
-        }
+        const nd = newData as ColumnTitleData;
+        el.textContent = nd.title;
       },
     };
   };
@@ -146,7 +156,8 @@ export function createTimelineBehaviorFactory(
   controller: EditorController,
 ): ScrollableCanvasBehaviorFactory {
   const gridLineRenderer = createGridLineRenderer();
-  const columnRenderer = createColumnRenderer();
+  const columnBgRenderer = createColumnBgRenderer();
+  const columnTitleRenderer = createColumnTitleRenderer();
   const trailingBorderRenderer = createTrailingBorderRenderer();
 
   return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
@@ -184,23 +195,36 @@ export function createTimelineBehaviorFactory(
 
         const objects: RenderObject[] = [];
 
-        // --- Columns ---
+        // --- Column backgrounds (scroll layer) ---
         for (let i = 0; i < columns.length; i++) {
           const col = columns[i]!;
           objects.push({
-            key: `column-${col.id}`,
+            key: `column-bg-${col.id}`,
             x: col.x,
             y: 0,
             width: col.width,
             height,
-            renderer: columnRenderer,
+            renderer: columnBgRenderer,
             data: {
-              title: col.title,
-              scrollTop: ctx.scrollTop,
               backgroundColor: col.backgroundColor,
               showBorder: i > 0,
             },
-            testId: "timeline-column",
+            testId: "timeline-column-bg",
+          });
+        }
+
+        // --- Column titles (sticky layer) ---
+        for (const col of columns) {
+          objects.push({
+            key: `column-title-${col.id}`,
+            x: col.x,
+            y: 4,
+            width: col.width,
+            height: 16,
+            layer: "sticky",
+            renderer: columnTitleRenderer,
+            data: { title: col.title },
+            testId: "timeline-column-title",
           });
         }
 
