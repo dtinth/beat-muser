@@ -86,6 +86,14 @@ export function createTimelineBehaviorFactory(
         return { width: CONTENT_WIDTH, height: size * SCALE_Y };
       },
 
+      onConnected() {
+        const size = controller.getChartSize();
+        const height = size * SCALE_Y;
+        if (height > ctx.viewportHeight) {
+          ctx.setScrollTop(height - ctx.viewportHeight);
+        }
+      },
+
       getVisibleObjects(): RenderObject[] {
         const size = controller.getChartSize();
         const height = size * SCALE_Y;

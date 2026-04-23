@@ -132,8 +132,6 @@ class ScrollableCanvasTestController {
     const blockRenderer = createBlockRenderer();
 
     return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
-      let hasInitializedScroll = false;
-
       const unsubCount = this.$blockCount.subscribe(() => {
         ctx.refresh();
       });
@@ -151,17 +149,17 @@ class ScrollableCanvasTestController {
           return { width: 400, height: getContentHeight(count) };
         },
 
+        onConnected: () => {
+          const count = this.$blockCount.get();
+          const height = getContentHeight(count);
+          if (height > ctx.viewportHeight) {
+            ctx.setScrollTop(height - ctx.viewportHeight);
+          }
+        },
+
         getVisibleObjects: (): RenderObject[] => {
           const count = this.$blockCount.get();
           const height = getContentHeight(count);
-
-          // Start scroll at bottom on first render once viewport is known
-          if (!hasInitializedScroll && ctx.viewportHeight > 0) {
-            hasInitializedScroll = true;
-            if (height > ctx.viewportHeight) {
-              ctx.setScrollTop(height - ctx.viewportHeight);
-            }
-          }
 
           const viewportTop = ctx.scrollTop;
           const viewportBottom = ctx.scrollTop + ctx.viewportHeight;

@@ -98,6 +98,7 @@ export interface ScrollableCanvasContext {
 export interface ScrollableCanvasBehavior {
   getContentSize(): { width: number; height: number };
   getVisibleObjects(): RenderObject[];
+  onConnected?(): void;
   onScroll?(scrollLeft: number, scrollTop: number): void;
   onPointerEvent?(event: PointerEvent, contentX: number, contentY: number): void;
   [Symbol.dispose]?: () => void;
@@ -161,6 +162,7 @@ function mountScrollableCanvas(
   let pendingScrollTop: number | null = null;
   let pendingScrollLeft: number | null = null;
   let isDisposed = false;
+  let hasConnected = false;
   const handles = new Map<string, RenderHandle>();
 
   // The spacer div is the only stable child; blocks are inserted before it.
@@ -223,6 +225,19 @@ function mountScrollableCanvas(
     isRefreshing = true;
 
     try {
+      // Size the spacer first so that onConnected and pending scroll
+      // have a meaningful scrollable area to work with.
+      const contentSize = behaviorInstance.getContentSize();
+      if (scrollableContent) {
+        scrollableContent.style.width = `${contentSize.width}px`;
+        scrollableContent.style.height = `${contentSize.height}px`;
+      }
+
+      if (!hasConnected) {
+        hasConnected = true;
+        behaviorInstance.onConnected?.();
+      }
+
       if (pendingScrollTop !== null) {
         container.scrollTop = pendingScrollTop;
         pendingScrollTop = null;
@@ -230,12 +245,6 @@ function mountScrollableCanvas(
       if (pendingScrollLeft !== null) {
         container.scrollLeft = pendingScrollLeft;
         pendingScrollLeft = null;
-      }
-
-      const contentSize = behaviorInstance.getContentSize();
-      if (scrollableContent) {
-        scrollableContent.style.width = `${contentSize.width}px`;
-        scrollableContent.style.height = `${contentSize.height}px`;
       }
 
       const visibleObjects = behaviorInstance.getVisibleObjects();
