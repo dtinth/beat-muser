@@ -42,7 +42,7 @@ export class EditorController {
       id,
       version: id,
       components: {
-        chart: { name: "Untitled", mode: "4k", size: DEFAULT_CHART_SIZE },
+        chart: { name: "Untitled", mode: "7k", size: DEFAULT_CHART_SIZE },
       },
     };
     const map = this.$entities.get();
