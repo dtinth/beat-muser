@@ -176,8 +176,9 @@ class ScrollableCanvasTestController {
           );
 
           for (let i = firstVisible; i <= lastVisible; i++) {
-            const y = height - (i + 1) * BLOCK_HEIGHT - i * BLOCK_GAP;
-            if (y + BLOCK_HEIGHT > viewportTop && y < viewportBottom) {
+            // Bottom-anchored: y is the bottom edge of the block
+            const y = height - i * blockSpan;
+            if (y > viewportTop && y - BLOCK_HEIGHT < viewportBottom) {
               objects.push({
                 key: `block-${i}`,
                 x: 100,

@@ -136,6 +136,7 @@ export function createTimelineBehaviorFactory(
               color: "var(--gray-8)",
               label: measureIndex >= 0 ? String(measureIndex + 1) : undefined,
             },
+            testId: "measure-line",
           });
         }
 
@@ -155,6 +156,7 @@ export function createTimelineBehaviorFactory(
             height: 1,
             renderer: gridLineRenderer,
             data: { color: "var(--gray-7)" },
+            testId: "beat-line",
           });
         }
 
@@ -173,6 +175,7 @@ export function createTimelineBehaviorFactory(
             height: 1,
             renderer: gridLineRenderer,
             data: { color: "var(--gray-6)" },
+            testId: "snap-line",
           });
         }
 
