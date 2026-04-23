@@ -331,11 +331,11 @@ function mountScrollableCanvas(
 function positionElement(el: HTMLElement, obj: RenderObject) {
   el.style.position = "absolute";
   el.style.left = `${obj.x}px`;
-  // Bottom-anchored: `y` is the bottom edge of the element.
-  el.style.top = `${obj.y - obj.height}px`;
+  el.style.top = `${obj.y}px`;
   el.style.width = `${obj.width}px`;
   el.style.height = `${obj.height}px`;
   if (obj.testId) {
     el.dataset.testid = obj.testId;
   }
+  el.dataset.key = obj.key;
 }

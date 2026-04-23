@@ -124,7 +124,7 @@ export function createTimelineBehaviorFactory(
 
         for (const pulse of measureBoundaries) {
           const measureIndex = allBoundaries.indexOf(pulse);
-          const y = height - pulse * SCALE_Y;
+          const y = height - pulse * SCALE_Y - 1;
           objects.push({
             key: `measure-${pulse}`,
             x: 0,
@@ -147,7 +147,7 @@ export function createTimelineBehaviorFactory(
         const beatSet = new Set(beatPoints);
 
         for (const pulse of beatPoints) {
-          const y = height - pulse * SCALE_Y;
+          const y = height - pulse * SCALE_Y - 1;
           objects.push({
             key: `beat-${pulse}`,
             x: 0,
@@ -166,7 +166,7 @@ export function createTimelineBehaviorFactory(
           .filter((p) => !measureSet.has(p) && !beatSet.has(p));
 
         for (const pulse of gridPoints) {
-          const y = height - pulse * SCALE_Y;
+          const y = height - pulse * SCALE_Y - 1;
           objects.push({
             key: `grid-${pulse}`,
             x: 0,
