@@ -132,6 +132,7 @@ export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvas
   return (
     <div
       ref={containerRef}
+      data-testid="scrollable-canvas-root"
       style={{
         position: "relative",
         overflow: "auto",

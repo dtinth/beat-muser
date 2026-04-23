@@ -50,12 +50,15 @@ const BLOCK_COLORS = [
 interface BlockData {
   color: string;
   label: string;
+  index: number;
 }
 
 function createBlockRenderer(): (data: unknown) => RenderHandle<BlockData> {
   return (data: unknown) => {
     const d = data as BlockData;
     const el = document.createElement("div");
+    el.dataset.testid = "test-block";
+    el.dataset.index = String(d.index);
     el.style.backgroundColor = d.color;
     el.style.borderRadius = "4px";
     el.style.display = "flex";
@@ -186,6 +189,7 @@ class ScrollableCanvasTestController {
                 data: {
                   color: BLOCK_COLORS[i % BLOCK_COLORS.length],
                   label: `Block ${i}`,
+                  index: i,
                 },
               });
             }
