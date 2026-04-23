@@ -2,12 +2,11 @@
  * @packageDocumentation
  *
  * Main editor page for a loaded project. Wraps `ProjectLayout` with the
- * editor toolbar, chart panels, and timeline. Currently rendered with
- * mock data until the editor core integration is complete.
+ * editor toolbar, chart panels, and a ScrollableCanvas timeline.
  */
 
-import { useEffect } from "react";
-import { useParams, useRouteError } from "react-router";
+import { useState, useEffect } from "react";
+import { useParams, useRouteError, useLoaderData } from "react-router";
 import {
   MousePointer2,
   Pencil,
@@ -34,6 +33,10 @@ import {
   TransportDisplay,
 } from "../toolbar";
 import { SidebarPanel } from "../sidebar-panel";
+import { ScrollableCanvas } from "../scrollable-canvas";
+import { EditorController } from "../editor-core";
+import type { ProjectFile } from "../project-format";
+import { createTimelineBehaviorFactory } from "./timeline-behavior";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -45,12 +48,6 @@ function Field({ label, value }: { label: string; value: string }) {
     </Flex>
   );
 }
-
-const mockProject = {
-  title: "Nocturne in E♭ Minor",
-  artist: "Aethelgard",
-  genre: "SYMPHONIC TRANCE",
-};
 
 const mockCharts = [
   { name: "ANOTHER", level: "12" },
@@ -72,7 +69,7 @@ const mockChartStats = {
   bpmRange: "96 — 384",
 };
 
-function LeftPanels() {
+function LeftPanels({ project }: { project: ProjectFile }) {
   return (
     <Flex direction="column">
       <SidebarPanel
@@ -81,9 +78,9 @@ function LeftPanels() {
             label: "Project Information",
             content: (
               <>
-                <Field label="Title" value={mockProject.title} />
-                <Field label="Artist" value={mockProject.artist} />
-                <Field label="Genre" value={mockProject.genre} />
+                <Field label="Title" value={project.metadata.title} />
+                <Field label="Artist" value={project.metadata.artist} />
+                <Field label="Genre" value={project.metadata.genre} />
               </>
             ),
           },
@@ -172,8 +169,12 @@ function LeftPanels() {
 
 export function ProjectViewPage() {
   const { slug: _slug } = useParams<{ slug: string }>();
+  const project = useLoaderData() as ProjectFile;
   const error = useRouteError() as Error | undefined;
   const { showError } = useToast();
+
+  const [controller] = useState(() => new EditorController({ project }));
+  const behaviorFactory = createTimelineBehaviorFactory(controller);
 
   useEffect(() => {
     if (error) {
@@ -186,7 +187,7 @@ export function ProjectViewPage() {
 
   return (
     <ProjectLayout
-      leftPanels={<LeftPanels />}
+      leftPanels={<LeftPanels project={project} />}
       toolbar={
         <Toolbar>
           <ToolbarGroup label="Mode">
@@ -233,6 +234,7 @@ export function ProjectViewPage() {
           </ToolbarGroup>
         </Toolbar>
       }
+      timeline={<ScrollableCanvas behavior={behaviorFactory} />}
     />
   );
 }

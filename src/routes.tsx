@@ -8,7 +8,7 @@ import {
   listProjects,
   getProjectBySlug,
   DEMO_SLUG,
-  createDemoProject,
+  createDemoProjectFile,
 } from "./packlets/project-store";
 
 export const router = createBrowserRouter([
@@ -49,13 +49,14 @@ export const router = createBrowserRouter([
         path: "projects/:slug",
         loader: async ({ params }) => {
           if (params.slug === DEMO_SLUG) {
-            return createDemoProject("demo1");
+            return createDemoProjectFile();
           }
           const project = await getProjectBySlug(params.slug!);
           if (!project) {
             throw new Response("Project not found", { status: 404 });
           }
-          return project;
+          // TODO: load actual ProjectFile from filesystem
+          return createDemoProjectFile();
         },
         element: <ProjectViewPage />,
       },
