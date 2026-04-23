@@ -37,7 +37,7 @@
  * the first. Re-entrant `refresh()` throws.
  */
 
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -111,6 +111,14 @@ export type ScrollableCanvasBehaviorFactory = (
   ctx: ScrollableCanvasContext,
 ) => ScrollableCanvasBehavior;
 
+/**
+ * Methods exposed via ref on `ScrollableCanvas`.
+ */
+export interface ScrollableCanvasHandle {
+  /** Schedules a re-render of visible objects. */
+  refresh(): void;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -119,37 +127,45 @@ interface ScrollableCanvasProps {
   behavior: ScrollableCanvasBehaviorFactory;
 }
 
-export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvasProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+export const ScrollableCanvas = forwardRef<ScrollableCanvasHandle, ScrollableCanvasProps>(
+  function ScrollableCanvas({ behavior: behaviorFactory }, ref) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const handleRef = useRef<ScrollableCanvasHandle>({ refresh: () => {} });
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    useImperativeHandle(ref, () => handleRef.current);
 
-    return mountScrollableCanvas(container, behaviorFactory);
-  }, [behaviorFactory]);
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
 
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "relative",
-        overflow: "auto",
-        width: "100%",
-        height: "100%",
-      }}
-    >
+      const { refresh, cleanup } = mountScrollableCanvas(container, behaviorFactory);
+      handleRef.current.refresh = refresh;
+
+      return cleanup;
+    }, [behaviorFactory]);
+
+    return (
       <div
+        ref={containerRef}
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          pointerEvents: "none",
+          position: "relative",
+          overflow: "auto",
+          width: "100%",
+          height: "100%",
         }}
-      />
-    </div>
-  );
-}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            pointerEvents: "none",
+          }}
+        />
+      </div>
+    );
+  },
+);
 
 function mountScrollableCanvas(
   container: HTMLDivElement,
@@ -160,6 +176,11 @@ function mountScrollableCanvas(
   let pendingScrollTop: number | null = null;
   let pendingScrollLeft: number | null = null;
   const handles = new Map<string, RenderHandle>();
+
+  // The spacer div is the only stable child; blocks are inserted before it.
+  // We must not rely on firstElementChild because it changes after the first
+  // block is inserted.
+  const scrollableContent = container.firstElementChild as HTMLElement | null;
 
   const ctx: ScrollableCanvasContext = {
     viewportToContent(x, y) {
@@ -225,7 +246,6 @@ function mountScrollableCanvas(
       }
 
       const contentSize = behaviorInstance.getContentSize();
-      const scrollableContent = container.firstElementChild as HTMLElement | null;
       if (scrollableContent) {
         scrollableContent.style.width = `${contentSize.width}px`;
         scrollableContent.style.height = `${contentSize.height}px`;
@@ -284,20 +304,23 @@ function mountScrollableCanvas(
 
   pendingRaf = requestAnimationFrame(doRender);
 
-  return () => {
-    if (pendingRaf !== null) {
-      cancelAnimationFrame(pendingRaf);
-      pendingRaf = null;
-    }
-    container.removeEventListener("scroll", handleScroll);
-    container.removeEventListener("pointerdown", handlePointerEvent);
-    container.removeEventListener("pointermove", handlePointerEvent);
-    container.removeEventListener("pointerup", handlePointerEvent);
-    for (const handle of handles.values()) {
-      handle[Symbol.dispose]?.();
-    }
-    handles.clear();
-    behaviorInstance[Symbol.dispose]?.();
+  return {
+    refresh: () => ctx.refresh(),
+    cleanup: () => {
+      if (pendingRaf !== null) {
+        cancelAnimationFrame(pendingRaf);
+        pendingRaf = null;
+      }
+      container.removeEventListener("scroll", handleScroll);
+      container.removeEventListener("pointerdown", handlePointerEvent);
+      container.removeEventListener("pointermove", handlePointerEvent);
+      container.removeEventListener("pointerup", handlePointerEvent);
+      for (const handle of handles.values()) {
+        handle[Symbol.dispose]?.();
+      }
+      handles.clear();
+      behaviorInstance[Symbol.dispose]?.();
+    },
   };
 }
 

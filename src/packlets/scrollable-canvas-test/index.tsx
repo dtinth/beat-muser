@@ -2,11 +2,16 @@
  * @packageDocumentation
  *
  * Test page for the ScrollableCanvas component. Accessible at
- * `/test/scrollable-canvas`. Uses the project layout with description on
- * the left, controls on the right, and the canvas in the center.
+ * `/test/scrollable-canvas`. Uses a controller + nanostores pattern so
+ * the behavior factory is stable and the canvas never remounts.
+ *
+ * Arrangement mimics VSRG: blocks stack from bottom to top, content
+ * height is the bottom edge of the bottommost block, and scroll starts
+ * at the bottom.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { atom } from "nanostores";
 import { ScrollableCanvas } from "../scrollable-canvas";
 import type {
   ScrollableCanvasBehavior,
@@ -20,18 +25,32 @@ import { Button, Flex, Text } from "@radix-ui/themes";
 import { SidebarPanel } from "../sidebar-panel";
 
 // ---------------------------------------------------------------------------
-// Demo data
+// Constants
+// ---------------------------------------------------------------------------
+
+const BLOCK_HEIGHT = 40;
+const BLOCK_GAP = 8;
+const BLOCK_WIDTH = 200;
+const INITIAL_BLOCK_COUNT = 125;
+const BLOCK_COLORS = [
+  "#e74c3c",
+  "#3498db",
+  "#2ecc71",
+  "#f39c12",
+  "#9b59b6",
+  "#1abc9c",
+  "#e67e22",
+  "#34495e",
+];
+
+// ---------------------------------------------------------------------------
+// Renderer
 // ---------------------------------------------------------------------------
 
 interface BlockData {
   color: string;
   label: string;
 }
-
-const BLOCK_HEIGHT = 40;
-const BLOCK_GAP = 8;
-const BLOCK_WIDTH = 200;
-const INITIAL_CONTENT_HEIGHT = 5000;
 
 function createBlockRenderer(): (data: unknown) => RenderHandle<BlockData> {
   return (data: unknown) => {
@@ -59,104 +78,150 @@ function createBlockRenderer(): (data: unknown) => RenderHandle<BlockData> {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Behavior factory
-// ---------------------------------------------------------------------------
-
-function createDemoBehavior(
-  contentHeightRef: { value: number },
-  scrollLogRef: { value: string },
-): ScrollableCanvasBehaviorFactory {
-  const blockRenderer = createBlockRenderer();
-
-  const colors = [
-    "#e74c3c",
-    "#3498db",
-    "#2ecc71",
-    "#f39c12",
-    "#9b59b6",
-    "#1abc9c",
-    "#e67e22",
-    "#34495e",
-  ];
-
-  return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
-    return {
-      getContentSize() {
-        return { width: 400, height: contentHeightRef.value };
-      },
-
-      getVisibleObjects(): RenderObject[] {
-        const objects: RenderObject[] = [];
-        const viewportTop = ctx.scrollTop;
-        const viewportBottom = ctx.scrollTop + ctx.viewportHeight;
-
-        const firstVisible = Math.max(0, Math.floor(viewportTop / (BLOCK_HEIGHT + BLOCK_GAP)) - 1);
-        const lastVisible = Math.ceil(viewportBottom / (BLOCK_HEIGHT + BLOCK_GAP)) + 1;
-        const totalBlocks = Math.floor(contentHeightRef.value / (BLOCK_HEIGHT + BLOCK_GAP));
-
-        for (let i = firstVisible; i <= Math.min(lastVisible, totalBlocks - 1); i++) {
-          const y = i * (BLOCK_HEIGHT + BLOCK_GAP);
-          objects.push({
-            key: `block-${i}`,
-            x: 100,
-            y,
-            width: BLOCK_WIDTH,
-            height: BLOCK_HEIGHT,
-            renderer: blockRenderer,
-            data: {
-              color: colors[i % colors.length],
-              label: `Block ${i}`,
-            },
-          });
-        }
-
-        return objects;
-      },
-
-      onScroll(_scrollLeft, scrollTop) {
-        scrollLogRef.value = `scrolled to y=${Math.round(scrollTop)}`;
-      },
-
-      onPointerEvent(event, contentX, contentY) {
-        if (event.type === "pointerdown") {
-          scrollLogRef.value = `click at (${Math.round(contentX)}, ${Math.round(contentY)})`;
-        }
-      },
-    };
-  };
+function getContentHeight(blockCount: number): number {
+  if (blockCount <= 0) return 0;
+  return blockCount * BLOCK_HEIGHT + (blockCount - 1) * BLOCK_GAP;
 }
 
 // ---------------------------------------------------------------------------
-// Test page component
+// Controller
+// ---------------------------------------------------------------------------
+
+class ScrollableCanvasTestController {
+  $blockCount = atom(INITIAL_BLOCK_COUNT);
+  $scrollInfo = atom("ready");
+  $domNodeCount = atom(0);
+  $pendingScrollDelta = atom(0);
+
+  behaviorFactory: ScrollableCanvasBehaviorFactory;
+
+  constructor() {
+    this.behaviorFactory = this.createBehaviorFactory();
+  }
+
+  extend() {
+    const delta = 20 * (BLOCK_HEIGHT + BLOCK_GAP);
+    this.$blockCount.set(this.$blockCount.get() + 20);
+    this.$pendingScrollDelta.set(delta);
+    this.$scrollInfo.set(`Extended by 20 blocks (+${delta}px)`);
+  }
+
+  shrink() {
+    const current = this.$blockCount.get();
+    const removeCount = Math.min(20, current);
+    if (removeCount === 0) return;
+    const delta = -removeCount * (BLOCK_HEIGHT + BLOCK_GAP);
+    this.$blockCount.set(current - removeCount);
+    this.$pendingScrollDelta.set(delta);
+    this.$scrollInfo.set(`Shrunk by ${removeCount} blocks (${delta}px)`);
+  }
+
+  countNodes(wrapperEl: HTMLElement | null) {
+    if (!wrapperEl) return;
+    // wrapperEl -> ScrollableCanvas root -> [block, block, ..., spacer]
+    const root = wrapperEl.firstElementChild as HTMLElement | null;
+    if (!root) return;
+    const count = Math.max(0, root.childElementCount - 1);
+    this.$domNodeCount.set(count);
+  }
+
+  private createBehaviorFactory(): ScrollableCanvasBehaviorFactory {
+    const blockRenderer = createBlockRenderer();
+
+    return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
+      let hasInitializedScroll = false;
+
+      const unsubCount = this.$blockCount.subscribe(() => {
+        ctx.refresh();
+      });
+
+      const unsubDelta = this.$pendingScrollDelta.subscribe((delta: number) => {
+        if (delta !== 0) {
+          ctx.setScrollTop(ctx.scrollTop + delta);
+          this.$pendingScrollDelta.set(0);
+        }
+      });
+
+      return {
+        getContentSize: () => {
+          const count = this.$blockCount.get();
+          return { width: 400, height: getContentHeight(count) };
+        },
+
+        getVisibleObjects: (): RenderObject[] => {
+          const count = this.$blockCount.get();
+          const height = getContentHeight(count);
+
+          // Start scroll at bottom on first render once viewport is known
+          if (!hasInitializedScroll && ctx.viewportHeight > 0) {
+            hasInitializedScroll = true;
+            if (height > ctx.viewportHeight) {
+              ctx.setScrollTop(height - ctx.viewportHeight);
+            }
+          }
+
+          const viewportTop = ctx.scrollTop;
+          const viewportBottom = ctx.scrollTop + ctx.viewportHeight;
+          const blockSpan = BLOCK_HEIGHT + BLOCK_GAP;
+
+          const objects: RenderObject[] = [];
+
+          // Over-estimate visible range; exact filtering happens below
+          const firstVisible = Math.max(0, Math.floor((height - viewportBottom) / blockSpan) - 1);
+          const lastVisible = Math.min(
+            count - 1,
+            Math.ceil((height - viewportTop) / blockSpan) + 1,
+          );
+
+          for (let i = firstVisible; i <= lastVisible; i++) {
+            const y = height - (i + 1) * BLOCK_HEIGHT - i * BLOCK_GAP;
+            if (y + BLOCK_HEIGHT > viewportTop && y < viewportBottom) {
+              objects.push({
+                key: `block-${i}`,
+                x: 100,
+                y,
+                width: BLOCK_WIDTH,
+                height: BLOCK_HEIGHT,
+                renderer: blockRenderer,
+                data: {
+                  color: BLOCK_COLORS[i % BLOCK_COLORS.length],
+                  label: `Block ${i}`,
+                },
+              });
+            }
+          }
+
+          return objects;
+        },
+
+        onScroll: (_scrollLeft, scrollTop) => {
+          this.$scrollInfo.set(`scrolled to y=${Math.round(scrollTop)}`);
+        },
+
+        onPointerEvent: (event, contentX, contentY) => {
+          if (event.type === "pointerdown") {
+            this.$scrollInfo.set(`click at (${Math.round(contentX)}, ${Math.round(contentY)})`);
+          }
+        },
+
+        [Symbol.dispose]: () => {
+          unsubCount();
+          unsubDelta();
+        },
+      };
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// React page
 // ---------------------------------------------------------------------------
 
 export function ScrollableCanvasTestPage() {
-  const [contentHeight, setContentHeight] = useState(INITIAL_CONTENT_HEIGHT);
-  const [scrollInfo, setScrollInfo] = useState("ready");
-  const [domNodeCount, setDomNodeCount] = useState(0);
+  const [controller] = useState(() => new ScrollableCanvasTestController());
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const contentHeightRef = { value: contentHeight };
-  const scrollLogRef = { value: scrollInfo };
-
-  const behaviorFactory = createDemoBehavior(contentHeightRef, scrollLogRef);
-
-  const handleExtend = () => {
-    setContentHeight((h) => h + 1000);
-    setScrollInfo(`extended to ${contentHeight + 1000}px`);
-  };
-
-  const handleShrink = () => {
-    setContentHeight((h) => Math.max(1000, h - 1000));
-    setScrollInfo(`shrunk to ${Math.max(1000, contentHeight - 1000)}px`);
-  };
-
-  const handleCountNodes = () => {
-    const canvas = document.querySelector('[data-testid="scrollable-canvas"]');
-    if (canvas) {
-      setDomNodeCount(canvas.childElementCount - 1);
-    }
-  };
+  const handleCountNodes = () => controller.countNodes(wrapperRef.current);
 
   return (
     <ProjectLayout
@@ -171,16 +236,16 @@ export function ScrollableCanvasTestPage() {
                     ScrollableCanvas Test
                   </Text>
                   <Text size="1" color="gray">
-                    This page tests the ScrollableCanvas component in isolation. It renders colored
-                    blocks in a scrollable virtual list.
+                    This page tests the ScrollableCanvas component in isolation. Blocks stack from
+                    bottom to top like a VSRG timeline.
                   </Text>
                   <Text size="1" color="gray">
                     Only visible blocks are real DOM nodes. Scroll to see virtual rendering in
                     action.
                   </Text>
                   <Text size="1" color="gray">
-                    Click "Extend" to add 1000px of content height. This tests content shift without
-                    flicker.
+                    Extend appends 20 blocks at the top; shrink removes 20. Scroll compensation
+                    keeps the current view stable.
                   </Text>
                 </Flex>
               ),
@@ -193,39 +258,60 @@ export function ScrollableCanvasTestPage() {
           tabs={[
             {
               label: "Controls",
-              content: (
-                <Flex direction="column" style={{ gap: 8 }}>
-                  <Button size="1" onClick={handleExtend}>
-                    Extend +1000px
-                  </Button>
-                  <Button size="1" onClick={handleShrink}>
-                    Shrink -1000px
-                  </Button>
-                  <Button size="1" onClick={handleCountNodes}>
-                    Count DOM nodes
-                  </Button>
-                  <Text size="1" color="gray">
-                    Content height: {contentHeight}px
-                  </Text>
-                  <Text size="1" color="gray">
-                    {scrollInfo}
-                  </Text>
-                  {domNodeCount > 0 && (
-                    <Text size="1" color="gray">
-                      DOM nodes in canvas: {domNodeCount}
-                    </Text>
-                  )}
-                </Flex>
-              ),
+              content: <Controls controller={controller} onCountNodes={handleCountNodes} />,
             },
           ]}
         />
       }
       timeline={
-        <div data-testid="scrollable-canvas" style={{ width: "100%", height: "100%" }}>
-          <ScrollableCanvas behavior={behaviorFactory} />
+        <div
+          ref={wrapperRef}
+          data-testid="scrollable-canvas"
+          style={{ width: "100%", height: "100%" }}
+        >
+          <ScrollableCanvas behavior={controller.behaviorFactory} />
         </div>
       }
     />
+  );
+}
+
+function Controls({
+  controller,
+  onCountNodes,
+}: {
+  controller: ScrollableCanvasTestController;
+  onCountNodes: () => void;
+}) {
+  const [scrollInfo, setScrollInfo] = useState(controller.$scrollInfo.get());
+  const [domNodeCount, setDomNodeCount] = useState(controller.$domNodeCount.get());
+
+  useEffect(() => {
+    const unsubInfo = controller.$scrollInfo.subscribe((v) => setScrollInfo(v));
+    const unsubCount = controller.$domNodeCount.subscribe((v) => setDomNodeCount(v));
+    return () => {
+      unsubInfo();
+      unsubCount();
+    };
+  }, [controller]);
+
+  return (
+    <Flex direction="column" style={{ gap: 8 }}>
+      <Button size="1" onClick={() => controller.extend()}>
+        Extend +20 blocks
+      </Button>
+      <Button size="1" onClick={() => controller.shrink()}>
+        Shrink -20 blocks
+      </Button>
+      <Button size="1" onClick={onCountNodes}>
+        Count DOM nodes
+      </Button>
+      <Text size="1" color="gray">
+        {scrollInfo}
+      </Text>
+      <Text size="1" color="gray">
+        DOM nodes in canvas: {domNodeCount}
+      </Text>
+    </Flex>
   );
 }
