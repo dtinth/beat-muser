@@ -14,11 +14,22 @@ export interface EditorControllerOptions {
   project: ProjectFile;
 }
 
+export interface TimelineColumn {
+  id: string;
+  title: string;
+  width: number;
+  x: number;
+  backgroundColor?: string;
+}
+
 const DEFAULT_CHART_SIZE = 15360;
 
 export class EditorController {
   $entities = atom<Map<string, Entity>>(new Map());
   $selectedChartId = atom<string | null>(null);
+
+  private columns: TimelineColumn[];
+  private timelineWidth: number;
 
   constructor(options: EditorControllerOptions) {
     const map = new Map<string, Entity>();
@@ -34,6 +45,29 @@ export class EditorController {
       const chartId = this.createDefaultChart();
       this.$selectedChartId.set(chartId);
     }
+
+    const { columns, width } = this.computeColumns();
+    this.columns = columns;
+    this.timelineWidth = width;
+  }
+
+  private computeColumns(): { columns: TimelineColumn[]; width: number } {
+    const defs = [
+      { id: "measure", title: "", width: 40 },
+      { id: "time-sig", title: "Time", width: 48 },
+      { id: "bpm", title: "BPM", width: 56 },
+    ];
+
+    let x = 0;
+    const columns: TimelineColumn[] = [];
+    for (const def of defs) {
+      columns.push({ ...def, x });
+      x += def.width;
+    }
+
+    // Trailing line after last column.
+    const width = x + 1;
+    return { columns, width };
   }
 
   private createDefaultChart(): string {
@@ -66,5 +100,13 @@ export class EditorController {
   getTimingEngine(): TimingEngine {
     // TODO: extract bpmChanges and timeSignatures from entities
     return createTimingEngine([], []);
+  }
+
+  getColumns(): TimelineColumn[] {
+    return this.columns;
+  }
+
+  getTimelineWidth(): number {
+    return this.timelineWidth;
   }
 }

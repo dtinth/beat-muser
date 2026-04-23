@@ -64,6 +64,14 @@ class EditorControllerTester {
   measureBoundariesInRange(start: number, end: number): number[] {
     return this.controller.getTimingEngine().getMeasureBoundaries({ start, end });
   }
+
+  shouldHaveColumnCount(expected: number) {
+    expect(this.controller.getColumns().length).toBe(expected);
+  }
+
+  shouldHaveTimelineWidth(expected: number) {
+    expect(this.controller.getTimelineWidth()).toBe(expected);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -131,5 +139,21 @@ describe("EditorController", () => {
     );
 
     t.shouldHaveEntityCount(2);
+  });
+
+  test("provides default columns", () => {
+    const t = new EditorControllerTester(new EditorController({ project: makeProject() }));
+
+    t.shouldHaveColumnCount(3);
+    t.shouldHaveTimelineWidth(40 + 48 + 56 + 1);
+  });
+
+  test("columns have cumulative x positions", () => {
+    const controller = new EditorController({ project: makeProject() });
+    const columns = controller.getColumns();
+
+    expect(columns[0]).toMatchObject({ id: "measure", x: 0, width: 40 });
+    expect(columns[1]).toMatchObject({ id: "time-sig", x: 40, width: 48 });
+    expect(columns[2]).toMatchObject({ id: "bpm", x: 88, width: 56 });
   });
 });
