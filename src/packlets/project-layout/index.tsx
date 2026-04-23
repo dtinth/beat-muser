@@ -74,7 +74,6 @@ export function ProjectLayout({
             style={{
               width: 256,
               borderLeft: "1px solid var(--gray-5)",
-              padding: "8px 12px",
               overflow: "auto",
               flexShrink: 0,
             }}
