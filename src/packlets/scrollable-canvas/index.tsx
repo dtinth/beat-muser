@@ -144,6 +144,7 @@ export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvas
       <div
         style={{
           position: "relative",
+          overflow: "hidden",
         }}
       />
     </div>
