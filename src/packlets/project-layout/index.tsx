@@ -60,8 +60,7 @@ export function ProjectLayout({
           <Box
             style={{
               flex: 1,
-              overflow: "auto",
-              padding: "8px 12px",
+              overflow: "hidden",
             }}
           >
             {timeline}
