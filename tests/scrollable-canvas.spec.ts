@@ -68,15 +68,17 @@ test.describe("ScrollableCanvas test page", () => {
     await expect(page.locator('[data-testid="test-block"][data-index="85"]')).toHaveCount(0);
   });
 
-  test.skip("resizing viewport increases number of visible blocks", async ({ page }) => {
+  test("enlarging viewport increases number of visible blocks", async ({ page }) => {
     await page.setViewportSize({ width: 960, height: 540 });
     await page.goto("/test/scrollable-canvas");
 
     const countBefore = await getVisibleBlocks(page).count();
 
     await page.setViewportSize({ width: 1200, height: 800 });
-    // Wait for resize to propagate and re-render
-    await page.waitForTimeout(100);
+    await page.waitForFunction(
+      (before) => document.querySelectorAll('[data-testid="test-block"]').length > before,
+      countBefore,
+    );
 
     const countAfter = await getVisibleBlocks(page).count();
     expect(countAfter).toBeGreaterThan(countBefore);

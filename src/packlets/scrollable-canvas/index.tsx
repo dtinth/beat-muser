@@ -289,6 +289,13 @@ function mountScrollableCanvas(
   container.addEventListener("pointermove", handlePointerEvent);
   container.addEventListener("pointerup", handlePointerEvent);
 
+  const resizeObserver = new ResizeObserver(() => {
+    if (pendingRaf === null) {
+      pendingRaf = requestAnimationFrame(doRender);
+    }
+  });
+  resizeObserver.observe(container);
+
   pendingRaf = requestAnimationFrame(doRender);
 
   return () => {
@@ -297,6 +304,7 @@ function mountScrollableCanvas(
       pendingRaf = null;
     }
     isDisposed = true;
+    resizeObserver.disconnect();
     container.removeEventListener("scroll", handleScroll);
     container.removeEventListener("pointerdown", handlePointerEvent);
     container.removeEventListener("pointermove", handlePointerEvent);
