@@ -121,11 +121,12 @@ class ScrollableCanvasTestController {
 
   countNodes(wrapperEl: HTMLElement | null) {
     if (!wrapperEl) return;
-    // wrapperEl -> ScrollableCanvas root -> [block, block, ..., spacer]
+    // wrapperEl -> ScrollableCanvas root -> content wrapper -> [blocks...]
     const root = wrapperEl.firstElementChild as HTMLElement | null;
     if (!root) return;
-    const count = Math.max(0, root.childElementCount - 1);
-    this.$domNodeCount.set(count);
+    const contentWrapper = root.firstElementChild as HTMLElement | null;
+    if (!contentWrapper) return;
+    this.$domNodeCount.set(contentWrapper.childElementCount);
   }
 
   private createBehaviorFactory(): ScrollableCanvasBehaviorFactory {

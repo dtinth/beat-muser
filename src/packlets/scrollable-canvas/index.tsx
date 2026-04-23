@@ -143,10 +143,7 @@ export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvas
     >
       <div
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          pointerEvents: "none",
+          position: "relative",
         }}
       />
     </div>
@@ -165,9 +162,10 @@ function mountScrollableCanvas(
   let hasConnected = false;
   const handles = new Map<string, RenderHandle>();
 
-  // The spacer div is the only stable child; blocks are inserted before it.
-  // We must not rely on firstElementChild because it changes after the first
-  // block is inserted.
+  // The content wrapper is the only child of the container. Rendered
+  // elements are appended to it. Its explicit width/height create the
+  // scrollable area, and position:relative makes it the containing block
+  // for absolutely-positioned children.
   const scrollableContent = container.firstElementChild as HTMLElement | null;
 
   const ctx: ScrollableCanvasContext = {
@@ -261,7 +259,7 @@ function mountScrollableCanvas(
           const handle = obj.renderer(obj.data);
           handles.set(obj.key, handle);
           positionElement(handle.dom, obj);
-          container.insertBefore(handle.dom, scrollableContent);
+          scrollableContent?.appendChild(handle.dom);
         }
       }
 
