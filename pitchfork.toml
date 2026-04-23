@@ -1,0 +1,6 @@
+#:schema https://pitchfork.jdx.dev/schema.json
+
+[daemons.dev]
+run = "vp run dev"
+ready_port = 15036
+retry = 0

@@ -5,7 +5,6 @@ Rhythm game notechart/beatmap editor web app.
 ## Commands
 
 ```
-vp run dev          # Start dev server on port 15036
 vp run check        # Format + lint + typecheck (run before commit)
 vp run check --fix  # Auto-fix formatting
 vp run test         # Run Vitest unit tests (colocated *.test.ts)
@@ -14,6 +13,21 @@ vp exec playwright test  # E2E tests (Chromium only, dev server must be running)
 ```
 
 Always use `vp run` for scripts and `vp exec` for binaries. Do not use `pnpm`/`npm`/`yarn` directly.
+
+## Dev Server (Pitchfork)
+
+The dev server is managed by **Pitchfork** (defined in `pitchfork.toml`). **Never run `vp run dev` directly** — always use Pitchfork so the server runs under supervision with proper ready checks and log capture.
+
+Docs: <https://pitchfork.jdx.dev/>
+
+```
+pitchfork start dev    # Start dev server (waits until port 15036 is ready)
+pitchfork stop dev     # Stop dev server
+pitchfork restart dev  # Restart dev server
+pitchfork status dev   # Show daemon status (PID, state)
+pitchfork logs dev     # Tail dev server logs
+pitchfork list         # List all managed daemons
+```
 
 ## Architecture
 
