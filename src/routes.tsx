@@ -3,6 +3,7 @@ import { Theme } from "@radix-ui/themes";
 import { AppHeader } from "./packlets/app-header";
 import { ProjectListPage } from "./packlets/project-list";
 import { ProjectViewPage } from "./packlets/project-view";
+import { ScrollableCanvasTestPage } from "./packlets/scrollable-canvas-test";
 import {
   listProjects,
   getProjectBySlug,
@@ -57,6 +58,10 @@ export const router = createBrowserRouter([
           return project;
         },
         element: <ProjectViewPage />,
+      },
+      {
+        path: "test/scrollable-canvas",
+        element: <ScrollableCanvasTestPage />,
       },
     ],
   },
