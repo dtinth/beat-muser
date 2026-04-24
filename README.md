@@ -43,9 +43,17 @@ Project
 
 ### Design Rationale
 
-In most rhythm games, Easy, Normal, and Hard difficulties share the same song, the same BPM changes, and the same time signatures. By separating **chart** (the shared timeline) from **level** (the playable difficulty), multiple difficulties can coexist on one chart without duplicating timing data.
+**Three levels of structure: project, chart, and level.**
 
-When a long song is split into distinct pieces, each piece gets its own chart.
+Most conventional editors (e.g. BMS editors) treat each difficulty as a separate file. A BMS file for Easy, another for Normal, another for Hard. Each file repeats the same BPM changes, time signatures, and sound definitions. If you fix a sound file error in Easy, you must remember to fix it in Normal and Hard too.
+
+Beat Muser uses a single project file (`beat-muser-project.json`) that encompasses everything. This three-level structure keeps shared data in one place:
+
+- **Project** owns global assets like sound channels and sound groups.
+- **Chart** owns the musical timeline: BPM changes, time signatures, measure structure, and sound events on sound lanes.
+- **Level** owns the playable notes for one difficulty. Multiple levels can live on the same chart, all sharing the same timing and sound events.
+
+When you update a sound channel in the project, every level that references it hears the change immediately. When you add a sound event to a sound lane, every level can reference it. When a long song is split into distinct pieces, each piece gets its own chart with its own levels.
 
 ### Primer for Rhythm Game Chart Authors
 
