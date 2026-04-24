@@ -3,7 +3,7 @@
  *
  * Ribbon-style toolbar components for the editor. Provides `Toolbar`,
  * `ToolbarGroup`, `ToolbarButton`, `ToolbarDropdown`, `ToolbarDivider`,
- * and a mock `TransportDisplay`.
+ * and `TransportDisplay`.
  */
 
 import { Box, Flex, Text, DropdownMenu, Button, Separator, Card } from "@radix-ui/themes";
@@ -41,7 +41,7 @@ export function ToolbarGroup({ label, children }: ToolbarGroupProps) {
       <Flex align="center" gap="1" style={{ height: 32 }}>
         {children}
       </Flex>
-      <Text size="1" color="gray" weight="medium">
+      <Text size="1" color="gray" weight="medium" style={{ opacity: 0.5, fontSize: 9 }}>
         {label}
       </Text>
     </Flex>
@@ -122,11 +122,17 @@ export function ToolbarDropdown({ value, options, onSelect }: DropdownSelectProp
   );
 }
 
-export function TransportDisplay() {
+interface TransportDisplayProps {
+  time: string;
+  pulse: string;
+  measure: string;
+}
+
+export function TransportDisplay({ time, pulse, measure }: TransportDisplayProps) {
   const items = [
-    { label: "Time", value: "00:00.000" },
-    { label: "Pulse", value: "0" },
-    { label: "Measure", value: "1:1" },
+    { label: "Time", value: time, minWidth: 72 },
+    { label: "Pulse", value: pulse, minWidth: 48 },
+    { label: "Measure", value: measure, minWidth: 48 },
   ];
 
   return (
@@ -142,11 +148,11 @@ export function TransportDisplay() {
               flex: 1,
               height: 32,
               padding: "0 8px",
-              minWidth: 56,
+              minWidth: item.minWidth,
               borderRight: i < items.length - 1 ? "1px solid var(--gray-5)" : "none",
             }}
           >
-            <Text size="1" color="gray" style={{ lineHeight: 1 }}>
+            <Text size="1" color="gray" style={{ lineHeight: 1, opacity: 0.4, fontSize: 9 }}>
               {item.label}
             </Text>
             <Text size="2" weight="bold" style={{ fontFamily: "monospace", lineHeight: 1 }}>

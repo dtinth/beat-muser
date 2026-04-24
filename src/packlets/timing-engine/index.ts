@@ -52,6 +52,13 @@ export interface TimingEngine {
 
   /** Snaps a pulse to the nearest grid point for the given snap setting. */
   snapPulse(pulse: number, snap: string): number;
+
+  /** Returns the measure index (0-based) and measure start pulse for the given pulse. */
+  getMeasureAtPulse(pulse: number): {
+    measureIndex: number;
+    measureStart: number;
+    measureEnd: number;
+  };
 }
 
 function getMeasureLength(sig: TimeSignature): number {
@@ -153,7 +160,7 @@ export function createTimingEngine(
   }
 
   function ensureBoundariesUpTo(targetPulse: number) {
-    if (targetPulse <= boundariesComputedUpTo) return;
+    if (targetPulse < boundariesComputedUpTo) return;
 
     let measureStart: number;
     let sigIndex: number;
@@ -243,6 +250,20 @@ export function createTimingEngine(
 
       const snapped = measureStart + Math.round((pulse - measureStart) / interval) * interval;
       return Math.max(measureStart, Math.min(snapped, measureEnd - interval));
+    },
+
+    getMeasureAtPulse(pulse) {
+      ensureBoundariesUpTo(pulse);
+      const measureIdx = bisectRight(boundaries, pulse) - 1;
+      if (measureIdx < 0) {
+        return { measureIndex: 0, measureStart: 0, measureEnd: boundaries[0] ?? 0 };
+      }
+      const measureStart = boundaries[measureIdx];
+      const measureEnd =
+        measureIdx + 1 < boundaries.length
+          ? boundaries[measureIdx + 1]
+          : computeNextBoundary(measureStart, findSigIndex(measureStart))[0];
+      return { measureIndex: measureIdx, measureStart, measureEnd };
     },
   };
 }

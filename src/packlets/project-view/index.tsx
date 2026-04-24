@@ -176,6 +176,24 @@ export function ProjectViewPage() {
   const [controller] = useState(() => new EditorController({ project }));
   const behaviorFactory = createTimelineBehaviorFactory(controller);
 
+  const [cursorPulse, setCursorPulse] = useState(controller.$cursorPulse.get());
+  useEffect(() => {
+    const unsub = controller.$cursorPulse.subscribe(setCursorPulse);
+    return unsub;
+  }, [controller]);
+
+  const engine = controller.getTimingEngine();
+  const seconds = engine.pulseToSeconds(cursorPulse);
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 1000);
+  const timeStr = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
+
+  const measureInfo = engine.getMeasureAtPulse(cursorPulse);
+  const beatLength = 240; // 1 quarter note = PPQN
+  const beat = Math.floor((cursorPulse - measureInfo.measureStart) / beatLength) + 1;
+  const measureStr = `${measureInfo.measureIndex + 1}:${beat}`;
+
   useEffect(() => {
     if (error) {
       showError({
@@ -210,7 +228,7 @@ export function ProjectViewPage() {
           <ToolbarGroup label="Transport">
             <ToolbarButton icon={<Play size={16} />} label="Play" />
             <ToolbarButton icon={<Pause size={16} />} label="Pause" />
-            <TransportDisplay />
+            <TransportDisplay time={timeStr} pulse={String(cursorPulse)} measure={measureStr} />
           </ToolbarGroup>
 
           <ToolbarDivider />

@@ -284,3 +284,55 @@ describe("snapPulse", () => {
     expect(engine.snapPulse(1200, "1/4")).toBe(1200);
   });
 });
+
+// ---------------------------------------------------------------------------
+// getMeasureAtPulse
+// ---------------------------------------------------------------------------
+
+describe("getMeasureAtPulse", () => {
+  it("returns measure index and boundaries for a pulse", () => {
+    const engine = createTimingEngine([], []);
+    // 4/4 measures: [0, 960), [960, 1920), [1920, 2880)
+    expect(engine.getMeasureAtPulse(0)).toEqual({
+      measureIndex: 0,
+      measureStart: 0,
+      measureEnd: 960,
+    });
+    expect(engine.getMeasureAtPulse(959)).toEqual({
+      measureIndex: 0,
+      measureStart: 0,
+      measureEnd: 960,
+    });
+    expect(engine.getMeasureAtPulse(960)).toEqual({
+      measureIndex: 1,
+      measureStart: 960,
+      measureEnd: 1920,
+    });
+    expect(engine.getMeasureAtPulse(1500)).toEqual({
+      measureIndex: 1,
+      measureStart: 960,
+      measureEnd: 1920,
+    });
+  });
+
+  it("handles time signature interruptions", () => {
+    const engine = createTimingEngine(
+      [],
+      [
+        { pulse: 0, numerator: 4, denominator: 4 },
+        { pulse: 960, numerator: 3, denominator: 4 },
+      ],
+    );
+    // Measure 0: [0, 960), Measure 1: [960, 1680)
+    expect(engine.getMeasureAtPulse(0)).toEqual({
+      measureIndex: 0,
+      measureStart: 0,
+      measureEnd: 960,
+    });
+    expect(engine.getMeasureAtPulse(1200)).toEqual({
+      measureIndex: 1,
+      measureStart: 960,
+      measureEnd: 1680,
+    });
+  });
+});
