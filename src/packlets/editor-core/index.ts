@@ -82,7 +82,7 @@ export class EditorController {
   $viewportWidth = atom<number>(0);
   $viewportHeight = atom<number>(0);
   $cursorViewportX = atom<number>(0);
-  $cursorViewportY = atom<number>(0);
+  $cursorViewportY = atom<number>(-1);
 
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
@@ -288,6 +288,7 @@ export class EditorController {
 
   recomputeCursorPulse(): void {
     const viewportY = this.$cursorViewportY.get();
+    if (viewportY < 0) return;
     const scrollTop = this.$scrollTop.get();
     const contentY = viewportY + scrollTop;
     const trackHeight = this.getTrackHeight();

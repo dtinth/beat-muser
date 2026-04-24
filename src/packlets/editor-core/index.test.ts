@@ -224,7 +224,7 @@ describe("EditorController", () => {
       editor.playhead.shouldBeAtPulse(900);
     });
 
-    test.skip("scrolling updates the playhead to follow the mouse position", () => {
+    test("scrolling updates the playhead to follow the mouse position", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
           makeProject((p) => {

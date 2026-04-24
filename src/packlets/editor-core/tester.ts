@@ -155,6 +155,7 @@ export class EditorTester {
 
   scrollTo(y: number) {
     this.instance.setScrollTop(y);
+    this.instance.recomputeCursorPulse();
   }
 
   get scrollHeight() {

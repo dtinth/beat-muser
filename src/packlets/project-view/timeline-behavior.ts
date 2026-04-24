@@ -254,6 +254,7 @@ export function createTimelineBehaviorFactory(
       onScroll(scrollLeft: number, scrollTop: number) {
         controller.setScrollLeft(scrollLeft);
         controller.setScrollTop(scrollTop);
+        controller.recomputeCursorPulse();
       },
 
       onPointerEvent(_event, contentX, contentY) {
