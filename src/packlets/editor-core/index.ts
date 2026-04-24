@@ -69,12 +69,18 @@ export {
 const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4];
 const BASE_SCALE_Y = 0.2;
 
+const PADDING_BOTTOM = 40;
+
 export class EditorController {
   $selectedChartId = atom<string | null>(null);
   $cursorPulse = atom<number>(0);
   $snap = atom<string>("1/16");
   $zoom = atom<number>(1); // zoom multiplier, 1 = 100%
   $visibleLevelIds = atom<Set<string>>(new Set());
+  $scrollTop = atom<number>(0);
+  $scrollLeft = atom<number>(0);
+  $viewportWidth = atom<number>(0);
+  $viewportHeight = atom<number>(0);
 
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
@@ -233,6 +239,45 @@ export class EditorController {
     return BASE_SCALE_Y * this.$zoom.get();
   }
 
+  getTrackHeight(): number {
+    return this.getChartSize() * this.getScaleY();
+  }
+
+  getContentHeight(): number {
+    return this.getTrackHeight() + PADDING_BOTTOM;
+  }
+
+  getVisiblePulseRange(): { start: number; end: number; rawStart: number; rawEnd: number } {
+    const size = this.getChartSize();
+    const scaleY = this.getScaleY();
+    const trackHeight = this.getTrackHeight();
+    const scrollTop = this.$scrollTop.get();
+    const viewportHeight = this.$viewportHeight.get();
+    const viewportBottom = scrollTop + viewportHeight;
+
+    const rawPulseStart = Math.max(0, Math.floor((trackHeight - viewportBottom) / scaleY));
+    const rawPulseEnd = Math.min(size, Math.ceil((trackHeight - scrollTop) / scaleY));
+    return {
+      start: Math.max(0, rawPulseStart - 50),
+      end: Math.min(size, rawPulseEnd + 50),
+      rawStart: rawPulseStart,
+      rawEnd: rawPulseEnd,
+    };
+  }
+
+  setScrollTop(top: number): void {
+    this.$scrollTop.set(top);
+  }
+
+  setScrollLeft(left: number): void {
+    this.$scrollLeft.set(left);
+  }
+
+  setViewportSize(width: number, height: number): void {
+    this.$viewportWidth.set(width);
+    this.$viewportHeight.set(height);
+  }
+
   setZoom(zoom: number): void {
     this.$zoom.set(zoom);
   }
@@ -254,15 +299,15 @@ export class EditorController {
    * stays at the same viewport Y position.
    *
    * @param oldZoom The zoom level before the change.
-   * @param oldScrollTop The scroll top before the change.
    * @returns The new scroll top to apply.
    */
-  computeZoomScrollOffset(oldZoom: number, oldScrollTop: number): number {
+  computeZoomScrollOffset(oldZoom: number): number {
     const newZoom = this.$zoom.get();
     const size = this.getChartSize();
     const oldScaleY = BASE_SCALE_Y * oldZoom;
     const newScaleY = BASE_SCALE_Y * newZoom;
     const cursorPulse = this.$cursorPulse.get();
+    const oldScrollTop = this.$scrollTop.get();
     const oldTrackHeight = size * oldScaleY;
     const newTrackHeight = size * newScaleY;
     const oldPlayheadY = oldTrackHeight - cursorPulse * oldScaleY - 1;

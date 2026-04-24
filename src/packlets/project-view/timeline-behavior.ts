@@ -30,8 +30,6 @@ import type {
 import type { EditorController } from "../editor-core";
 import { BPM_CHANGE, TIME_SIGNATURE, EVENT, NOTE, LEVEL_REF } from "../editor-core";
 
-const PADDING_BOTTOM = 40;
-
 // ---------------------------------------------------------------------------
 // Renderers
 // ---------------------------------------------------------------------------
@@ -221,8 +219,9 @@ export function createTimelineBehaviorFactory(
       ctx.refresh();
     });
     const unsubZoom = controller.$zoom.subscribe(() => {
-      const newScrollTop = controller.computeZoomScrollOffset(prevZoom, ctx.scrollTop);
+      const newScrollTop = controller.computeZoomScrollOffset(prevZoom);
       prevZoom = controller.$zoom.get();
+      controller.setScrollTop(newScrollTop);
       ctx.setScrollTop(newScrollTop);
       ctx.refresh();
     });
@@ -236,21 +235,25 @@ export function createTimelineBehaviorFactory(
 
     return {
       getContentSize() {
-        const size = controller.getChartSize();
-        const scaleY = controller.getScaleY();
         return {
           width: controller.getTimelineWidth(),
-          height: size * scaleY + PADDING_BOTTOM,
+          height: controller.getContentHeight(),
         };
       },
 
       onConnected() {
-        const size = controller.getChartSize();
-        const scaleY = controller.getScaleY();
-        const contentHeight = size * scaleY + PADDING_BOTTOM;
-        if (contentHeight > ctx.viewportHeight) {
-          ctx.setScrollTop(contentHeight - ctx.viewportHeight);
+        controller.setViewportSize(ctx.viewportWidth, ctx.viewportHeight);
+        const contentHeight = controller.getContentHeight();
+        if (contentHeight > controller.$viewportHeight.get()) {
+          const newScrollTop = contentHeight - controller.$viewportHeight.get();
+          controller.setScrollTop(newScrollTop);
+          ctx.setScrollTop(newScrollTop);
         }
+      },
+
+      onScroll(scrollLeft: number, scrollTop: number) {
+        controller.setScrollLeft(scrollLeft);
+        controller.setScrollTop(scrollTop);
       },
 
       onPointerEvent(_event, _contentX, contentY) {
@@ -267,18 +270,14 @@ export function createTimelineBehaviorFactory(
         const size = controller.getChartSize();
         const scaleY = controller.getScaleY();
         const trackHeight = size * scaleY;
-        const contentHeight = trackHeight + PADDING_BOTTOM;
-        const viewportTop = ctx.scrollTop;
-        const viewportBottom = ctx.scrollTop + ctx.viewportHeight;
+        const contentHeight = controller.getContentHeight();
+        const pulseRange = controller.getVisiblePulseRange();
+        const pulseStart = pulseRange.start;
+        const pulseEnd = pulseRange.end;
+        const rawPulseStart = pulseRange.rawStart;
+        const rawPulseEnd = pulseRange.rawEnd;
         const timelineWidth = controller.getTimelineWidth();
         const columns = controller.getColumns();
-
-        // Convert viewport Y to pulse range. Expand slightly so event
-        // markers just outside the viewport edge are still rendered.
-        const rawPulseStart = Math.max(0, Math.floor((trackHeight - viewportBottom) / scaleY));
-        const rawPulseEnd = Math.min(size, Math.ceil((trackHeight - viewportTop) / scaleY));
-        const pulseStart = Math.max(0, rawPulseStart - 50);
-        const pulseEnd = Math.min(size, rawPulseEnd + 50);
 
         const objects: RenderObject[] = [];
 

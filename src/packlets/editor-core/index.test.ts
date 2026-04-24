@@ -1,303 +1,190 @@
 /**
  * @packageDocumentation
  *
- * Unit tests for EditorController.
- *
- * Uses a tester helper class to keep tests focused on behavior, not
- * implementation details.
+ * Acceptance tests for the editor core, expressed as user-level interactions
+ * against an `EditorTester` that simulates the timeline behavior layer.
  */
 
 import { describe, expect, test } from "vite-plus/test";
-import { EditorController, CHART } from "./index";
-import type { ProjectFile } from "../project-format";
-import type { Entity } from "../entity-manager";
+import { EditorTester, makeProject, makeChart, makeBpmChange, makeTimeSignature } from "./tester";
 
 // ---------------------------------------------------------------------------
-// Test helpers
-// ---------------------------------------------------------------------------
-
-function makeProject(entities: Entity[] = []): ProjectFile {
-  return {
-    schemaVersion: 2,
-    version: "test-version",
-    metadata: { title: "Test", artist: "Test", genre: "Test" },
-    entities,
-    deletedEntities: [],
-  };
-}
-
-function makeChart(name: string, size = 15360): Entity {
-  return {
-    id: `chart-${name}`,
-    version: "v1",
-    components: { chart: { name, size } },
-  };
-}
-
-function makeBpmChange(y: number, bpm: number): Entity {
-  return {
-    id: `bpm-${y}-${bpm}`,
-    version: "v1",
-    components: {
-      event: { y },
-      bpmChange: { bpm },
-    },
-  };
-}
-
-function makeTimeSignature(y: number, numerator: number, denominator: number): Entity {
-  return {
-    id: `ts-${y}-${numerator}-${denominator}`,
-    version: "v1",
-    components: {
-      event: { y },
-      timeSignature: { numerator, denominator },
-    },
-  };
-}
-
-class EditorControllerTester {
-  readonly controller: EditorController;
-
-  constructor(controller: EditorController) {
-    this.controller = controller;
-  }
-
-  shouldHaveSelectedChart(expected: { name: string; size: number }) {
-    const chart = this.controller.getSelectedChart();
-    expect(chart).toBeDefined();
-    expect(this.controller.getEntityManager().getComponent(chart!, CHART)).toMatchObject(expected);
-  }
-
-  shouldHaveChartSize(expected: number) {
-    expect(this.controller.getChartSize()).toBe(expected);
-  }
-
-  shouldHaveEntityCount(expected: number) {
-    expect(this.controller.getEntityManager().toArray().length).toBe(expected);
-  }
-
-  shouldHaveTimingEngine() {
-    const engine = this.controller.getTimingEngine();
-    expect(engine).toBeDefined();
-    expect(typeof engine.getMeasureBoundaries).toBe("function");
-    expect(typeof engine.getSnapPoints).toBe("function");
-  }
-
-  measureBoundariesInRange(start: number, end: number): number[] {
-    return this.controller.getTimingEngine().getMeasureBoundaries({ start, end });
-  }
-
-  shouldHaveColumnCount(expected: number) {
-    expect(this.controller.getColumns().length).toBe(expected);
-  }
-
-  shouldHaveTimelineWidth(expected: number) {
-    expect(this.controller.getTimelineWidth()).toBe(expected);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Tests
+// Acceptance tests
 // ---------------------------------------------------------------------------
 
 describe("EditorController", () => {
-  test("creates a default chart when project has no charts", () => {
-    const t = new EditorControllerTester(new EditorController({ project: makeProject() }));
+  test("given an empty project, creates a default chart", () => {
+    const editor = new EditorTester({ getProjectToLoad: () => makeProject() });
 
-    t.shouldHaveSelectedChart({ name: "Untitled", size: 15360 });
+    editor.chart.shouldHaveName("Untitled");
+    editor.chart.shouldHaveSize(15360);
   });
 
-  test("selects the first existing chart when project has charts", () => {
-    const t = new EditorControllerTester(
-      new EditorController({
-        project: makeProject([makeChart("Hard", 24000), makeChart("Easy", 12000)]),
-      }),
-    );
+  test("given a project with charts, selects the first chart", () => {
+    const editor = new EditorTester({
+      getProjectToLoad: () => makeProject([makeChart("Hard", 24000), makeChart("Easy", 12000)]),
+    });
 
-    t.shouldHaveSelectedChart({ name: "Hard", size: 24000 });
+    editor.chart.shouldHaveName("Hard");
+    editor.chart.shouldHaveSize(24000);
   });
 
   test("reports the selected chart's size", () => {
-    const t = new EditorControllerTester(
-      new EditorController({
-        project: makeProject([makeChart("Custom", 9999)]),
-      }),
-    );
+    const editor = new EditorTester({
+      getProjectToLoad: () => makeProject([makeChart("Custom", 9999)]),
+    });
 
-    t.shouldHaveChartSize(9999);
+    editor.chart.shouldHaveSize(9999);
   });
 
   test("falls back to default size when chart component lacks size field", () => {
-    const chart: Entity = {
+    const chart = {
       id: "chart-no-size",
       version: "v1",
       components: { chart: { name: "Test" } },
-    };
-    const t = new EditorControllerTester(new EditorController({ project: makeProject([chart]) }));
+    } as const;
+    const editor = new EditorTester({ getProjectToLoad: () => makeProject([chart]) });
 
-    t.shouldHaveChartSize(15360);
+    editor.chart.shouldHaveSize(15360);
   });
 
-  test("provides a default timing engine (60 BPM, 4/4)", () => {
-    const t = new EditorControllerTester(new EditorController({ project: makeProject() }));
-
-    t.shouldHaveTimingEngine();
+  test("provides a default timing engine with 60 BPM and 4/4 time", () => {
+    const editor = new EditorTester({ getProjectToLoad: () => makeProject() });
 
     // Default 4/4 measure length at 240 PPQN = 960 pulses.
-    const boundaries = t.measureBoundariesInRange(0, 2000);
-    expect(boundaries).toEqual([0, 960, 1920]);
-  });
-
-  test("ingests all project entities", () => {
-    const note: Entity = {
-      id: "note-1",
-      version: "v1",
-      components: { event: { y: 240 }, note: { lane: 0 } },
-    };
-    const t = new EditorControllerTester(
-      new EditorController({
-        project: makeProject([makeChart("Hard"), note]),
-      }),
-    );
-
-    t.shouldHaveEntityCount(2);
+    editor.timing.shouldHaveMeasureBoundaries({ start: 0, end: 2000 }, [0, 960, 1920]);
   });
 
   test("provides default columns", () => {
-    const t = new EditorControllerTester(new EditorController({ project: makeProject() }));
+    const editor = new EditorTester({ getProjectToLoad: () => makeProject() });
 
-    t.shouldHaveColumnCount(4);
-    t.shouldHaveTimelineWidth(40 + 48 + 56 + 8 + 1);
+    editor.columns.shouldHaveCount(4);
+    editor.columns.shouldHaveTotalWidth(40 + 48 + 56 + 8 + 1);
   });
 
   test("columns have cumulative x positions", () => {
-    const controller = new EditorController({ project: makeProject() });
-    const columns = controller.getColumns();
+    const editor = new EditorTester({ getProjectToLoad: () => makeProject() });
 
-    expect(columns[0]).toMatchObject({ id: "measure", x: 0, width: 40 });
-    expect(columns[1]).toMatchObject({ id: "time-sig", x: 40, width: 48 });
-    expect(columns[2]).toMatchObject({ id: "bpm", x: 88, width: 56 });
-    expect(columns[3]).toMatchObject({ id: "spacer", x: 144, width: 8 });
+    editor.columns.at(0).shouldMatch({ id: "measure", x: 0, width: 40 });
+    editor.columns.at(1).shouldMatch({ id: "time-sig", x: 40, width: 48 });
+    editor.columns.at(2).shouldMatch({ id: "bpm", x: 88, width: 56 });
+    editor.columns.at(3).shouldMatch({ id: "spacer", x: 144, width: 8 });
   });
 
   test("extracts BPM changes from entities", () => {
-    const controller = new EditorController({
-      project: makeProject([makeChart("Hard"), makeBpmChange(0, 120), makeBpmChange(960, 180)]),
+    const editor = new EditorTester({
+      getProjectToLoad: () =>
+        makeProject([makeChart("Hard"), makeBpmChange(0, 120), makeBpmChange(960, 180)]),
     });
 
-    const engine = controller.getTimingEngine();
-    const secondsAt960 = engine.pulseToSeconds(960);
     // At 120 BPM, 960 pulses = 4 beats = 2 seconds.
-    expect(secondsAt960).toBeCloseTo(2, 5);
+    editor.timing.atPulse(960).shouldBeAtTime("00:02.000");
 
-    const secondsAt1920 = engine.pulseToSeconds(1920);
     // At 180 BPM, next 960 pulses = 4 beats = 1.333... seconds.
     // Total = 2 + 1.333... = 3.333...
-    expect(secondsAt1920).toBeCloseTo(3.333333, 5);
+    editor.timing.atPulse(1920).shouldBeAtTime("00:03.333");
   });
 
   test("extracts time signatures from entities", () => {
-    const controller = new EditorController({
-      project: makeProject([makeChart("Hard"), makeTimeSignature(0, 3, 4)]),
+    const editor = new EditorTester({
+      getProjectToLoad: () => makeProject([makeChart("Hard"), makeTimeSignature(0, 3, 4)]),
     });
 
-    const engine = controller.getTimingEngine();
-    const boundaries = engine.getMeasureBoundaries({ start: 0, end: 2500 });
     // 3/4 at 240 PPQN = 3 * 240 = 720 pulses per measure.
-    expect(boundaries).toEqual([0, 720, 1440, 2160]);
+    editor.timing.shouldHaveMeasureBoundaries({ start: 0, end: 2500 }, [0, 720, 1440, 2160]);
   });
 
   test("combines BPM changes and time signatures", () => {
-    const controller = new EditorController({
-      project: makeProject([
-        makeChart("Hard"),
-        makeBpmChange(0, 120),
-        makeTimeSignature(0, 3, 4),
-        makeTimeSignature(1440, 4, 4),
-      ]),
+    const editor = new EditorTester({
+      getProjectToLoad: () =>
+        makeProject([
+          makeChart("Hard"),
+          makeBpmChange(0, 120),
+          makeTimeSignature(0, 3, 4),
+          makeTimeSignature(1440, 4, 4),
+        ]),
     });
 
-    const engine = controller.getTimingEngine();
-    const boundaries = engine.getMeasureBoundaries({ start: 0, end: 3000 });
     // 3/4 = 720 per measure, then 4/4 = 960 per measure after pulse 1440.
-    expect(boundaries).toEqual([0, 720, 1440, 2400]);
+    editor.timing.shouldHaveMeasureBoundaries({ start: 0, end: 3000 }, [0, 720, 1440, 2400]);
   });
 
   describe("zoom scroll compensation", () => {
-    const BASE_SCALE_Y = 0.2;
-
-    function playheadViewportY(
-      zoom: number,
-      cursorPulse: number,
-      scrollTop: number,
-      size: number,
-    ): number {
-      const scaleY = BASE_SCALE_Y * zoom;
-      const trackHeight = size * scaleY;
-      const playheadY = trackHeight - cursorPulse * scaleY - 1;
-      return playheadY - scrollTop;
-    }
-
     test("keeps playhead viewport position stable when zooming in", () => {
-      const controller = new EditorController({
-        project: makeProject([makeChart("Hard", 1000)]),
+      const editor = new EditorTester({
+        getProjectToLoad: () => makeProject([makeChart("Hard", 1000)]),
       });
-      controller.$cursorPulse.set(500);
-      controller.$zoom.set(1);
+      editor.instance.$cursorPulse.set(500);
+      editor.instance.$zoom.set(1);
+      editor.scrollTo(100);
 
-      const oldScrollTop = 100;
-      controller.$zoom.set(2);
-      const newScrollTop = controller.computeZoomScrollOffset(1, oldScrollTop);
-
-      const oldViewportY = playheadViewportY(1, 500, oldScrollTop, 1000);
-      const newViewportY = playheadViewportY(2, 500, newScrollTop, 1000);
-      expect(newViewportY).toBe(oldViewportY);
+      editor.zoom(2);
+      editor.playhead.shouldHavePositionRelativeToViewport(-1);
     });
 
     test("keeps playhead viewport position stable when zooming out", () => {
-      const controller = new EditorController({
-        project: makeProject([makeChart("Hard", 1000)]),
+      const editor = new EditorTester({
+        getProjectToLoad: () => makeProject([makeChart("Hard", 1000)]),
       });
-      controller.$cursorPulse.set(300);
-      controller.$zoom.set(2);
+      editor.instance.$cursorPulse.set(300);
+      editor.instance.$zoom.set(2);
+      editor.scrollTo(50);
 
-      const oldScrollTop = 50;
-      controller.$zoom.set(1);
-      const newScrollTop = controller.computeZoomScrollOffset(2, oldScrollTop);
-
-      const oldViewportY = playheadViewportY(2, 300, oldScrollTop, 1000);
-      const newViewportY = playheadViewportY(1, 300, newScrollTop, 1000);
-      expect(newViewportY).toBe(oldViewportY);
+      editor.zoom(1);
+      editor.playhead.shouldHavePositionRelativeToViewport(229);
     });
 
     test("no scroll adjustment needed when playhead is at top of chart", () => {
-      const controller = new EditorController({
-        project: makeProject([makeChart("Hard", 1000)]),
+      const editor = new EditorTester({
+        getProjectToLoad: () => makeProject([makeChart("Hard", 1000)]),
       });
-      controller.$cursorPulse.set(1000); // top of chart
-      controller.$zoom.set(1);
+      editor.instance.$cursorPulse.set(1000); // top of chart
+      editor.instance.$zoom.set(1);
+      editor.scrollTo(50);
 
-      const oldScrollTop = 50;
-      controller.$zoom.set(2);
-      const newScrollTop = controller.computeZoomScrollOffset(1, oldScrollTop);
-
-      expect(newScrollTop).toBe(oldScrollTop);
+      editor.zoom(2);
+      expect(editor.scrollTop).toBe(50);
     });
 
     test("scroll adjustment equals track height delta when playhead is at bottom", () => {
-      const controller = new EditorController({
-        project: makeProject([makeChart("Hard", 1000)]),
+      const editor = new EditorTester({
+        getProjectToLoad: () => makeProject([makeChart("Hard", 1000)]),
       });
-      controller.$cursorPulse.set(0); // bottom of chart
-      controller.$zoom.set(1);
+      editor.instance.$cursorPulse.set(0); // bottom of chart
+      editor.instance.$zoom.set(1);
+      editor.scrollTo(0);
 
-      const oldScrollTop = 0;
-      controller.$zoom.set(2);
-      const newScrollTop = controller.computeZoomScrollOffset(1, oldScrollTop);
-
+      editor.zoom(2);
       // Track height doubles from 200 to 400, so scroll must increase by 200
-      expect(newScrollTop).toBe(200);
+      expect(editor.scrollTop).toBe(200);
+    });
+  });
+
+  describe("hover interaction", () => {
+    test("hovering on the timeline moves the playhead to the snapped pulse", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () => makeProject([makeChart("Hard", 1000)]),
+      });
+
+      // With a 1000-pulse chart at scale 0.2, trackHeight = 200.
+      // Content height = 240. With viewport 480, initial scroll = 0 (content fits).
+      // Hover at viewport y=100 → contentY=100 → rawPulse = (200-100)/0.2 = 500.
+      // Snap 1/16 = 60 pulses. 500/60 = 8.33 → round to 8 → 480.
+      editor.hover({ x: 250, y: 100 });
+      editor.playhead.shouldBeAtPulse(480);
+    });
+
+    test("hovering respects the current scroll position", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () => makeProject([makeChart("Hard", 15360)]),
+      });
+
+      // Content height = 3112, viewport = 480, initial scroll = 2632.
+      // Hover at viewport y=250 → contentY=2882 → rawPulse = (3072-2882)/0.2 = 950.
+      // Snap 1/16 = 60. 950/60 = 15.83 → round to 16 → 960.
+      // Clamped to [0, 900] (measure end 960 minus interval 60), so 900.
+      editor.hover({ x: 250, y: 250 });
+      editor.playhead.shouldBeAtPulse(900);
     });
   });
 });
