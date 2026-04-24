@@ -269,6 +269,7 @@ export class EditorController {
 
   setScrollTop(top: number): void {
     this.$scrollTop.set(top);
+    this.recomputeCursorPulse();
   }
 
   setScrollLeft(left: number): void {

@@ -223,13 +223,17 @@ export function createTimelineBehaviorFactory(
       prevZoom = controller.$zoom.get();
       controller.setScrollTop(newScrollTop);
       ctx.setScrollTop(newScrollTop);
-      ctx.refresh();
     });
     const unsubSnap = controller.$snap.subscribe(() => {
       // Re-snap cursor to new grid when snap changes
       const currentPulse = controller.$cursorPulse.get();
       const snapped = controller.snapToGrid(currentPulse);
       controller.$cursorPulse.set(snapped);
+    });
+    const unsubScrollTop = controller.$scrollTop.subscribe(() => {
+      ctx.refresh();
+    });
+    const unsubCursorPulse = controller.$cursorPulse.subscribe(() => {
       ctx.refresh();
     });
 
@@ -254,14 +258,12 @@ export function createTimelineBehaviorFactory(
       onScroll(scrollLeft: number, scrollTop: number) {
         controller.setScrollLeft(scrollLeft);
         controller.setScrollTop(scrollTop);
-        controller.recomputeCursorPulse();
       },
 
       onPointerEvent(_event, contentX, contentY) {
         const viewportX = contentX - ctx.scrollLeft;
         const viewportY = contentY - ctx.scrollTop;
         controller.setCursor(viewportX, viewportY);
-        ctx.refresh();
       },
 
       getVisibleObjects(): RenderObject[] {
@@ -505,6 +507,8 @@ export function createTimelineBehaviorFactory(
         unsubChart();
         unsubZoom();
         unsubSnap();
+        unsubScrollTop();
+        unsubCursorPulse();
       },
     };
   };
