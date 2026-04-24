@@ -223,5 +223,26 @@ describe("EditorController", () => {
       editor.hover({ x: 250, y: 250 });
       editor.playhead.shouldBeAtPulse(900);
     });
+
+    test.skip("scrolling updates the playhead to follow the mouse position", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 10000);
+          }),
+      });
+
+      // trackHeight = 2000, contentHeight = 2040, initial scroll = 1560.
+      // Hover at viewport y=100 → contentY=1660 → rawPulse = (2000-1660)/0.2 = 1700.
+      // Snap 1/16 = 60. 1700/60 = 28.33 → 1680.
+      editor.hover({ x: 250, y: 100 });
+      editor.playhead.shouldBeAtPulse(1680);
+
+      // Scroll up (decrease scrollTop) by 400.
+      // New scrollTop = 1160, same viewport y=100 → contentY=1260.
+      // rawPulse = (2000-1260)/0.2 = 3700. Snap → 3720.
+      editor.scrollTo(1160);
+      editor.playhead.shouldBeAtPulse(3720);
+    });
   });
 });
