@@ -41,7 +41,7 @@ export function ToolbarGroup({ label, children }: ToolbarGroupProps) {
       <Flex align="center" gap="1" style={{ height: 32 }}>
         {children}
       </Flex>
-      <Text size="1" color="gray" weight="medium" style={{ opacity: 0.5, fontSize: 9 }}>
+      <Text size="1" color="gray" weight="medium" style={{ opacity: 0.5, fontSize: 10 }}>
         {label}
       </Text>
     </Flex>
@@ -130,9 +130,9 @@ interface TransportDisplayProps {
 
 export function TransportDisplay({ time, pulse, measure }: TransportDisplayProps) {
   const items = [
-    { label: "Time", value: time, width: 72 },
-    { label: "Pulse", value: pulse, width: 48 },
-    { label: "Measure", value: measure, width: 48 },
+    { label: "TIME", value: time, width: 96 },
+    { label: "PULSE", value: pulse, width: 64 },
+    { label: "MEASURE", value: measure, width: 64 },
   ];
 
   return (
@@ -152,7 +152,7 @@ export function TransportDisplay({ time, pulse, measure }: TransportDisplayProps
               borderRight: i < items.length - 1 ? "1px solid var(--gray-5)" : "none",
             }}
           >
-            <Text size="1" color="gray" style={{ lineHeight: 1, opacity: 0.4, fontSize: 9 }}>
+            <Text size="1" color="gray" style={{ lineHeight: 1, opacity: 0.4, fontSize: 8 }}>
               {item.label}
             </Text>
             <Text
