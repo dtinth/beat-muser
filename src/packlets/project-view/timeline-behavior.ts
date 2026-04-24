@@ -31,6 +31,7 @@ import type { EditorController } from "../editor-core";
 import { BPM_CHANGE, TIME_SIGNATURE, EVENT } from "../editor-core";
 
 const SCALE_Y = 0.2;
+const PADDING_BOTTOM = 40;
 
 // ---------------------------------------------------------------------------
 // Renderers
@@ -209,12 +210,15 @@ export function createTimelineBehaviorFactory(
     return {
       getContentSize() {
         const size = controller.getChartSize();
-        return { width: controller.getTimelineWidth(), height: size * SCALE_Y };
+        return {
+          width: controller.getTimelineWidth(),
+          height: size * SCALE_Y + PADDING_BOTTOM,
+        };
       },
 
       onConnected() {
         const size = controller.getChartSize();
-        const height = size * SCALE_Y;
+        const height = size * SCALE_Y + PADDING_BOTTOM;
         if (height > ctx.viewportHeight) {
           ctx.setScrollTop(height - ctx.viewportHeight);
         }
@@ -222,7 +226,7 @@ export function createTimelineBehaviorFactory(
 
       getVisibleObjects(): RenderObject[] {
         const size = controller.getChartSize();
-        const height = size * SCALE_Y;
+        const height = size * SCALE_Y + PADDING_BOTTOM;
         const viewportTop = ctx.scrollTop;
         const viewportBottom = ctx.scrollTop + ctx.viewportHeight;
         const timelineWidth = controller.getTimelineWidth();
