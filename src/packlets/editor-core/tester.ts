@@ -55,6 +55,10 @@ export class ChartBuilder {
     return ent;
   }
 
+  addEntity(callback: (e: EntityBuilder) => void): Entity {
+    return this.addWithChartRef(callback);
+  }
+
   bpmChange(y: number, bpm: number): Entity {
     return this.addWithChartRef((e) => e.with(EVENT, { y }).with(BPM_CHANGE, { bpm }));
   }
@@ -74,37 +78,19 @@ export class ProjectBuilder {
     return entity;
   }
 
-  chart(name: string, size = 15360): Entity {
-    return entity((e) => e.with(CHART, { name, size }));
+  addEntity(callback: (e: EntityBuilder) => void): Entity {
+    const ent = entity(callback);
+    this.add(ent);
+    return ent;
   }
 
-  addChart(name: string, callback: (c: ChartBuilder) => void, size?: number): Entity {
-    const chart = this.add(this.chart(name, size));
-    callback(new ChartBuilder(chart.id, this));
+  addChart(name: string, callback?: (c: ChartBuilder) => void, size?: number): Entity {
+    const chart = entity((e) => e.with(CHART, { name, size }));
+    this.add(chart);
+    if (callback) {
+      callback(new ChartBuilder(chart.id, this));
+    }
     return chart;
-  }
-
-  bpmChange(chart: Entity | undefined, y: number, bpm: number): Entity {
-    return entity((e) => {
-      e.with(EVENT, { y }).with(BPM_CHANGE, { bpm });
-      if (chart) {
-        e.with(CHART_REF, { chartId: chart.id });
-      }
-    });
-  }
-
-  timeSignature(
-    chart: Entity | undefined,
-    y: number,
-    numerator: number,
-    denominator: number,
-  ): Entity {
-    return entity((e) => {
-      e.with(EVENT, { y }).with(TIME_SIGNATURE, { numerator, denominator });
-      if (chart) {
-        e.with(CHART_REF, { chartId: chart.id });
-      }
-    });
   }
 
   build(): ProjectFile {

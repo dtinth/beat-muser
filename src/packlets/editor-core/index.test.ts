@@ -7,6 +7,7 @@
 
 import { describe, expect, test } from "vite-plus/test";
 import { EditorTester, makeProject } from "./tester";
+import { CHART } from "./index";
 
 // ---------------------------------------------------------------------------
 // Acceptance tests
@@ -24,8 +25,8 @@ describe("EditorController", () => {
     const editor = new EditorTester({
       getProjectToLoad: () =>
         makeProject((p) => {
-          p.add(p.chart("Hard", 24000));
-          p.add(p.chart("Easy", 12000));
+          p.addChart("Hard", undefined, 24000);
+          p.addChart("Easy", undefined, 12000);
         }),
     });
 
@@ -37,7 +38,7 @@ describe("EditorController", () => {
     const editor = new EditorTester({
       getProjectToLoad: () =>
         makeProject((p) => {
-          p.add(p.chart("Custom", 9999));
+          p.addChart("Custom", undefined, 9999);
         }),
     });
 
@@ -45,12 +46,12 @@ describe("EditorController", () => {
   });
 
   test("falls back to default size when chart component lacks size field", () => {
-    const chart = {
-      id: "chart-no-size",
-      version: "v1",
-      components: { chart: { name: "Test" } },
-    } as const;
-    const editor = new EditorTester({ getProjectToLoad: () => makeProject([chart]) });
+    const editor = new EditorTester({
+      getProjectToLoad: () =>
+        makeProject((p) => {
+          p.addEntity((e) => e.with(CHART, { name: "Test" }));
+        }),
+    });
 
     editor.chart.shouldHaveSize(15360);
   });
@@ -132,7 +133,7 @@ describe("EditorController", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
           makeProject((p) => {
-            p.add(p.chart("Hard", 1000));
+            p.addChart("Hard", undefined, 1000);
           }),
       });
       editor.instance.$cursorPulse.set(500);
@@ -147,7 +148,7 @@ describe("EditorController", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
           makeProject((p) => {
-            p.add(p.chart("Hard", 1000));
+            p.addChart("Hard", undefined, 1000);
           }),
       });
       editor.instance.$cursorPulse.set(300);
@@ -162,7 +163,7 @@ describe("EditorController", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
           makeProject((p) => {
-            p.add(p.chart("Hard", 1000));
+            p.addChart("Hard", undefined, 1000);
           }),
       });
       editor.instance.$cursorPulse.set(1000); // top of chart
@@ -177,7 +178,7 @@ describe("EditorController", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
           makeProject((p) => {
-            p.add(p.chart("Hard", 1000));
+            p.addChart("Hard", undefined, 1000);
           }),
       });
       editor.instance.$cursorPulse.set(0); // bottom of chart
@@ -195,7 +196,7 @@ describe("EditorController", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
           makeProject((p) => {
-            p.add(p.chart("Hard", 1000));
+            p.addChart("Hard", undefined, 1000);
           }),
       });
 
@@ -211,7 +212,7 @@ describe("EditorController", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
           makeProject((p) => {
-            p.add(p.chart("Hard", 15360));
+            p.addChart("Hard", undefined, 15360);
           }),
       });
 
