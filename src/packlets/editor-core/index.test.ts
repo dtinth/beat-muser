@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, test } from "vite-plus/test";
-import { EditorTester, makeProject, makeChart, makeBpmChange, makeTimeSignature } from "./tester";
+import { EditorTester, makeProject } from "./tester";
 
 // ---------------------------------------------------------------------------
 // Acceptance tests
@@ -22,7 +22,11 @@ describe("EditorController", () => {
 
   test("given a project with charts, selects the first chart", () => {
     const editor = new EditorTester({
-      getProjectToLoad: () => makeProject([makeChart("Hard", 24000), makeChart("Easy", 12000)]),
+      getProjectToLoad: () =>
+        makeProject((p) => {
+          p.add(p.chart("Hard", 24000));
+          p.add(p.chart("Easy", 12000));
+        }),
     });
 
     editor.chart.shouldHaveName("Hard");
@@ -31,7 +35,10 @@ describe("EditorController", () => {
 
   test("reports the selected chart's size", () => {
     const editor = new EditorTester({
-      getProjectToLoad: () => makeProject([makeChart("Custom", 9999)]),
+      getProjectToLoad: () =>
+        makeProject((p) => {
+          p.add(p.chart("Custom", 9999));
+        }),
     });
 
     editor.chart.shouldHaveSize(9999);
@@ -74,7 +81,11 @@ describe("EditorController", () => {
   test("extracts BPM changes from entities", () => {
     const editor = new EditorTester({
       getProjectToLoad: () =>
-        makeProject([makeChart("Hard"), makeBpmChange(0, 120), makeBpmChange(960, 180)]),
+        makeProject((p) => {
+          p.add(p.chart("Hard"));
+          p.add(p.bpmChange(0, 120));
+          p.add(p.bpmChange(960, 180));
+        }),
     });
 
     // At 120 BPM, 960 pulses = 4 beats = 2 seconds.
@@ -87,7 +98,11 @@ describe("EditorController", () => {
 
   test("extracts time signatures from entities", () => {
     const editor = new EditorTester({
-      getProjectToLoad: () => makeProject([makeChart("Hard"), makeTimeSignature(0, 3, 4)]),
+      getProjectToLoad: () =>
+        makeProject((p) => {
+          p.add(p.chart("Hard"));
+          p.add(p.timeSignature(0, 3, 4));
+        }),
     });
 
     // 3/4 at 240 PPQN = 3 * 240 = 720 pulses per measure.
@@ -97,12 +112,12 @@ describe("EditorController", () => {
   test("combines BPM changes and time signatures", () => {
     const editor = new EditorTester({
       getProjectToLoad: () =>
-        makeProject([
-          makeChart("Hard"),
-          makeBpmChange(0, 120),
-          makeTimeSignature(0, 3, 4),
-          makeTimeSignature(1440, 4, 4),
-        ]),
+        makeProject((p) => {
+          p.add(p.chart("Hard"));
+          p.add(p.bpmChange(0, 120));
+          p.add(p.timeSignature(0, 3, 4));
+          p.add(p.timeSignature(1440, 4, 4));
+        }),
     });
 
     // 3/4 = 720 per measure, then 4/4 = 960 per measure after pulse 1440.
@@ -112,7 +127,10 @@ describe("EditorController", () => {
   describe("zoom scroll compensation", () => {
     test("keeps playhead viewport position stable when zooming in", () => {
       const editor = new EditorTester({
-        getProjectToLoad: () => makeProject([makeChart("Hard", 1000)]),
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.add(p.chart("Hard", 1000));
+          }),
       });
       editor.instance.$cursorPulse.set(500);
       editor.instance.$zoom.set(1);
@@ -124,7 +142,10 @@ describe("EditorController", () => {
 
     test("keeps playhead viewport position stable when zooming out", () => {
       const editor = new EditorTester({
-        getProjectToLoad: () => makeProject([makeChart("Hard", 1000)]),
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.add(p.chart("Hard", 1000));
+          }),
       });
       editor.instance.$cursorPulse.set(300);
       editor.instance.$zoom.set(2);
@@ -136,7 +157,10 @@ describe("EditorController", () => {
 
     test("no scroll adjustment needed when playhead is at top of chart", () => {
       const editor = new EditorTester({
-        getProjectToLoad: () => makeProject([makeChart("Hard", 1000)]),
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.add(p.chart("Hard", 1000));
+          }),
       });
       editor.instance.$cursorPulse.set(1000); // top of chart
       editor.instance.$zoom.set(1);
@@ -148,7 +172,10 @@ describe("EditorController", () => {
 
     test("scroll adjustment equals track height delta when playhead is at bottom", () => {
       const editor = new EditorTester({
-        getProjectToLoad: () => makeProject([makeChart("Hard", 1000)]),
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.add(p.chart("Hard", 1000));
+          }),
       });
       editor.instance.$cursorPulse.set(0); // bottom of chart
       editor.instance.$zoom.set(1);
@@ -163,7 +190,10 @@ describe("EditorController", () => {
   describe("hover interaction", () => {
     test("hovering on the timeline moves the playhead to the snapped pulse", () => {
       const editor = new EditorTester({
-        getProjectToLoad: () => makeProject([makeChart("Hard", 1000)]),
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.add(p.chart("Hard", 1000));
+          }),
       });
 
       // With a 1000-pulse chart at scale 0.2, trackHeight = 200.
@@ -176,7 +206,10 @@ describe("EditorController", () => {
 
     test("hovering respects the current scroll position", () => {
       const editor = new EditorTester({
-        getProjectToLoad: () => makeProject([makeChart("Hard", 15360)]),
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.add(p.chart("Hard", 15360));
+          }),
       });
 
       // Content height = 3112, viewport = 480, initial scroll = 2632.

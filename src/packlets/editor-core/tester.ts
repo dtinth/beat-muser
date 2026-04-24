@@ -12,44 +12,69 @@ import type { ProjectFile } from "../project-format";
 import type { Entity } from "../entity-manager";
 import { createDemoProjectFile } from "../project-store";
 
-export function makeProject(entities: Entity[] = []): ProjectFile {
-  return {
-    schemaVersion: 2,
-    version: "test-version",
-    metadata: { title: "Test", artist: "Test", genre: "Test" },
-    entities,
-    deletedEntities: [],
-  };
+export class ProjectBuilder {
+  private entities: Entity[] = [];
+
+  add(entity: Entity): void {
+    this.entities.push(entity);
+  }
+
+  chart(name: string, size = 15360): Entity {
+    return {
+      id: `chart-${name}`,
+      version: "v1",
+      components: { chart: { name, size } },
+    };
+  }
+
+  bpmChange(y: number, bpm: number): Entity {
+    return {
+      id: `bpm-${y}-${bpm}`,
+      version: "v1",
+      components: {
+        event: { y },
+        bpmChange: { bpm },
+      },
+    };
+  }
+
+  timeSignature(y: number, numerator: number, denominator: number): Entity {
+    return {
+      id: `ts-${y}-${numerator}-${denominator}`,
+      version: "v1",
+      components: {
+        event: { y },
+        timeSignature: { numerator, denominator },
+      },
+    };
+  }
+
+  build(): ProjectFile {
+    return {
+      schemaVersion: 2,
+      version: "test-version",
+      metadata: { title: "Test", artist: "Test", genre: "Test" },
+      entities: this.entities,
+      deletedEntities: [],
+    };
+  }
 }
 
-export function makeChart(name: string, size = 15360): Entity {
-  return {
-    id: `chart-${name}`,
-    version: "v1",
-    components: { chart: { name, size } },
-  };
-}
-
-export function makeBpmChange(y: number, bpm: number): Entity {
-  return {
-    id: `bpm-${y}-${bpm}`,
-    version: "v1",
-    components: {
-      event: { y },
-      bpmChange: { bpm },
-    },
-  };
-}
-
-export function makeTimeSignature(y: number, numerator: number, denominator: number): Entity {
-  return {
-    id: `ts-${y}-${numerator}-${denominator}`,
-    version: "v1",
-    components: {
-      event: { y },
-      timeSignature: { numerator, denominator },
-    },
-  };
+export function makeProject(
+  entitiesOrCallback: Entity[] | ((p: ProjectBuilder) => void) = [],
+): ProjectFile {
+  if (Array.isArray(entitiesOrCallback)) {
+    return {
+      schemaVersion: 2,
+      version: "test-version",
+      metadata: { title: "Test", artist: "Test", genre: "Test" },
+      entities: entitiesOrCallback,
+      deletedEntities: [],
+    };
+  }
+  const builder = new ProjectBuilder();
+  entitiesOrCallback(builder);
+  return builder.build();
 }
 
 export class EditorTester {
