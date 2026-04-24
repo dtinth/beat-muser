@@ -152,7 +152,7 @@ export function TransportDisplay({ time, pulse, measure }: TransportDisplayProps
               borderRight: i < items.length - 1 ? "1px solid var(--gray-5)" : "none",
             }}
           >
-            <Text size="1" color="gray" style={{ lineHeight: 1, opacity: 0.4, fontSize: 8 }}>
+            <Text size="1" color="gray" style={{ lineHeight: 1, opacity: 0.6, fontSize: 8 }}>
               {item.label}
             </Text>
             <Text
