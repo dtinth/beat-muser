@@ -353,7 +353,7 @@ export function createTimelineBehaviorFactory(
             renderer: eventMarkerRenderer,
             data: {
               text: "",
-              backgroundColor: "var(--accent-9)",
+              backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
               textColor: "#fff",
             },
             testId: "note",

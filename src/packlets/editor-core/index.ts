@@ -38,6 +38,7 @@ export interface TimelineColumn {
   backgroundColor?: string;
   levelId?: string;
   laneIndex?: number;
+  noteColor?: string;
 }
 
 export interface LevelInfo {
@@ -131,6 +132,7 @@ export class EditorController {
             width: lane.width,
             x,
             backgroundColor: lane.backgroundColor,
+            noteColor: lane.noteColor,
             levelId: level.id,
             laneIndex: lane.laneIndex,
           });
