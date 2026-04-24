@@ -231,16 +231,16 @@ export function createTimelineBehaviorFactory(
 
       onConnected() {
         const size = controller.getChartSize();
-        const height = size * SCALE_Y + PADDING_BOTTOM;
-        if (height > ctx.viewportHeight) {
-          ctx.setScrollTop(height - ctx.viewportHeight);
+        const contentHeight = size * SCALE_Y + PADDING_BOTTOM;
+        if (contentHeight > ctx.viewportHeight) {
+          ctx.setScrollTop(contentHeight - ctx.viewportHeight);
         }
       },
 
       onPointerEvent(_event, _contentX, contentY) {
         const size = controller.getChartSize();
-        const height = size * SCALE_Y + PADDING_BOTTOM;
-        const rawPulse = (height - PADDING_BOTTOM - contentY) / SCALE_Y;
+        const trackHeight = size * SCALE_Y;
+        const rawPulse = (trackHeight - contentY) / SCALE_Y;
         const snappedPulse = controller.snapToGrid(rawPulse);
         controller.$cursorPulse.set(snappedPulse);
         ctx.refresh();
@@ -248,7 +248,8 @@ export function createTimelineBehaviorFactory(
 
       getVisibleObjects(): RenderObject[] {
         const size = controller.getChartSize();
-        const height = size * SCALE_Y + PADDING_BOTTOM;
+        const trackHeight = size * SCALE_Y;
+        const contentHeight = trackHeight + PADDING_BOTTOM;
         const viewportTop = ctx.scrollTop;
         const viewportBottom = ctx.scrollTop + ctx.viewportHeight;
         const timelineWidth = controller.getTimelineWidth();
@@ -256,14 +257,8 @@ export function createTimelineBehaviorFactory(
 
         // Convert viewport Y to pulse range. Expand slightly so event
         // markers just outside the viewport edge are still rendered.
-        const rawPulseStart = Math.max(
-          0,
-          Math.floor((height - PADDING_BOTTOM - viewportBottom) / SCALE_Y),
-        );
-        const rawPulseEnd = Math.min(
-          size,
-          Math.ceil((height - PADDING_BOTTOM - viewportTop) / SCALE_Y),
-        );
+        const rawPulseStart = Math.max(0, Math.floor((trackHeight - viewportBottom) / SCALE_Y));
+        const rawPulseEnd = Math.min(size, Math.ceil((trackHeight - viewportTop) / SCALE_Y));
         const pulseStart = Math.max(0, rawPulseStart - 50);
         const pulseEnd = Math.min(size, rawPulseEnd + 50);
 
@@ -277,7 +272,7 @@ export function createTimelineBehaviorFactory(
             x: col.x,
             y: 0,
             width: col.width,
-            height,
+            height: contentHeight,
             renderer: columnBgRenderer,
             data: {
               backgroundColor: col.backgroundColor,
@@ -308,7 +303,7 @@ export function createTimelineBehaviorFactory(
           x: timelineWidth - 1,
           y: 0,
           width: 1,
-          height,
+          height: contentHeight,
           renderer: trailingBorderRenderer,
           data: {},
           testId: "trailing-border",
@@ -330,7 +325,7 @@ export function createTimelineBehaviorFactory(
             objects.push({
               key: `bpm-${entity.id}`,
               x: bpmColumn.x,
-              y: height - PADDING_BOTTOM - pulse * SCALE_Y - 14,
+              y: trackHeight - pulse * SCALE_Y - 14,
               width: bpmColumn.width,
               height: 14,
               renderer: eventMarkerRenderer,
@@ -355,7 +350,7 @@ export function createTimelineBehaviorFactory(
             objects.push({
               key: `ts-${entity.id}`,
               x: tsColumn.x,
-              y: height - PADDING_BOTTOM - pulse * SCALE_Y - 14,
+              y: trackHeight - pulse * SCALE_Y - 14,
               width: tsColumn.width,
               height: 14,
               renderer: eventMarkerRenderer,
@@ -375,7 +370,7 @@ export function createTimelineBehaviorFactory(
           objects.push({
             key: "playhead",
             x: 0,
-            y: height - PADDING_BOTTOM - cursorPulse * SCALE_Y - 1,
+            y: trackHeight - cursorPulse * SCALE_Y - 1,
             width: timelineWidth,
             height: 1,
             renderer: playheadRenderer,
@@ -400,7 +395,7 @@ export function createTimelineBehaviorFactory(
 
         for (const pulse of measureBoundaries) {
           const measureIndex = allBoundaries.indexOf(pulse);
-          const y = height - PADDING_BOTTOM - pulse * SCALE_Y - 1;
+          const y = trackHeight - pulse * SCALE_Y - 1;
           objects.push({
             key: `measure-${pulse}`,
             x: 0,
@@ -423,7 +418,7 @@ export function createTimelineBehaviorFactory(
         const beatSet = new Set(beatPoints);
 
         for (const pulse of beatPoints) {
-          const y = height - PADDING_BOTTOM - pulse * SCALE_Y - 1;
+          const y = trackHeight - pulse * SCALE_Y - 1;
           objects.push({
             key: `beat-${pulse}`,
             x: 0,
@@ -442,7 +437,7 @@ export function createTimelineBehaviorFactory(
           .filter((p) => !measureSet.has(p) && !beatSet.has(p));
 
         for (const pulse of gridPoints) {
-          const y = height - PADDING_BOTTOM - pulse * SCALE_Y - 1;
+          const y = trackHeight - pulse * SCALE_Y - 1;
           objects.push({
             key: `grid-${pulse}`,
             x: 0,
