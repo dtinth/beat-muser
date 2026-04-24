@@ -147,6 +147,7 @@ export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvas
         overflow: "auto",
         width: "100%",
         height: "100%",
+        userSelect: "none",
       }}
     >
       {/* Sticky layer: rendered first so it sits above scroll layer. */}

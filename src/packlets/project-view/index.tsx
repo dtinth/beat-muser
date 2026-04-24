@@ -5,7 +5,7 @@
  * editor toolbar, chart panels, and a ScrollableCanvas timeline.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouteError, useLoaderData } from "react-router";
 import {
   MousePointer2,
@@ -174,7 +174,7 @@ export function ProjectViewPage() {
   const { showError } = useToast();
 
   const [controller] = useState(() => new EditorController({ project }));
-  const behaviorFactory = createTimelineBehaviorFactory(controller);
+  const behaviorFactory = useMemo(() => createTimelineBehaviorFactory(controller), [controller]);
 
   const [cursorPulse, setCursorPulse] = useState(controller.$cursorPulse.get());
   useEffect(() => {
