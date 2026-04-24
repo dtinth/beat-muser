@@ -28,10 +28,14 @@ const DEFAULT_CHART_SIZE = 15360;
 
 export { EVENT, CHART, BPM_CHANGE, TIME_SIGNATURE };
 
+const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4];
+const BASE_SCALE_Y = 0.2;
+
 export class EditorController {
   $selectedChartId = atom<string | null>(null);
   $cursorPulse = atom<number>(0);
   $snap = atom<string>("1/16");
+  $zoom = atom<number>(1); // zoom multiplier, 1 = 100%
 
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
@@ -83,6 +87,26 @@ export class EditorController {
     };
     this.entityManager.insert(chart);
     return id;
+  }
+
+  getScaleY(): number {
+    return BASE_SCALE_Y * this.$zoom.get();
+  }
+
+  setZoom(zoom: number): void {
+    this.$zoom.set(zoom);
+  }
+
+  zoomIn(): void {
+    const current = this.$zoom.get();
+    const next = ZOOM_PRESETS.find((z) => z > current);
+    if (next) this.$zoom.set(next);
+  }
+
+  zoomOut(): void {
+    const current = this.$zoom.get();
+    const prev = [...ZOOM_PRESETS].reverse().find((z) => z < current);
+    if (prev) this.$zoom.set(prev);
   }
 
   getEntityManager(): EntityManager {

@@ -182,6 +182,20 @@ export function ProjectViewPage() {
     return unsub;
   }, [controller]);
 
+  const [snap, setSnap] = useState(controller.$snap.get());
+  useEffect(() => {
+    const unsub = controller.$snap.subscribe(setSnap);
+    return unsub;
+  }, [controller]);
+
+  const [zoom, setZoom] = useState(controller.$zoom.get());
+  useEffect(() => {
+    const unsub = controller.$zoom.subscribe(setZoom);
+    return unsub;
+  }, [controller]);
+
+  const zoomPercent = `${Math.round(zoom * 100)}%`;
+
   const engine = controller.getTimingEngine();
   const seconds = engine.pulseToSeconds(cursorPulse);
   const mins = Math.floor(seconds / 60);
@@ -235,20 +249,33 @@ export function ProjectViewPage() {
 
           <ToolbarGroup label="Snap">
             <ToolbarDropdown
-              value="1/16"
+              value={snap}
               options={["1/1", "1/2", "1/4", "1/8", "1/12", "1/16", "1/32", "1/64"]}
+              onSelect={(value) => controller.$snap.set(value)}
             />
           </ToolbarGroup>
 
           <ToolbarDivider />
 
           <ToolbarGroup label="Zoom">
-            <ToolbarButton icon={<ZoomOut size={16} />} label="Zoom Out" />
-            <ToolbarDropdown
-              value="100%"
-              options={["25%", "50%", "75%", "100%", "125%", "150%", "200%", "400%"]}
+            <ToolbarButton
+              icon={<ZoomOut size={16} />}
+              label="Zoom Out"
+              onClick={() => controller.zoomOut()}
             />
-            <ToolbarButton icon={<ZoomIn size={16} />} label="Zoom In" />
+            <ToolbarDropdown
+              value={zoomPercent}
+              options={["25%", "50%", "75%", "100%", "125%", "150%", "200%", "400%"]}
+              onSelect={(value) => {
+                const pct = parseInt(value.replace("%", ""), 10);
+                controller.setZoom(pct / 100);
+              }}
+            />
+            <ToolbarButton
+              icon={<ZoomIn size={16} />}
+              label="Zoom In"
+              onClick={() => controller.zoomIn()}
+            />
           </ToolbarGroup>
         </Toolbar>
       }

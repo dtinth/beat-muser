@@ -56,15 +56,17 @@ interface ToolbarButtonProps {
   icon: ReactNode;
   label?: string;
   active?: boolean;
+  onClick?: () => void;
 }
 
-export function ToolbarButton({ icon, label, active }: ToolbarButtonProps) {
+export function ToolbarButton({ icon, label, active, onClick }: ToolbarButtonProps) {
   return (
     <Button
       variant="surface"
       size="1"
       color="gray"
       title={label}
+      onClick={onClick}
       style={{
         width: 32,
         height: 32,

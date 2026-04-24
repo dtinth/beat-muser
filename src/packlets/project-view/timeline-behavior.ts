@@ -9,7 +9,7 @@
  *
  * - Bottom = start of song (pulse 0)
  * - Top = end of song (pulse = chart size)
- * - SCALE_Y = 0.2 px/pulse (base scale, zoom multiplier applied later)
+ - Scale Y = 0.2 px/pulse at 100% zoom, multiplied by zoom level from EditorController
  * - Columns are defined by the EditorController and stacked left-to-right
  * - Horizontal grid lines span the entire timeline width across all columns
  *
@@ -30,7 +30,6 @@ import type {
 import type { EditorController } from "../editor-core";
 import { BPM_CHANGE, TIME_SIGNATURE, EVENT } from "../editor-core";
 
-const SCALE_Y = 0.2;
 const PADDING_BOTTOM = 40;
 
 // ---------------------------------------------------------------------------
@@ -216,22 +215,34 @@ export function createTimelineBehaviorFactory(
   return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
     const engine = controller.getTimingEngine();
 
-    const unsub = controller.$selectedChartId.subscribe(() => {
+    const unsubChart = controller.$selectedChartId.subscribe(() => {
+      ctx.refresh();
+    });
+    const unsubZoom = controller.$zoom.subscribe(() => {
+      ctx.refresh();
+    });
+    const unsubSnap = controller.$snap.subscribe(() => {
+      // Re-snap cursor to new grid when snap changes
+      const currentPulse = controller.$cursorPulse.get();
+      const snapped = controller.snapToGrid(currentPulse);
+      controller.$cursorPulse.set(snapped);
       ctx.refresh();
     });
 
     return {
       getContentSize() {
         const size = controller.getChartSize();
+        const scaleY = controller.getScaleY();
         return {
           width: controller.getTimelineWidth(),
-          height: size * SCALE_Y + PADDING_BOTTOM,
+          height: size * scaleY + PADDING_BOTTOM,
         };
       },
 
       onConnected() {
         const size = controller.getChartSize();
-        const contentHeight = size * SCALE_Y + PADDING_BOTTOM;
+        const scaleY = controller.getScaleY();
+        const contentHeight = size * scaleY + PADDING_BOTTOM;
         if (contentHeight > ctx.viewportHeight) {
           ctx.setScrollTop(contentHeight - ctx.viewportHeight);
         }
@@ -239,8 +250,9 @@ export function createTimelineBehaviorFactory(
 
       onPointerEvent(_event, _contentX, contentY) {
         const size = controller.getChartSize();
-        const trackHeight = size * SCALE_Y;
-        const rawPulse = (trackHeight - contentY) / SCALE_Y;
+        const scaleY = controller.getScaleY();
+        const trackHeight = size * scaleY;
+        const rawPulse = (trackHeight - contentY) / scaleY;
         const snappedPulse = controller.snapToGrid(rawPulse);
         controller.$cursorPulse.set(snappedPulse);
         ctx.refresh();
@@ -248,7 +260,8 @@ export function createTimelineBehaviorFactory(
 
       getVisibleObjects(): RenderObject[] {
         const size = controller.getChartSize();
-        const trackHeight = size * SCALE_Y;
+        const scaleY = controller.getScaleY();
+        const trackHeight = size * scaleY;
         const contentHeight = trackHeight + PADDING_BOTTOM;
         const viewportTop = ctx.scrollTop;
         const viewportBottom = ctx.scrollTop + ctx.viewportHeight;
@@ -257,8 +270,8 @@ export function createTimelineBehaviorFactory(
 
         // Convert viewport Y to pulse range. Expand slightly so event
         // markers just outside the viewport edge are still rendered.
-        const rawPulseStart = Math.max(0, Math.floor((trackHeight - viewportBottom) / SCALE_Y));
-        const rawPulseEnd = Math.min(size, Math.ceil((trackHeight - viewportTop) / SCALE_Y));
+        const rawPulseStart = Math.max(0, Math.floor((trackHeight - viewportBottom) / scaleY));
+        const rawPulseEnd = Math.min(size, Math.ceil((trackHeight - viewportTop) / scaleY));
         const pulseStart = Math.max(0, rawPulseStart - 50);
         const pulseEnd = Math.min(size, rawPulseEnd + 50);
 
@@ -325,7 +338,7 @@ export function createTimelineBehaviorFactory(
             objects.push({
               key: `bpm-${entity.id}`,
               x: bpmColumn.x,
-              y: trackHeight - pulse * SCALE_Y - 14,
+              y: trackHeight - pulse * scaleY - 14,
               width: bpmColumn.width,
               height: 14,
               renderer: eventMarkerRenderer,
@@ -350,7 +363,7 @@ export function createTimelineBehaviorFactory(
             objects.push({
               key: `ts-${entity.id}`,
               x: tsColumn.x,
-              y: trackHeight - pulse * SCALE_Y - 14,
+              y: trackHeight - pulse * scaleY - 14,
               width: tsColumn.width,
               height: 14,
               renderer: eventMarkerRenderer,
@@ -370,7 +383,7 @@ export function createTimelineBehaviorFactory(
           objects.push({
             key: "playhead",
             x: 0,
-            y: trackHeight - cursorPulse * SCALE_Y - 1,
+            y: trackHeight - cursorPulse * scaleY - 1,
             width: timelineWidth,
             height: 1,
             renderer: playheadRenderer,
@@ -395,7 +408,7 @@ export function createTimelineBehaviorFactory(
 
         for (const pulse of measureBoundaries) {
           const measureIndex = allBoundaries.indexOf(pulse);
-          const y = trackHeight - pulse * SCALE_Y - 1;
+          const y = trackHeight - pulse * scaleY - 1;
           objects.push({
             key: `measure-${pulse}`,
             x: 0,
@@ -418,7 +431,7 @@ export function createTimelineBehaviorFactory(
         const beatSet = new Set(beatPoints);
 
         for (const pulse of beatPoints) {
-          const y = trackHeight - pulse * SCALE_Y - 1;
+          const y = trackHeight - pulse * scaleY - 1;
           objects.push({
             key: `beat-${pulse}`,
             x: 0,
@@ -437,7 +450,7 @@ export function createTimelineBehaviorFactory(
           .filter((p) => !measureSet.has(p) && !beatSet.has(p));
 
         for (const pulse of gridPoints) {
-          const y = trackHeight - pulse * SCALE_Y - 1;
+          const y = trackHeight - pulse * scaleY - 1;
           objects.push({
             key: `grid-${pulse}`,
             x: 0,
@@ -454,7 +467,9 @@ export function createTimelineBehaviorFactory(
       },
 
       [Symbol.dispose]() {
-        unsub();
+        unsubChart();
+        unsubZoom();
+        unsubSnap();
       },
     };
   };
