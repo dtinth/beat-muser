@@ -28,7 +28,7 @@ import type {
   RenderHandle,
 } from "../scrollable-canvas";
 import type { EditorController } from "../editor-core";
-import { BPM_CHANGE, TIME_SIGNATURE, EVENT } from "../editor-core";
+import { BPM_CHANGE, TIME_SIGNATURE, EVENT, NOTE, LEVEL_REF } from "../editor-core";
 
 const PADDING_BOTTOM = 40;
 
@@ -198,6 +198,28 @@ function createPlayheadRenderer(): () => RenderHandle<{}> {
   };
 }
 
+interface NoteData {
+  color: string;
+}
+
+function createNoteRenderer(): (data: unknown) => RenderHandle<NoteData> {
+  return (data: unknown) => {
+    const d = data as NoteData;
+    const el = document.createElement("div");
+    el.style.backgroundColor = d.color;
+    el.style.borderRadius = "2px";
+    el.style.boxShadow = "inset 0 0 0 1px rgba(0,0,0,0.3)";
+    el.style.pointerEvents = "auto";
+    return {
+      dom: el,
+      update(newData: unknown) {
+        const nd = newData as NoteData;
+        el.style.backgroundColor = nd.color;
+      },
+    };
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Behavior factory
 // ---------------------------------------------------------------------------
@@ -327,8 +349,37 @@ export function createTimelineBehaviorFactory(
           testId: "trailing-border",
         });
 
-        // --- Timing event markers ---
+        // --- Gameplay notes ---
+        const noteRenderer = createNoteRenderer();
         const entityManager = controller.getEntityManager();
+
+        for (const entity of entityManager.entitiesWithComponent(NOTE)) {
+          const event = entityManager.getComponent(entity, EVENT);
+          const note = entityManager.getComponent(entity, NOTE);
+          const levelRef = entityManager.getComponent(entity, LEVEL_REF);
+          if (!event || !note || !levelRef) continue;
+
+          const pulse = event.y;
+          if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+          const laneCol = columns.find(
+            (c) => c.levelId === levelRef.levelId && c.laneIndex === note.lane,
+          );
+          if (!laneCol) continue;
+
+          objects.push({
+            key: `note-${entity.id}`,
+            x: laneCol.x,
+            y: trackHeight - pulse * scaleY - 4,
+            width: laneCol.width,
+            height: 8,
+            renderer: noteRenderer,
+            data: { color: "var(--accent-9)" },
+            testId: "note",
+          });
+        }
+
+        // --- Timing event markers ---
         const bpmColumn = columns.find((c) => c.id === "bpm");
         const tsColumn = columns.find((c) => c.id === "time-sig");
 

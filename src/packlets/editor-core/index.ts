@@ -24,6 +24,7 @@ import {
   SOUND_CHANNEL,
   SOUND_EVENT,
 } from "./components";
+import { getGameModeLayout } from "./lane-layouts";
 
 export interface EditorControllerOptions {
   project: ProjectFile;
@@ -35,6 +36,16 @@ export interface TimelineColumn {
   width: number;
   x: number;
   backgroundColor?: string;
+  levelId?: string;
+  laneIndex?: number;
+}
+
+export interface LevelInfo {
+  id: string;
+  name: string;
+  mode: string;
+  sortOrder: number;
+  visible: boolean;
 }
 
 const DEFAULT_CHART_SIZE = 15360;
@@ -62,6 +73,7 @@ export class EditorController {
   $cursorPulse = atom<number>(0);
   $snap = atom<string>("1/16");
   $zoom = atom<number>(1); // zoom multiplier, 1 = 100%
+  $visibleLevelIds = atom<Set<string>>(new Set());
 
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
@@ -76,6 +88,13 @@ export class EditorController {
     } else {
       const chartId = this.createDefaultChart();
       this.$selectedChartId.set(chartId);
+    }
+
+    // Show all existing levels by default.
+    const chartId = this.$selectedChartId.get();
+    if (chartId) {
+      const levelIds = this.getLevelsForChart(chartId).map((l) => l.id);
+      this.$visibleLevelIds.set(new Set(levelIds));
     }
 
     const { columns, width } = this.computeColumns();
@@ -97,9 +116,38 @@ export class EditorController {
       x += def.width;
     }
 
+    // Add gameplay lanes for visible levels.
+    const chartId = this.$selectedChartId.get();
+    if (chartId) {
+      const visibleLevels = this.getVisibleLevels();
+      for (const level of visibleLevels) {
+        const layout = getGameModeLayout(level.mode);
+        if (!layout) continue;
+        for (let i = 0; i < layout.lanes.length; i++) {
+          const lane = layout.lanes[i];
+          columns.push({
+            id: `level-${level.id}-lane-${i}`,
+            title: lane.name,
+            width: lane.width,
+            x,
+            backgroundColor: lane.backgroundColor,
+            levelId: level.id,
+            laneIndex: i,
+          });
+          x += lane.width;
+        }
+      }
+    }
+
     // Trailing line after last column.
     const width = x + 1;
     return { columns, width };
+  }
+
+  refreshColumns(): void {
+    const { columns, width } = this.computeColumns();
+    this.columns = columns;
+    this.timelineWidth = width;
   }
 
   private createDefaultChart(): string {
@@ -113,6 +161,70 @@ export class EditorController {
     };
     this.entityManager.insert(chart);
     return id;
+  }
+
+  getLevelsForChart(chartId: string): LevelInfo[] {
+    return this.entityManager
+      .entitiesWithComponent(LEVEL)
+      .filter((entity) => {
+        const ref = this.entityManager.getComponent(entity, CHART_REF);
+        return ref?.chartId === chartId;
+      })
+      .map((entity) => {
+        const level = this.entityManager.getComponent(entity, LEVEL);
+        const visible = this.$visibleLevelIds.get().has(entity.id);
+        return {
+          id: entity.id,
+          name: level?.name ?? "Untitled",
+          mode: level?.mode ?? "beat-7k",
+          sortOrder: level?.sortOrder ?? 0,
+          visible,
+        };
+      })
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  getVisibleLevels(): LevelInfo[] {
+    const chartId = this.$selectedChartId.get();
+    if (!chartId) return [];
+    return this.getLevelsForChart(chartId).filter((l) => l.visible);
+  }
+
+  addLevel(chartId: string, name: string, mode: string): string {
+    const existing = this.getLevelsForChart(chartId);
+    const maxOrder = existing.length > 0 ? Math.max(...existing.map((l) => l.sortOrder)) : -1;
+    const id = `level-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const level: Entity = {
+      id,
+      version: id,
+      components: {
+        level: { name, mode, sortOrder: maxOrder + 1 },
+        chartRef: { chartId },
+      },
+    };
+    this.entityManager.insert(level);
+    this.$visibleLevelIds.set(new Set([...this.$visibleLevelIds.get(), id]));
+    this.refreshColumns();
+    return id;
+  }
+
+  removeLevel(levelId: string): void {
+    this.entityManager.remove(levelId);
+    const visible = new Set(this.$visibleLevelIds.get());
+    visible.delete(levelId);
+    this.$visibleLevelIds.set(visible);
+    this.refreshColumns();
+  }
+
+  toggleLevelVisibility(levelId: string): void {
+    const visible = new Set(this.$visibleLevelIds.get());
+    if (visible.has(levelId)) {
+      visible.delete(levelId);
+    } else {
+      visible.add(levelId);
+    }
+    this.$visibleLevelIds.set(visible);
+    this.refreshColumns();
   }
 
   getScaleY(): number {
@@ -177,8 +289,15 @@ export class EditorController {
   }
 
   getTimingEngine(): TimingEngine {
+    const chartId = this.$selectedChartId.get();
+
     const bpmChanges = this.entityManager
       .entitiesWithComponent(BPM_CHANGE)
+      .filter((entity) => {
+        if (!chartId) return true;
+        const ref = this.entityManager.getComponent(entity, CHART_REF);
+        return !ref || ref.chartId === chartId;
+      })
       .map((entity) => {
         const event = this.entityManager.getComponent(entity, EVENT);
         const bpm = this.entityManager.getComponent(entity, BPM_CHANGE);
@@ -191,6 +310,11 @@ export class EditorController {
 
     const timeSignatures = this.entityManager
       .entitiesWithComponent(TIME_SIGNATURE)
+      .filter((entity) => {
+        if (!chartId) return true;
+        const ref = this.entityManager.getComponent(entity, CHART_REF);
+        return !ref || ref.chartId === chartId;
+      })
       .map((entity) => {
         const event = this.entityManager.getComponent(entity, EVENT);
         const ts = this.entityManager.getComponent(entity, TIME_SIGNATURE);

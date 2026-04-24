@@ -20,6 +20,9 @@ import {
   ZoomOut,
   ZoomIn,
   Plus,
+  Eye,
+  EyeOff,
+  Trash2,
 } from "lucide-react";
 import { Flex, Text } from "@radix-ui/themes";
 import { useToast } from "../toast";
@@ -68,6 +71,93 @@ const mockChartStats = {
   measures: "082",
   bpmRange: "96 — 384",
 };
+
+function RightPanels({ controller }: { controller: EditorController }) {
+  const [levels, setLevels] = useState(() =>
+    controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""),
+  );
+  const [visibleIds, setVisibleIds] = useState(() => controller.$visibleLevelIds.get());
+
+  useEffect(() => {
+    const unsub = controller.$visibleLevelIds.subscribe((ids) => {
+      setVisibleIds(ids);
+      setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
+    });
+    return unsub;
+  }, [controller]);
+
+  const chartId = controller.$selectedChartId.get();
+
+  return (
+    <Flex direction="column">
+      <SidebarPanel
+        tabs={[
+          {
+            label: "Levels",
+            content: (
+              <>
+                <Flex direction="column" style={{ gap: 4 }}>
+                  {levels.map((level) => (
+                    <Flex
+                      key={level.id}
+                      justify="between"
+                      align="center"
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: 4,
+                        backgroundColor: level.visible ? "var(--accent-3)" : "transparent",
+                      }}
+                    >
+                      <Flex align="center" style={{ gap: 8 }}>
+                        <Text size="2">{level.name}</Text>
+                        <Text size="1" color="gray">
+                          {level.mode}
+                        </Text>
+                      </Flex>
+                      <Flex align="center" style={{ gap: 4 }}>
+                        <div
+                          style={{ cursor: "pointer" }}
+                          onClick={() => controller.toggleLevelVisibility(level.id)}
+                        >
+                          {visibleIds.has(level.id) ? <Eye size={14} /> : <EyeOff size={14} />}
+                        </div>
+                        <div
+                          style={{ cursor: "pointer" }}
+                          onClick={() => controller.removeLevel(level.id)}
+                        >
+                          <Trash2 size={14} />
+                        </div>
+                      </Flex>
+                    </Flex>
+                  ))}
+                </Flex>
+                {chartId && (
+                  <Flex
+                    justify="center"
+                    align="center"
+                    style={{
+                      marginTop: 8,
+                      padding: "4px 8px",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      border: "1px dashed var(--gray-6)",
+                    }}
+                    onClick={() => controller.addLevel(chartId, "New Level", "beat-7k")}
+                  >
+                    <Plus size={14} style={{ marginRight: 4 }} />
+                    <Text size="1" color="gray">
+                      Add Level
+                    </Text>
+                  </Flex>
+                )}
+              </>
+            ),
+          },
+        ]}
+      />
+    </Flex>
+  );
+}
 
 function LeftPanels({ project }: { project: ProjectFile }) {
   return (
@@ -220,6 +310,7 @@ export function ProjectViewPage() {
   return (
     <ProjectLayout
       leftPanels={<LeftPanels project={project} />}
+      rightPanels={<RightPanels controller={controller} />}
       toolbar={
         <Toolbar>
           <ToolbarGroup label="Mode">
