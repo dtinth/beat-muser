@@ -215,10 +215,15 @@ export function createTimelineBehaviorFactory(
   return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
     const engine = controller.getTimingEngine();
 
+    let prevZoom = controller.$zoom.get();
+
     const unsubChart = controller.$selectedChartId.subscribe(() => {
       ctx.refresh();
     });
     const unsubZoom = controller.$zoom.subscribe(() => {
+      const newScrollTop = controller.computeZoomScrollOffset(prevZoom, ctx.scrollTop);
+      prevZoom = controller.$zoom.get();
+      ctx.setScrollTop(newScrollTop);
       ctx.refresh();
     });
     const unsubSnap = controller.$snap.subscribe(() => {
@@ -444,9 +449,10 @@ export function createTimelineBehaviorFactory(
           });
         }
 
-        // --- Snap lines (1/16, exclude measures and beats) ---
+        // --- Snap lines at current snap resolution (exclude measures and beats) ---
+        const snap = controller.$snap.get();
         const gridPoints = engine
-          .getSnapPoints("1/16", { start: rawPulseStart, end: rawPulseEnd })
+          .getSnapPoints(snap, { start: rawPulseStart, end: rawPulseEnd })
           .filter((p) => !measureSet.has(p) && !beatSet.has(p));
 
         for (const pulse of gridPoints) {

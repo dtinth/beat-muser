@@ -250,7 +250,7 @@ export function ProjectViewPage() {
           <ToolbarGroup label="Snap">
             <ToolbarDropdown
               value={snap}
-              options={["1/1", "1/2", "1/4", "1/8", "1/12", "1/16", "1/32", "1/64"]}
+              options={["1/4", "1/8", "1/12", "1/16", "1/24", "1/32", "1/48", "1/64"]}
               onSelect={(value) => controller.$snap.set(value)}
             />
           </ToolbarGroup>

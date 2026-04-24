@@ -109,6 +109,27 @@ export class EditorController {
     if (prev) this.$zoom.set(prev);
   }
 
+  /**
+   * Computes the new scroll top after a zoom change so that the playhead
+   * stays at the same viewport Y position.
+   *
+   * @param oldZoom The zoom level before the change.
+   * @param oldScrollTop The scroll top before the change.
+   * @returns The new scroll top to apply.
+   */
+  computeZoomScrollOffset(oldZoom: number, oldScrollTop: number): number {
+    const newZoom = this.$zoom.get();
+    const size = this.getChartSize();
+    const oldScaleY = BASE_SCALE_Y * oldZoom;
+    const newScaleY = BASE_SCALE_Y * newZoom;
+    const cursorPulse = this.$cursorPulse.get();
+    const oldTrackHeight = size * oldScaleY;
+    const newTrackHeight = size * newScaleY;
+    const oldPlayheadY = oldTrackHeight - cursorPulse * oldScaleY - 1;
+    const newPlayheadY = newTrackHeight - cursorPulse * newScaleY - 1;
+    return oldScrollTop + newPlayheadY - oldPlayheadY;
+  }
+
   getEntityManager(): EntityManager {
     return this.entityManager;
   }

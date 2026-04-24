@@ -222,4 +222,81 @@ describe("EditorController", () => {
     // 3/4 = 720 per measure, then 4/4 = 960 per measure after pulse 1440.
     expect(boundaries).toEqual([0, 720, 1440, 2400]);
   });
+
+  describe("zoom scroll compensation", () => {
+    const BASE_SCALE_Y = 0.2;
+
+    function playheadViewportY(
+      zoom: number,
+      cursorPulse: number,
+      scrollTop: number,
+      size: number,
+    ): number {
+      const scaleY = BASE_SCALE_Y * zoom;
+      const trackHeight = size * scaleY;
+      const playheadY = trackHeight - cursorPulse * scaleY - 1;
+      return playheadY - scrollTop;
+    }
+
+    test("keeps playhead viewport position stable when zooming in", () => {
+      const controller = new EditorController({
+        project: makeProject([makeChart("Hard", 1000)]),
+      });
+      controller.$cursorPulse.set(500);
+      controller.$zoom.set(1);
+
+      const oldScrollTop = 100;
+      controller.$zoom.set(2);
+      const newScrollTop = controller.computeZoomScrollOffset(1, oldScrollTop);
+
+      const oldViewportY = playheadViewportY(1, 500, oldScrollTop, 1000);
+      const newViewportY = playheadViewportY(2, 500, newScrollTop, 1000);
+      expect(newViewportY).toBe(oldViewportY);
+    });
+
+    test("keeps playhead viewport position stable when zooming out", () => {
+      const controller = new EditorController({
+        project: makeProject([makeChart("Hard", 1000)]),
+      });
+      controller.$cursorPulse.set(300);
+      controller.$zoom.set(2);
+
+      const oldScrollTop = 50;
+      controller.$zoom.set(1);
+      const newScrollTop = controller.computeZoomScrollOffset(2, oldScrollTop);
+
+      const oldViewportY = playheadViewportY(2, 300, oldScrollTop, 1000);
+      const newViewportY = playheadViewportY(1, 300, newScrollTop, 1000);
+      expect(newViewportY).toBe(oldViewportY);
+    });
+
+    test("no scroll adjustment needed when playhead is at top of chart", () => {
+      const controller = new EditorController({
+        project: makeProject([makeChart("Hard", 1000)]),
+      });
+      controller.$cursorPulse.set(1000); // top of chart
+      controller.$zoom.set(1);
+
+      const oldScrollTop = 50;
+      controller.$zoom.set(2);
+      const newScrollTop = controller.computeZoomScrollOffset(1, oldScrollTop);
+
+      expect(newScrollTop).toBe(oldScrollTop);
+    });
+
+    test("scroll adjustment equals track height delta when playhead is at bottom", () => {
+      const controller = new EditorController({
+        project: makeProject([makeChart("Hard", 1000)]),
+      });
+      controller.$cursorPulse.set(0); // bottom of chart
+      controller.$zoom.set(1);
+
+      const oldScrollTop = 0;
+      controller.$zoom.set(2);
+      const newScrollTop = controller.computeZoomScrollOffset(1, oldScrollTop);
+
+      // Track height doubles from 200 to 400, so scroll must increase by 200
+      expect(newScrollTop).toBe(200);
+    });
+  });
 });
