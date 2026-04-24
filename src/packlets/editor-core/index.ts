@@ -5,7 +5,7 @@
  * this packlet owns all editor-relevant state, model data, and interaction logic.
  */
 
-import { atom } from "nanostores";
+import { atom, computed } from "nanostores";
 import type { ProjectFile } from "../project-format";
 import { EntityManager, type Entity } from "../entity-manager";
 import { createTimingEngine } from "../timing-engine";
@@ -49,6 +49,18 @@ export interface LevelInfo {
   visible: boolean;
 }
 
+export interface TimelineRenderSpec {
+  key: string;
+  type: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  data: Record<string, unknown>;
+  testId?: string;
+  layer?: "scroll" | "sticky";
+}
+
 const DEFAULT_CHART_SIZE = 15360;
 
 export {
@@ -83,6 +95,17 @@ export class EditorController {
   $viewportHeight = atom<number>(0);
   $cursorViewportX = atom<number>(0);
   $cursorViewportY = atom<number>(-1);
+  $visibleRenderObjects = computed(
+    [
+      this.$scrollTop,
+      this.$zoom,
+      this.$snap,
+      this.$cursorPulse,
+      this.$selectedChartId,
+      this.$visibleLevelIds,
+    ],
+    () => this.getVisibleRenderSpecs(),
+  );
 
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
@@ -403,5 +426,237 @@ export class EditorController {
 
   getTimelineWidth(): number {
     return this.timelineWidth;
+  }
+
+  getVisibleRenderSpecs(): TimelineRenderSpec[] {
+    const size = this.getChartSize();
+    const scaleY = this.getScaleY();
+    const trackHeight = this.getTrackHeight();
+    const contentHeight = this.getContentHeight();
+    const pulseRange = this.getVisiblePulseRange();
+    const pulseStart = pulseRange.start;
+    const pulseEnd = pulseRange.end;
+    const rawPulseStart = pulseRange.rawStart;
+    const rawPulseEnd = pulseRange.rawEnd;
+    const timelineWidth = this.getTimelineWidth();
+    const columns = this.getColumns();
+
+    const specs: TimelineRenderSpec[] = [];
+
+    // --- Column backgrounds (scroll layer) ---
+    for (let i = 0; i < columns.length; i++) {
+      const col = columns[i]!;
+      specs.push({
+        key: `column-bg-${col.id}`,
+        type: "column-bg",
+        x: col.x,
+        y: 0,
+        width: col.width,
+        height: contentHeight,
+        data: { backgroundColor: col.backgroundColor, showBorder: i > 0 },
+        testId: "timeline-column-bg",
+      });
+    }
+
+    // --- Column titles (sticky layer) ---
+    for (const col of columns) {
+      specs.push({
+        key: `column-title-${col.id}`,
+        type: "column-title",
+        x: col.x,
+        y: 4,
+        width: col.width,
+        height: 16,
+        layer: "sticky",
+        data: { title: col.title },
+        testId: "timeline-column-title",
+      });
+    }
+
+    // --- Trailing border after last column ---
+    specs.push({
+      key: "trailing-border",
+      type: "trailing-border",
+      x: timelineWidth - 1,
+      y: 0,
+      width: 1,
+      height: contentHeight,
+      data: {},
+      testId: "trailing-border",
+    });
+
+    // --- Gameplay notes ---
+    const entityManager = this.getEntityManager();
+
+    for (const entity of entityManager.entitiesWithComponent(NOTE)) {
+      const event = entityManager.getComponent(entity, EVENT);
+      const note = entityManager.getComponent(entity, NOTE);
+      const levelRef = entityManager.getComponent(entity, LEVEL_REF);
+      if (!event || !note || !levelRef) continue;
+
+      const pulse = event.y;
+      if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+      const laneCol = columns.find(
+        (c) => c.levelId === levelRef.levelId && c.laneIndex === note.lane,
+      );
+      if (!laneCol) continue;
+
+      specs.push({
+        key: `note-${entity.id}`,
+        type: "event-marker",
+        x: laneCol.x,
+        y: trackHeight - pulse * scaleY - 14,
+        width: laneCol.width,
+        height: 14,
+        data: {
+          text: "",
+          backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
+          textColor: "#fff",
+        },
+        testId: "note",
+      });
+    }
+
+    // --- Timing event markers ---
+    const bpmColumn = columns.find((c) => c.id === "bpm");
+    const tsColumn = columns.find((c) => c.id === "time-sig");
+
+    if (bpmColumn) {
+      for (const entity of entityManager.entitiesWithComponent(BPM_CHANGE)) {
+        const event = entityManager.getComponent(entity, EVENT);
+        const bpm = entityManager.getComponent(entity, BPM_CHANGE);
+        if (!event || !bpm) continue;
+        const pulse = event.y;
+        if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+        specs.push({
+          key: `bpm-${entity.id}`,
+          type: "event-marker",
+          x: bpmColumn.x,
+          y: trackHeight - pulse * scaleY - 14,
+          width: bpmColumn.width,
+          height: 14,
+          data: {
+            text: String(bpm.bpm),
+            backgroundColor: "var(--yellow-6)",
+            textColor: "#fff",
+          },
+          testId: "bpm-change-marker",
+        });
+      }
+    }
+
+    if (tsColumn) {
+      for (const entity of entityManager.entitiesWithComponent(TIME_SIGNATURE)) {
+        const event = entityManager.getComponent(entity, EVENT);
+        const ts = entityManager.getComponent(entity, TIME_SIGNATURE);
+        if (!event || !ts) continue;
+        const pulse = event.y;
+        if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+        specs.push({
+          key: `ts-${entity.id}`,
+          type: "event-marker",
+          x: tsColumn.x,
+          y: trackHeight - pulse * scaleY - 14,
+          width: tsColumn.width,
+          height: 14,
+          data: {
+            text: `${ts.numerator}/${ts.denominator}`,
+            backgroundColor: "var(--tomato-6)",
+            textColor: "#fff",
+          },
+          testId: "time-sig-marker",
+        });
+      }
+    }
+
+    // --- Playhead ---
+    const cursorPulse = this.$cursorPulse.get();
+    if (cursorPulse >= 0 && cursorPulse <= size) {
+      specs.push({
+        key: "playhead",
+        type: "playhead",
+        x: 0,
+        y: trackHeight - cursorPulse * scaleY - 1,
+        width: timelineWidth,
+        height: 1,
+        data: {},
+        testId: "playhead",
+      });
+    }
+
+    if (rawPulseStart >= rawPulseEnd) return specs;
+
+    // --- Measure lines ---
+    const engine = this.getTimingEngine();
+    const measureBoundaries = engine.getMeasureBoundaries({
+      start: rawPulseStart,
+      end: rawPulseEnd,
+    });
+    const measureSet = new Set(measureBoundaries);
+
+    const allBoundaries = engine.getMeasureBoundaries({
+      start: 0,
+      end: rawPulseEnd,
+    });
+
+    for (const pulse of measureBoundaries) {
+      const measureIndex = allBoundaries.indexOf(pulse);
+      specs.push({
+        key: `measure-${pulse}`,
+        type: "grid-line",
+        x: 0,
+        y: trackHeight - pulse * scaleY - 1,
+        width: timelineWidth,
+        height: 1,
+        data: {
+          color: "var(--gray-8)",
+          label: measureIndex >= 0 ? String(measureIndex + 1) : undefined,
+        },
+        testId: "measure-line",
+      });
+    }
+
+    // --- Beat lines (1/4, exclude measure boundaries) ---
+    const beatPoints = engine
+      .getSnapPoints("1/4", { start: rawPulseStart, end: rawPulseEnd })
+      .filter((p) => !measureSet.has(p));
+    const beatSet = new Set(beatPoints);
+
+    for (const pulse of beatPoints) {
+      specs.push({
+        key: `beat-${pulse}`,
+        type: "grid-line",
+        x: 0,
+        y: trackHeight - pulse * scaleY - 1,
+        width: timelineWidth,
+        height: 1,
+        data: { color: "var(--gray-7)" },
+        testId: "beat-line",
+      });
+    }
+
+    // --- Snap lines at current snap resolution (exclude measures and beats) ---
+    const snap = this.$snap.get();
+    const gridPoints = engine
+      .getSnapPoints(snap, { start: rawPulseStart, end: rawPulseEnd })
+      .filter((p) => !measureSet.has(p) && !beatSet.has(p));
+
+    for (const pulse of gridPoints) {
+      specs.push({
+        key: `grid-${pulse}`,
+        type: "grid-line",
+        x: 0,
+        y: trackHeight - pulse * scaleY - 1,
+        width: timelineWidth,
+        height: 1,
+        data: { color: "var(--gray-6)" },
+        testId: "snap-line",
+      });
+    }
+
+    return specs;
   }
 }

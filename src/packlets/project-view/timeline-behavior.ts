@@ -26,9 +26,9 @@ import type {
   ScrollableCanvasContext,
   RenderObject,
   RenderHandle,
+  Renderer,
 } from "../scrollable-canvas";
-import type { EditorController } from "../editor-core";
-import { BPM_CHANGE, TIME_SIGNATURE, EVENT, NOTE, LEVEL_REF } from "../editor-core";
+import type { EditorController, TimelineRenderSpec } from "../editor-core";
 
 // ---------------------------------------------------------------------------
 // Renderers
@@ -200,40 +200,47 @@ function createPlayheadRenderer(): () => RenderHandle<{}> {
 // Behavior factory
 // ---------------------------------------------------------------------------
 
+const rendererMap: Record<string, Renderer> = {
+  "column-bg": createColumnBgRenderer(),
+  "column-title": createColumnTitleRenderer(),
+  "trailing-border": createTrailingBorderRenderer(),
+  "event-marker": createEventMarkerRenderer(),
+  playhead: createPlayheadRenderer(),
+  "grid-line": createGridLineRenderer(),
+};
+
+function specToRenderObject(spec: TimelineRenderSpec): RenderObject {
+  const renderer = rendererMap[spec.type];
+  if (!renderer) {
+    throw new Error(`Unknown render spec type: ${spec.type}`);
+  }
+  return {
+    key: spec.key,
+    x: spec.x,
+    y: spec.y,
+    width: spec.width,
+    height: spec.height,
+    renderer,
+    data: spec.data,
+    testId: spec.testId,
+    layer: spec.layer,
+  };
+}
+
 export function createTimelineBehaviorFactory(
   controller: EditorController,
 ): ScrollableCanvasBehaviorFactory {
-  const gridLineRenderer = createGridLineRenderer();
-  const columnBgRenderer = createColumnBgRenderer();
-  const columnTitleRenderer = createColumnTitleRenderer();
-  const trailingBorderRenderer = createTrailingBorderRenderer();
-  const eventMarkerRenderer = createEventMarkerRenderer();
-  const playheadRenderer = createPlayheadRenderer();
-
   return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
-    const engine = controller.getTimingEngine();
-
     let prevZoom = controller.$zoom.get();
 
-    const unsubChart = controller.$selectedChartId.subscribe(() => {
-      ctx.refresh();
-    });
     const unsubZoom = controller.$zoom.subscribe(() => {
       const newScrollTop = controller.computeZoomScrollOffset(prevZoom);
       prevZoom = controller.$zoom.get();
       controller.setScrollTop(newScrollTop);
       ctx.setScrollTop(newScrollTop);
     });
-    const unsubSnap = controller.$snap.subscribe(() => {
-      // Re-snap cursor to new grid when snap changes
-      const currentPulse = controller.$cursorPulse.get();
-      const snapped = controller.snapToGrid(currentPulse);
-      controller.$cursorPulse.set(snapped);
-    });
-    const unsubScrollTop = controller.$scrollTop.subscribe(() => {
-      ctx.refresh();
-    });
-    const unsubCursorPulse = controller.$cursorPulse.subscribe(() => {
+
+    const unsubVisible = controller.$visibleRenderObjects.subscribe(() => {
       ctx.refresh();
     });
 
@@ -267,248 +274,12 @@ export function createTimelineBehaviorFactory(
       },
 
       getVisibleObjects(): RenderObject[] {
-        const size = controller.getChartSize();
-        const scaleY = controller.getScaleY();
-        const trackHeight = size * scaleY;
-        const contentHeight = controller.getContentHeight();
-        const pulseRange = controller.getVisiblePulseRange();
-        const pulseStart = pulseRange.start;
-        const pulseEnd = pulseRange.end;
-        const rawPulseStart = pulseRange.rawStart;
-        const rawPulseEnd = pulseRange.rawEnd;
-        const timelineWidth = controller.getTimelineWidth();
-        const columns = controller.getColumns();
-
-        const objects: RenderObject[] = [];
-
-        // --- Column backgrounds (scroll layer) ---
-        for (let i = 0; i < columns.length; i++) {
-          const col = columns[i]!;
-          objects.push({
-            key: `column-bg-${col.id}`,
-            x: col.x,
-            y: 0,
-            width: col.width,
-            height: contentHeight,
-            renderer: columnBgRenderer,
-            data: {
-              backgroundColor: col.backgroundColor,
-              showBorder: i > 0,
-            },
-            testId: "timeline-column-bg",
-          });
-        }
-
-        // --- Column titles (sticky layer) ---
-        for (const col of columns) {
-          objects.push({
-            key: `column-title-${col.id}`,
-            x: col.x,
-            y: 4,
-            width: col.width,
-            height: 16,
-            layer: "sticky",
-            renderer: columnTitleRenderer,
-            data: { title: col.title },
-            testId: "timeline-column-title",
-          });
-        }
-
-        // --- Trailing border after last column ---
-        objects.push({
-          key: "trailing-border",
-          x: timelineWidth - 1,
-          y: 0,
-          width: 1,
-          height: contentHeight,
-          renderer: trailingBorderRenderer,
-          data: {},
-          testId: "trailing-border",
-        });
-
-        // --- Gameplay notes ---
-        const entityManager = controller.getEntityManager();
-
-        for (const entity of entityManager.entitiesWithComponent(NOTE)) {
-          const event = entityManager.getComponent(entity, EVENT);
-          const note = entityManager.getComponent(entity, NOTE);
-          const levelRef = entityManager.getComponent(entity, LEVEL_REF);
-          if (!event || !note || !levelRef) continue;
-
-          const pulse = event.y;
-          if (pulse < pulseStart || pulse >= pulseEnd) continue;
-
-          const laneCol = columns.find(
-            (c) => c.levelId === levelRef.levelId && c.laneIndex === note.lane,
-          );
-          if (!laneCol) continue;
-
-          objects.push({
-            key: `note-${entity.id}`,
-            x: laneCol.x,
-            y: trackHeight - pulse * scaleY - 14,
-            width: laneCol.width,
-            height: 14,
-            renderer: eventMarkerRenderer,
-            data: {
-              text: "",
-              backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
-              textColor: "#fff",
-            },
-            testId: "note",
-          });
-        }
-
-        // --- Timing event markers ---
-        const bpmColumn = columns.find((c) => c.id === "bpm");
-        const tsColumn = columns.find((c) => c.id === "time-sig");
-
-        if (bpmColumn) {
-          for (const entity of entityManager.entitiesWithComponent(BPM_CHANGE)) {
-            const event = entityManager.getComponent(entity, EVENT);
-            const bpm = entityManager.getComponent(entity, BPM_CHANGE);
-            if (!event || !bpm) continue;
-            const pulse = event.y;
-            if (pulse < pulseStart || pulse >= pulseEnd) continue;
-
-            objects.push({
-              key: `bpm-${entity.id}`,
-              x: bpmColumn.x,
-              y: trackHeight - pulse * scaleY - 14,
-              width: bpmColumn.width,
-              height: 14,
-              renderer: eventMarkerRenderer,
-              data: {
-                text: String(bpm.bpm),
-                backgroundColor: "var(--yellow-6)",
-                textColor: "#fff",
-              },
-              testId: "bpm-change-marker",
-            });
-          }
-        }
-
-        if (tsColumn) {
-          for (const entity of entityManager.entitiesWithComponent(TIME_SIGNATURE)) {
-            const event = entityManager.getComponent(entity, EVENT);
-            const ts = entityManager.getComponent(entity, TIME_SIGNATURE);
-            if (!event || !ts) continue;
-            const pulse = event.y;
-            if (pulse < pulseStart || pulse >= pulseEnd) continue;
-
-            objects.push({
-              key: `ts-${entity.id}`,
-              x: tsColumn.x,
-              y: trackHeight - pulse * scaleY - 14,
-              width: tsColumn.width,
-              height: 14,
-              renderer: eventMarkerRenderer,
-              data: {
-                text: `${ts.numerator}/${ts.denominator}`,
-                backgroundColor: "var(--tomato-6)",
-                textColor: "#fff",
-              },
-              testId: "time-sig-marker",
-            });
-          }
-        }
-
-        // --- Playhead ---
-        const cursorPulse = controller.$cursorPulse.get();
-        if (cursorPulse >= 0 && cursorPulse <= size) {
-          objects.push({
-            key: "playhead",
-            x: 0,
-            y: trackHeight - cursorPulse * scaleY - 1,
-            width: timelineWidth,
-            height: 1,
-            renderer: playheadRenderer,
-            data: {},
-            testId: "playhead",
-          });
-        }
-
-        if (rawPulseStart >= rawPulseEnd) return objects;
-
-        // --- Measure lines ---
-        const measureBoundaries = engine.getMeasureBoundaries({
-          start: rawPulseStart,
-          end: rawPulseEnd,
-        });
-        const measureSet = new Set(measureBoundaries);
-
-        const allBoundaries = engine.getMeasureBoundaries({
-          start: 0,
-          end: rawPulseEnd,
-        });
-
-        for (const pulse of measureBoundaries) {
-          const measureIndex = allBoundaries.indexOf(pulse);
-          const y = trackHeight - pulse * scaleY - 1;
-          objects.push({
-            key: `measure-${pulse}`,
-            x: 0,
-            y,
-            width: timelineWidth,
-            height: 1,
-            renderer: gridLineRenderer,
-            data: {
-              color: "var(--gray-8)",
-              label: measureIndex >= 0 ? String(measureIndex + 1) : undefined,
-            },
-            testId: "measure-line",
-          });
-        }
-
-        // --- Beat lines (1/4, exclude measure boundaries) ---
-        const beatPoints = engine
-          .getSnapPoints("1/4", { start: rawPulseStart, end: rawPulseEnd })
-          .filter((p) => !measureSet.has(p));
-        const beatSet = new Set(beatPoints);
-
-        for (const pulse of beatPoints) {
-          const y = trackHeight - pulse * scaleY - 1;
-          objects.push({
-            key: `beat-${pulse}`,
-            x: 0,
-            y,
-            width: timelineWidth,
-            height: 1,
-            renderer: gridLineRenderer,
-            data: { color: "var(--gray-7)" },
-            testId: "beat-line",
-          });
-        }
-
-        // --- Snap lines at current snap resolution (exclude measures and beats) ---
-        const snap = controller.$snap.get();
-        const gridPoints = engine
-          .getSnapPoints(snap, { start: rawPulseStart, end: rawPulseEnd })
-          .filter((p) => !measureSet.has(p) && !beatSet.has(p));
-
-        for (const pulse of gridPoints) {
-          const y = trackHeight - pulse * scaleY - 1;
-          objects.push({
-            key: `grid-${pulse}`,
-            x: 0,
-            y,
-            width: timelineWidth,
-            height: 1,
-            renderer: gridLineRenderer,
-            data: { color: "var(--gray-6)" },
-            testId: "snap-line",
-          });
-        }
-
-        return objects;
+        return controller.$visibleRenderObjects.get().map(specToRenderObject);
       },
 
       [Symbol.dispose]() {
-        unsubChart();
         unsubZoom();
-        unsubSnap();
-        unsubScrollTop();
-        unsubCursorPulse();
+        unsubVisible();
       },
     };
   };
