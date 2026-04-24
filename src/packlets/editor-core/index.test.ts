@@ -167,8 +167,8 @@ describe("EditorController", () => {
   test("provides default columns", () => {
     const t = new EditorControllerTester(new EditorController({ project: makeProject() }));
 
-    t.shouldHaveColumnCount(3);
-    t.shouldHaveTimelineWidth(40 + 48 + 56 + 1);
+    t.shouldHaveColumnCount(4);
+    t.shouldHaveTimelineWidth(40 + 48 + 56 + 8 + 1);
   });
 
   test("columns have cumulative x positions", () => {
@@ -178,6 +178,7 @@ describe("EditorController", () => {
     expect(columns[0]).toMatchObject({ id: "measure", x: 0, width: 40 });
     expect(columns[1]).toMatchObject({ id: "time-sig", x: 40, width: 48 });
     expect(columns[2]).toMatchObject({ id: "bpm", x: 88, width: 56 });
+    expect(columns[3]).toMatchObject({ id: "spacer", x: 144, width: 8 });
   });
 
   test("extracts BPM changes from entities", () => {

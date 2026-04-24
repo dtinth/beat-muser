@@ -8,6 +8,8 @@
  */
 
 export interface LaneDefinition {
+  /** The lane index used in note entities, e.g. 1, 2, 8. */
+  laneIndex: number;
   /** Display name of the lane, e.g. "1", "2", "SC". */
   name: string;
   /** Width of the lane in pixels. */
@@ -24,14 +26,14 @@ export interface GameModeLayout {
 }
 
 const BEAT_7K_LANES: LaneDefinition[] = [
-  { name: "1", width: 32, backgroundColor: "#ffffff" },
-  { name: "2", width: 24, backgroundColor: "#111111" },
-  { name: "3", width: 32, backgroundColor: "#ffffff" },
-  { name: "4", width: 24, backgroundColor: "#111111" },
-  { name: "5", width: 32, backgroundColor: "#ffffff" },
-  { name: "6", width: 24, backgroundColor: "#111111" },
-  { name: "7", width: 32, backgroundColor: "#ffffff" },
-  { name: "SC", width: 40, backgroundColor: "#f59e0b" },
+  { laneIndex: 8, name: "SC", width: 56, backgroundColor: "var(--red-2)" },
+  { laneIndex: 1, name: "1", width: 36, backgroundColor: "var(--gray-2)" },
+  { laneIndex: 2, name: "2", width: 28, backgroundColor: "var(--indigo-2)" },
+  { laneIndex: 3, name: "3", width: 36, backgroundColor: "var(--gray-2)" },
+  { laneIndex: 4, name: "4", width: 28, backgroundColor: "var(--indigo-2)" },
+  { laneIndex: 5, name: "5", width: 36, backgroundColor: "var(--gray-2)" },
+  { laneIndex: 6, name: "6", width: 28, backgroundColor: "var(--indigo-2)" },
+  { laneIndex: 7, name: "7", width: 36, backgroundColor: "var(--gray-2)" },
 ];
 
 const GAME_MODE_LAYOUTS: Record<string, GameModeLayout> = {

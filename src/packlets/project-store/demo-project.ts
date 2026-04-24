@@ -56,13 +56,13 @@ export function createDemoProjectFile(): ProjectFile {
         chartRef: { chartId },
       },
     },
-    // Sample notes on lane 0 and lane 7 (turntable)
+    // Sample notes across SC and keys 1-7
     {
       id: crypto.randomUUID(),
       version: crypto.randomUUID(),
       components: {
         event: { y: 240 },
-        note: { lane: 0 },
+        note: { lane: 8 },
         levelRef: { levelId },
         chartRef: { chartId },
       },
@@ -72,7 +72,7 @@ export function createDemoProjectFile(): ProjectFile {
       version: crypto.randomUUID(),
       components: {
         event: { y: 480 },
-        note: { lane: 7 },
+        note: { lane: 1 },
         levelRef: { levelId },
         chartRef: { chartId },
       },
@@ -82,7 +82,7 @@ export function createDemoProjectFile(): ProjectFile {
       version: crypto.randomUUID(),
       components: {
         event: { y: 960 },
-        note: { lane: 3 },
+        note: { lane: 4 },
         levelRef: { levelId },
         chartRef: { chartId },
       },
@@ -92,7 +92,7 @@ export function createDemoProjectFile(): ProjectFile {
       version: crypto.randomUUID(),
       components: {
         event: { y: 1200 },
-        note: { lane: 0 },
+        note: { lane: 8 },
         levelRef: { levelId },
         chartRef: { chartId },
       },

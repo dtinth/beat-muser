@@ -107,6 +107,7 @@ export class EditorController {
       { id: "measure", title: "", width: 40 },
       { id: "time-sig", title: "Time", width: 48 },
       { id: "bpm", title: "BPM", width: 56 },
+      { id: "spacer", title: "", width: 8 },
     ];
 
     let x = 0;
@@ -123,16 +124,15 @@ export class EditorController {
       for (const level of visibleLevels) {
         const layout = getGameModeLayout(level.mode);
         if (!layout) continue;
-        for (let i = 0; i < layout.lanes.length; i++) {
-          const lane = layout.lanes[i];
+        for (const lane of layout.lanes) {
           columns.push({
-            id: `level-${level.id}-lane-${i}`,
+            id: `level-${level.id}-lane-${lane.laneIndex}`,
             title: lane.name,
             width: lane.width,
             x,
             backgroundColor: lane.backgroundColor,
             levelId: level.id,
-            laneIndex: i,
+            laneIndex: lane.laneIndex,
           });
           x += lane.width;
         }

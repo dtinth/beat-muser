@@ -198,28 +198,6 @@ function createPlayheadRenderer(): () => RenderHandle<{}> {
   };
 }
 
-interface NoteData {
-  color: string;
-}
-
-function createNoteRenderer(): (data: unknown) => RenderHandle<NoteData> {
-  return (data: unknown) => {
-    const d = data as NoteData;
-    const el = document.createElement("div");
-    el.style.backgroundColor = d.color;
-    el.style.borderRadius = "2px";
-    el.style.boxShadow = "inset 0 0 0 1px rgba(0,0,0,0.3)";
-    el.style.pointerEvents = "auto";
-    return {
-      dom: el,
-      update(newData: unknown) {
-        const nd = newData as NoteData;
-        el.style.backgroundColor = nd.color;
-      },
-    };
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Behavior factory
 // ---------------------------------------------------------------------------
@@ -350,7 +328,6 @@ export function createTimelineBehaviorFactory(
         });
 
         // --- Gameplay notes ---
-        const noteRenderer = createNoteRenderer();
         const entityManager = controller.getEntityManager();
 
         for (const entity of entityManager.entitiesWithComponent(NOTE)) {
@@ -370,11 +347,15 @@ export function createTimelineBehaviorFactory(
           objects.push({
             key: `note-${entity.id}`,
             x: laneCol.x,
-            y: trackHeight - pulse * scaleY - 4,
+            y: trackHeight - pulse * scaleY - 14,
             width: laneCol.width,
-            height: 8,
-            renderer: noteRenderer,
-            data: { color: "var(--accent-9)" },
+            height: 14,
+            renderer: eventMarkerRenderer,
+            data: {
+              text: "",
+              backgroundColor: "var(--accent-9)",
+              textColor: "#fff",
+            },
             testId: "note",
           });
         }
