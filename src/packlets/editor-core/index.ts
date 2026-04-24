@@ -76,7 +76,7 @@ export class EditorController {
       id,
       version: id,
       components: {
-        chart: { name: "Untitled", mode: "7k", size: DEFAULT_CHART_SIZE },
+        chart: { name: "Untitled", mode: "beat-7k", size: DEFAULT_CHART_SIZE },
       },
     };
     this.entityManager.insert(chart);

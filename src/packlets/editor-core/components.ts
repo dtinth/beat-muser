@@ -36,7 +36,7 @@ export const CHART = new EntityComponentType(
       }),
       mode: Type.String({
         description:
-          'Game mode identifier, e.g., "4k", "7k", "sdvx". Determines how related entities are interpreted.',
+          'Game mode identifier, e.g., "beat-7k", "beat-14k", "popn". Determines how related entities are interpreted.',
       }),
       size: Type.Optional(
         Type.Number({

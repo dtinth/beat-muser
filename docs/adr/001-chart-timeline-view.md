@@ -547,7 +547,7 @@ How will game modes define their rendering?
 
 ### Decision
 
-**Deferred to post-MVP.** For the MVP, we will hardcode a simple 4k lane renderer.
+**Deferred to post-MVP.** For the MVP, we will hardcode a simple `beat-7k` lane renderer.
 
 ### Future Vision
 
@@ -626,7 +626,7 @@ Also extend `ChartComponentSchema` with `size: number` (default 15360 pulses).
 ### Neutral
 
 - Horizontal scrolling is non-virtualized (acceptable since lane counts are bounded).
-- Plugin architecture is deferred; 4k hardcode is temporary.
+- Plugin architecture is deferred; `beat-7k` hardcode is temporary.
 
 ---
 

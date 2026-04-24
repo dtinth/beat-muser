@@ -105,7 +105,7 @@ describe("EditorController", () => {
   test("creates a default chart when project has no charts", () => {
     const t = new EditorControllerTester(new EditorController({ project: makeProject() }));
 
-    t.shouldHaveSelectedChart({ name: "Untitled", mode: "7k", size: 15360 });
+    t.shouldHaveSelectedChart({ name: "Untitled", mode: "beat-7k", size: 15360 });
   });
 
   test("selects the first existing chart when project has charts", () => {
