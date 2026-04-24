@@ -8,7 +8,7 @@ export function createDemoProjectFile(): ProjectFile {
       id: chartId,
       version: crypto.randomUUID(),
       components: {
-        chart: { name: "Hard", mode: "beat-7k", size: 15360 },
+        chart: { name: "Hard", size: 15360 },
       },
     },
     {

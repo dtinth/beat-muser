@@ -46,7 +46,7 @@
  *   "id": "01H...",
  *   "version": "01H...",
  *   "components": {
- *     "chart": { "name": "Hard", "mode": "4k" }
+ *     "chart": { "name": "Hard" }
  *   }
  * }
  * ```
@@ -150,7 +150,7 @@ export const ProjectMetadataSchema = Type.Object(
  *       "id": "01H...",
  *       "version": "01H...",
  *       "components": {
- *         "chart": { "name": "Hard", "mode": "4k" }
+ *         "chart": { "name": "Hard" }
  *       }
  *     }
  *   ],

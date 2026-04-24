@@ -30,7 +30,7 @@ function makeChart(name: string, size = 15360): Entity {
   return {
     id: `chart-${name}`,
     version: "v1",
-    components: { chart: { name, mode: "4k", size } },
+    components: { chart: { name, size } },
   };
 }
 
@@ -63,7 +63,7 @@ class EditorControllerTester {
     this.controller = controller;
   }
 
-  shouldHaveSelectedChart(expected: { name: string; mode: string; size: number }) {
+  shouldHaveSelectedChart(expected: { name: string; size: number }) {
     const chart = this.controller.getSelectedChart();
     expect(chart).toBeDefined();
     expect(this.controller.getEntityManager().getComponent(chart!, CHART)).toMatchObject(expected);
@@ -105,7 +105,7 @@ describe("EditorController", () => {
   test("creates a default chart when project has no charts", () => {
     const t = new EditorControllerTester(new EditorController({ project: makeProject() }));
 
-    t.shouldHaveSelectedChart({ name: "Untitled", mode: "beat-7k", size: 15360 });
+    t.shouldHaveSelectedChart({ name: "Untitled", size: 15360 });
   });
 
   test("selects the first existing chart when project has charts", () => {
@@ -115,7 +115,7 @@ describe("EditorController", () => {
       }),
     );
 
-    t.shouldHaveSelectedChart({ name: "Hard", mode: "4k", size: 24000 });
+    t.shouldHaveSelectedChart({ name: "Hard", size: 24000 });
   });
 
   test("reports the selected chart's size", () => {
@@ -132,7 +132,7 @@ describe("EditorController", () => {
     const chart: Entity = {
       id: "chart-no-size",
       version: "v1",
-      components: { chart: { name: "Test", mode: "4k" } },
+      components: { chart: { name: "Test" } },
     };
     const t = new EditorControllerTester(new EditorController({ project: makeProject([chart]) }));
 

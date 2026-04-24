@@ -10,7 +10,20 @@ import type { ProjectFile } from "../project-format";
 import { EntityManager, type Entity } from "../entity-manager";
 import { createTimingEngine } from "../timing-engine";
 import type { TimingEngine } from "../timing-engine";
-import { EVENT, CHART, BPM_CHANGE, TIME_SIGNATURE } from "./components";
+import {
+  EVENT,
+  CHART,
+  BPM_CHANGE,
+  TIME_SIGNATURE,
+  CHART_REF,
+  LEVEL_REF,
+  LEVEL,
+  NOTE,
+  KEYSOUND,
+  SOUND_GROUP,
+  SOUND_CHANNEL,
+  SOUND_EVENT,
+} from "./components";
 
 export interface EditorControllerOptions {
   project: ProjectFile;
@@ -26,7 +39,20 @@ export interface TimelineColumn {
 
 const DEFAULT_CHART_SIZE = 15360;
 
-export { EVENT, CHART, BPM_CHANGE, TIME_SIGNATURE };
+export {
+  EVENT,
+  CHART,
+  BPM_CHANGE,
+  TIME_SIGNATURE,
+  CHART_REF,
+  LEVEL_REF,
+  LEVEL,
+  NOTE,
+  KEYSOUND,
+  SOUND_GROUP,
+  SOUND_CHANNEL,
+  SOUND_EVENT,
+};
 
 const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4];
 const BASE_SCALE_Y = 0.2;
@@ -82,7 +108,7 @@ export class EditorController {
       id,
       version: id,
       components: {
-        chart: { name: "Untitled", mode: "beat-7k", size: DEFAULT_CHART_SIZE },
+        chart: { name: "Untitled", size: DEFAULT_CHART_SIZE },
       },
     };
     this.entityManager.insert(chart);

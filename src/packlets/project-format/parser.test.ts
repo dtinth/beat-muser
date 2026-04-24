@@ -30,7 +30,7 @@ function makeProject(overrides: Record<string, unknown> = {}): string {
         id: "01HQABCDEFGHJKMNPQRSTVWXYZ1",
         version: "01HQABCDEFGHJKMNPQRSTVWXYZ1",
         components: {
-          chart: { name: "Hard", mode: "4k" },
+          chart: { name: "Hard" },
         },
       },
       {
@@ -54,7 +54,7 @@ describe("parseProjectFile", () => {
     expect(result.schemaVersion).toBe(2);
     expect(result.metadata.title).toBe("Test Song");
     expect(result.entities).toHaveLength(2);
-    expect(result.entities[0].components.chart).toEqual({ name: "Hard", mode: "4k" });
+    expect(result.entities[0].components.chart).toEqual({ name: "Hard" });
     expect(result.entities[1].components.note).toEqual({ lane: 0 });
   });
 
@@ -84,7 +84,7 @@ describe("parseProjectFile", () => {
             id: "01HQABCDEFGHJKMNPQRSTVWXYZ1",
             version: "01HQABCDEFGHJKMNPQRSTVWXYZ1",
             components: {
-              chart: { name: "Hard", mode: "4k", difficulty: 12 },
+              chart: { name: "Hard", difficulty: 12 },
             },
           },
           {
@@ -132,14 +132,14 @@ describe("parseProjectFile", () => {
             id: "01HQABCDEFGHJKMNPQRSTVWXYZ1",
             version: "01HQABCDEFGHJKMNPQRSTVWXYZ1",
             components: {
-              chart: { name: "Easy", mode: "4k" },
+              chart: { name: "Easy" },
             },
           },
           {
             id: "01HQABCDEFGHJKMNPQRSTVWXYZ2",
             version: "01HQABCDEFGHJKMNPQRSTVWXYZ2",
             components: {
-              chart: { name: "Hard", mode: "4k" },
+              chart: { name: "Hard" },
             },
           },
         ],
