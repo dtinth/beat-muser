@@ -12,7 +12,7 @@ import type { ProjectFile } from "../project-format";
 import { EntityComponentType, type Entity } from "../entity-manager";
 import { createDemoProjectFile } from "../project-store";
 import type { Static, TSchema } from "typebox";
-import { EVENT, BPM_CHANGE, TIME_SIGNATURE } from "./components";
+import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF } from "./components";
 
 export class EntityBuilder {
   private components: Record<string, unknown> = {};
@@ -40,20 +40,36 @@ export function entity(callback: (e: EntityBuilder) => void): Entity {
 export class ProjectBuilder {
   private entities: Entity[] = [];
 
-  add(entity: Entity): void {
+  add(entity: Entity): Entity {
     this.entities.push(entity);
+    return entity;
   }
 
   chart(name: string, size = 15360): Entity {
     return entity((e) => e.with(CHART, { name, size }));
   }
 
-  bpmChange(y: number, bpm: number): Entity {
-    return entity((e) => e.with(EVENT, { y }).with(BPM_CHANGE, { bpm }));
+  bpmChange(chart: Entity | undefined, y: number, bpm: number): Entity {
+    return entity((e) => {
+      e.with(EVENT, { y }).with(BPM_CHANGE, { bpm });
+      if (chart) {
+        e.with(CHART_REF, { chartId: chart.id });
+      }
+    });
   }
 
-  timeSignature(y: number, numerator: number, denominator: number): Entity {
-    return entity((e) => e.with(EVENT, { y }).with(TIME_SIGNATURE, { numerator, denominator }));
+  timeSignature(
+    chart: Entity | undefined,
+    y: number,
+    numerator: number,
+    denominator: number,
+  ): Entity {
+    return entity((e) => {
+      e.with(EVENT, { y }).with(TIME_SIGNATURE, { numerator, denominator });
+      if (chart) {
+        e.with(CHART_REF, { chartId: chart.id });
+      }
+    });
   }
 
   build(): ProjectFile {

@@ -82,9 +82,9 @@ describe("EditorController", () => {
     const editor = new EditorTester({
       getProjectToLoad: () =>
         makeProject((p) => {
-          p.add(p.chart("Hard"));
-          p.add(p.bpmChange(0, 120));
-          p.add(p.bpmChange(960, 180));
+          const chart = p.add(p.chart("Hard"));
+          p.add(p.bpmChange(chart, 0, 120));
+          p.add(p.bpmChange(chart, 960, 180));
         }),
     });
 
@@ -100,8 +100,8 @@ describe("EditorController", () => {
     const editor = new EditorTester({
       getProjectToLoad: () =>
         makeProject((p) => {
-          p.add(p.chart("Hard"));
-          p.add(p.timeSignature(0, 3, 4));
+          const chart = p.add(p.chart("Hard"));
+          p.add(p.timeSignature(chart, 0, 3, 4));
         }),
     });
 
@@ -113,10 +113,10 @@ describe("EditorController", () => {
     const editor = new EditorTester({
       getProjectToLoad: () =>
         makeProject((p) => {
-          p.add(p.chart("Hard"));
-          p.add(p.bpmChange(0, 120));
-          p.add(p.timeSignature(0, 3, 4));
-          p.add(p.timeSignature(1440, 4, 4));
+          const chart = p.add(p.chart("Hard"));
+          p.add(p.bpmChange(chart, 0, 120));
+          p.add(p.timeSignature(chart, 0, 3, 4));
+          p.add(p.timeSignature(chart, 1440, 4, 4));
         }),
     });
 
