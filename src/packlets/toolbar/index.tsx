@@ -130,9 +130,9 @@ interface TransportDisplayProps {
 
 export function TransportDisplay({ time, pulse, measure }: TransportDisplayProps) {
   const items = [
-    { label: "Time", value: time, minWidth: 72 },
-    { label: "Pulse", value: pulse, minWidth: 48 },
-    { label: "Measure", value: measure, minWidth: 48 },
+    { label: "Time", value: time, width: 72 },
+    { label: "Pulse", value: pulse, width: 48 },
+    { label: "Measure", value: measure, width: 48 },
   ];
 
   return (
@@ -145,17 +145,28 @@ export function TransportDisplay({ time, pulse, measure }: TransportDisplayProps
             align="center"
             justify="center"
             style={{
-              flex: 1,
               height: 32,
-              padding: "0 8px",
-              minWidth: item.minWidth,
+              padding: "0 4px",
+              width: item.width,
+              flexShrink: 0,
               borderRight: i < items.length - 1 ? "1px solid var(--gray-5)" : "none",
             }}
           >
             <Text size="1" color="gray" style={{ lineHeight: 1, opacity: 0.4, fontSize: 9 }}>
               {item.label}
             </Text>
-            <Text size="2" weight="bold" style={{ fontFamily: "monospace", lineHeight: 1 }}>
+            <Text
+              size="2"
+              weight="bold"
+              style={{
+                fontFamily: "monospace",
+                lineHeight: 1,
+                width: "100%",
+                textAlign: "center",
+                overflow: "hidden",
+                whiteSpace: "nowrap",
+              }}
+            >
               {item.value}
             </Text>
           </Flex>
