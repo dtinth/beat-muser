@@ -231,6 +231,7 @@ export function createTimelineBehaviorFactory(
   controller: EditorController,
 ): ScrollableCanvasBehaviorFactory {
   return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
+    controller.setViewportSize(ctx.viewportWidth, ctx.viewportHeight);
     let prevZoom = controller.$zoom.get();
 
     const unsubZoom = controller.$zoom.subscribe(() => {
@@ -256,9 +257,7 @@ export function createTimelineBehaviorFactory(
         controller.setViewportSize(ctx.viewportWidth, ctx.viewportHeight);
         const contentHeight = controller.getContentHeight();
         if (contentHeight > controller.$viewportHeight.get()) {
-          const newScrollTop = contentHeight - controller.$viewportHeight.get();
-          controller.setScrollTop(newScrollTop);
-          ctx.setScrollTop(newScrollTop);
+          ctx.setScrollTop(contentHeight - controller.$viewportHeight.get());
         }
       },
 

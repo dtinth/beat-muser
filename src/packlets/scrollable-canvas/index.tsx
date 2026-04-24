@@ -182,7 +182,7 @@ function mountScrollableCanvas(
   behaviorFactory: ScrollableCanvasBehaviorFactory,
 ) {
   let pendingRaf: number | null = null;
-  let isRefreshing = false;
+  let isInGetVisibleObjects = false;
   let pendingScrollTop: number | null = null;
   let pendingScrollLeft: number | null = null;
   let isDisposed = false;
@@ -203,7 +203,7 @@ function mountScrollableCanvas(
       };
     },
     refresh() {
-      if (isRefreshing) {
+      if (isInGetVisibleObjects) {
         throw new Error("Cannot call ctx.refresh() from within getVisibleObjects()");
       }
       if (pendingRaf === null) {
@@ -241,7 +241,6 @@ function mountScrollableCanvas(
   function doRender() {
     pendingRaf = null;
     if (isDisposed) return;
-    isRefreshing = true;
 
     try {
       // Size both layers so that onConnected and pending scroll have a
@@ -270,6 +269,7 @@ function mountScrollableCanvas(
         pendingScrollLeft = null;
       }
 
+      isInGetVisibleObjects = true;
       const visibleObjects = behaviorInstance.getVisibleObjects();
       const activeKeys = new Set<string>();
 
@@ -297,7 +297,7 @@ function mountScrollableCanvas(
         }
       }
     } finally {
-      isRefreshing = false;
+      isInGetVisibleObjects = false;
     }
   }
 

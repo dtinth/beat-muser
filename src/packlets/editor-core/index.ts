@@ -5,7 +5,7 @@
  * this packlet owns all editor-relevant state, model data, and interaction logic.
  */
 
-import { atom, computed } from "nanostores";
+import { atom } from "nanostores";
 import type { ProjectFile } from "../project-format";
 import { EntityManager, type Entity } from "../entity-manager";
 import { createTimingEngine } from "../timing-engine";
@@ -95,17 +95,7 @@ export class EditorController {
   $viewportHeight = atom<number>(0);
   $cursorViewportX = atom<number>(0);
   $cursorViewportY = atom<number>(-1);
-  $visibleRenderObjects = computed(
-    [
-      this.$scrollTop,
-      this.$zoom,
-      this.$snap,
-      this.$cursorPulse,
-      this.$selectedChartId,
-      this.$visibleLevelIds,
-    ],
-    () => this.getVisibleRenderSpecs(),
-  );
+  $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
 
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
@@ -132,6 +122,15 @@ export class EditorController {
     const { columns, width } = this.computeColumns();
     this.columns = columns;
     this.timelineWidth = width;
+
+    this.$selectedChartId.subscribe(() => {
+      this.refreshColumns();
+      this.updateVisibleRenderObjects();
+    });
+    this.$visibleLevelIds.subscribe(() => {
+      this.refreshColumns();
+      this.updateVisibleRenderObjects();
+    });
   }
 
   private computeColumns(): { columns: TimelineColumn[]; width: number } {
@@ -293,6 +292,7 @@ export class EditorController {
   setScrollTop(top: number): void {
     this.$scrollTop.set(top);
     this.recomputeCursorPulse();
+    this.updateVisibleRenderObjects();
   }
 
   setScrollLeft(left: number): void {
@@ -302,12 +302,22 @@ export class EditorController {
   setViewportSize(width: number, height: number): void {
     this.$viewportWidth.set(width);
     this.$viewportHeight.set(height);
+    this.updateVisibleRenderObjects();
   }
 
   setCursor(viewportX: number, viewportY: number): void {
     this.$cursorViewportX.set(viewportX);
     this.$cursorViewportY.set(viewportY);
     this.recomputeCursorPulse();
+    this.updateVisibleRenderObjects();
+  }
+
+  setSnap(snap: string): void {
+    this.$snap.set(snap);
+    const currentPulse = this.$cursorPulse.get();
+    const snapped = this.snapToGrid(currentPulse);
+    this.$cursorPulse.set(snapped);
+    this.updateVisibleRenderObjects();
   }
 
   recomputeCursorPulse(): void {
@@ -322,8 +332,13 @@ export class EditorController {
     this.$cursorPulse.set(snappedPulse);
   }
 
+  updateVisibleRenderObjects(): void {
+    this.$visibleRenderObjects.set(this.getVisibleRenderSpecs());
+  }
+
   setZoom(zoom: number): void {
     this.$zoom.set(zoom);
+    this.updateVisibleRenderObjects();
   }
 
   zoomIn(): void {
