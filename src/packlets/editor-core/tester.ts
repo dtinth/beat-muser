@@ -9,8 +9,33 @@
 import { expect } from "vite-plus/test";
 import { EditorController, CHART } from "./index";
 import type { ProjectFile } from "../project-format";
-import type { Entity } from "../entity-manager";
+import { EntityComponentType, type Entity } from "../entity-manager";
 import { createDemoProjectFile } from "../project-store";
+import type { Static, TSchema } from "typebox";
+import { EVENT, BPM_CHANGE, TIME_SIGNATURE } from "./components";
+
+export class EntityBuilder {
+  private components: Record<string, unknown> = {};
+
+  with<T extends TSchema>(component: EntityComponentType<T>, data: Static<T>): this {
+    this.components[component.key] = data;
+    return this;
+  }
+
+  build(): Entity {
+    return {
+      id: crypto.randomUUID(),
+      version: crypto.randomUUID(),
+      components: { ...this.components },
+    };
+  }
+}
+
+export function entity(callback: (e: EntityBuilder) => void): Entity {
+  const builder = new EntityBuilder();
+  callback(builder);
+  return builder.build();
+}
 
 export class ProjectBuilder {
   private entities: Entity[] = [];
@@ -20,33 +45,15 @@ export class ProjectBuilder {
   }
 
   chart(name: string, size = 15360): Entity {
-    return {
-      id: `chart-${name}`,
-      version: "v1",
-      components: { chart: { name, size } },
-    };
+    return entity((e) => e.with(CHART, { name, size }));
   }
 
   bpmChange(y: number, bpm: number): Entity {
-    return {
-      id: `bpm-${y}-${bpm}`,
-      version: "v1",
-      components: {
-        event: { y },
-        bpmChange: { bpm },
-      },
-    };
+    return entity((e) => e.with(EVENT, { y }).with(BPM_CHANGE, { bpm }));
   }
 
   timeSignature(y: number, numerator: number, denominator: number): Entity {
-    return {
-      id: `ts-${y}-${numerator}-${denominator}`,
-      version: "v1",
-      components: {
-        event: { y },
-        timeSignature: { numerator, denominator },
-      },
-    };
+    return entity((e) => e.with(EVENT, { y }).with(TIME_SIGNATURE, { numerator, denominator }));
   }
 
   build(): ProjectFile {
