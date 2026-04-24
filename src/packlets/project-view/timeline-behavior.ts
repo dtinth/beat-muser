@@ -191,6 +191,7 @@ function createPlayheadRenderer(): () => RenderHandle<{}> {
     const el = document.createElement("div");
     el.style.backgroundColor = "var(--accent-9)";
     el.style.pointerEvents = "none";
+    el.style.zIndex = "2";
     return {
       dom: el,
       update() {},
