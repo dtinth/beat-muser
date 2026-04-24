@@ -1,4 +1,6 @@
 /**
+ * @packageDocumentation
+ *
  * TypeBox schemas for the Beat Muser project file format.
  *
  * ## File Format Overview
@@ -24,7 +26,7 @@
  * ## Core Components
  *
  * The base format defines a small set of core components. Plugins may add
- * their own component names without restriction.
+ *   their own component names without restriction.
  *
  * | Component      | Presence implies...                                     |
  * | -------------- | ------------------------------------------------------- |
@@ -57,8 +59,7 @@
  *   "components": {
  *     "event": { "y": 240 },
  *     "chartRef": { "chartId": "01H..." },
- *     "note": { "lane": 0 },
- *     "soundRef": { "channelId": "01H..." }
+ *     "note": { "lane": 0 }
  *   }
  * }
  * ```
@@ -83,42 +84,9 @@
  */
 
 import { Type } from "typebox";
+import { EntitySchema } from "../entity-manager";
 
-/**
- * UUIDv7 pattern for schema description.
- */
 const UUIDv7Desc = "UUIDv7 identifier. Time-ordered, sortable, globally unique.";
-
-/**
- * An entity is a uniquely identified object with a versioned bag of components.
- *
- * Required fields:
- * - `id`: UUIDv7 unique identifier, immutable once created.
- * - `version`: UUIDv7 revision timestamp, updated on every edit.
- * - `components`: Record of component names to component data objects.
- *
- * An entity has no `type` field. Its kind is determined by the components
- * it carries (e.g., an entity with a `chart` component is a chart).
- */
-export const EntitySchema = Type.Object(
-  {
-    id: Type.String({
-      description: UUIDv7Desc,
-    }),
-    version: Type.String({
-      description: "UUIDv7 revision timestamp. Updated on every edit. Higher value wins on merge.",
-    }),
-    components: Type.Record(Type.String(), Type.Any(), {
-      description:
-        "ECS-style component bag. Keys are component names (e.g., 'chart', 'event', 'note'). Values are component-specific objects.",
-    }),
-  },
-  {
-    additionalProperties: false,
-    description:
-      "An entity is a uniquely identified object with a versioned bag of components. No 'type' field — an entity's kind is determined by its components.",
-  },
-);
 
 /**
  * A tombstone reference for a deleted entity.
@@ -135,153 +103,6 @@ export const DeletedEntitySchema = Type.Object(
   },
   {
     additionalProperties: false,
-  },
-);
-
-// ---------------------------------------------------------------------------
-// Core Component Schemas
-// ---------------------------------------------------------------------------
-
-/**
- * Core component: identifies a timed event.
- *
- * Entities carrying this component appear on the timeline at the given
- * pulse position. Other components (e.g., `note`, `bpmChange`) provide
- * the specific event kind.
- */
-export const EventComponentSchema = Type.Object(
-  {
-    y: Type.Number({
-      description: "Pulse position on the timeline. PPQN = 240. 0 = song start.",
-    }),
-  },
-  {
-    additionalProperties: false,
-    description:
-      "Identifies a timed event. Entities with this component appear on the timeline at the given pulse position.",
-  },
-);
-
-/**
- * Core component: identifies a chart (difficulty).
- */
-export const ChartComponentSchema = Type.Object(
-  {
-    name: Type.String({
-      description: 'Display name of the chart, e.g., "Hard", "Expert".',
-    }),
-    mode: Type.String({
-      description:
-        'Game mode identifier, e.g., "4k", "7k", "sdvx". Determines how related entities are interpreted.',
-    }),
-    size: Type.Number({
-      default: 15360,
-      description:
-        "Length of the chart in pulses. Default is 15360 (16 measures of 4/4 at 240 PPQN). Auto-extends when notes are placed past the end.",
-    }),
-  },
-  {
-    additionalProperties: true,
-    description:
-      "Identifies a chart (difficulty) entity. A chart is just an entity that carries this component.",
-  },
-);
-
-/**
- * Core component: links an entity to a specific chart.
- */
-export const ChartRefComponentSchema = Type.Object(
-  {
-    chartId: Type.String({
-      description: "UUID of the parent chart entity.",
-    }),
-  },
-  {
-    additionalProperties: false,
-    description: "Links an entity (e.g., a note) to a specific chart.",
-  },
-);
-
-/**
- * Core component: identifies a playable note.
- */
-export const NoteComponentSchema = Type.Object(
-  {
-    lane: Type.Optional(
-      Type.Number({
-        description: "Lane index for lane-based modes.",
-      }),
-    ),
-  },
-  {
-    additionalProperties: true,
-    description: "Identifies a note entity.",
-  },
-);
-
-/**
- * Core component: identifies a time signature event.
- *
- * Time signatures interrupt the current measure immediately — a new measure
- * starts at the exact pulse of this event.
- */
-export const TimeSignatureComponentSchema = Type.Object(
-  {
-    numerator: Type.Number({
-      description: "Top number of the time signature (e.g., 3 for 3/4).",
-    }),
-    denominator: Type.Number({
-      description: "Bottom number of the time signature (e.g., 4 for 3/4).",
-    }),
-  },
-  {
-    additionalProperties: false,
-    description: "Identifies a time signature event. Interrupts the current measure immediately.",
-  },
-);
-
-/**
- * Core component: identifies a BPM change event.
- */
-export const BpmChangeComponentSchema = Type.Object(
-  {
-    bpm: Type.Number({
-      description: "New BPM value.",
-    }),
-  },
-  {
-    additionalProperties: false,
-    description: "Identifies a BPM change event.",
-  },
-);
-
-/**
- * Core component: identifies a sound event (keysound) or sound definition.
- */
-export const SoundComponentSchema = Type.Object(
-  {
-    path: Type.String({
-      description: "Relative path to the audio file (e.g., 'audio/kick.wav').",
-    }),
-  },
-  {
-    additionalProperties: true,
-    description: "Identifies a sound event (keysound) or sound channel definition.",
-  },
-);
-
-/**
- * Core component: references a sound channel entity by UUID.
- */
-export const SoundRefComponentSchema = Type.Object(
-  {
-    channelId: Type.String({
-      description: "UUID of the referenced sound channel entity.",
-    }),
-  },
-  {
-    additionalProperties: false,
-    description: "Links a note or event to a sound channel entity.",
   },
 );
 
@@ -330,15 +151,6 @@ export const ProjectMetadataSchema = Type.Object(
  *       "version": "01H...",
  *       "components": {
  *         "chart": { "name": "Hard", "mode": "4k" }
- *       }
- *     },
- *     {
- *       "id": "01H...",
- *       "version": "01H...",
- *       "components": {
- *         "event": { "y": 240 },
- *         "chartRef": { "chartId": "01H..." },
- *         "note": { "lane": 0 }
  *       }
  *     }
  *   ],

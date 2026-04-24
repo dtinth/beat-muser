@@ -6,9 +6,11 @@
  */
 
 import { atom } from "nanostores";
-import type { ProjectFile, Entity } from "../project-format";
+import type { ProjectFile } from "../project-format";
+import { EntityManager, type Entity } from "../entity-manager";
 import { createTimingEngine } from "../timing-engine";
 import type { TimingEngine } from "../timing-engine";
+import { EVENT, CHART, BPM_CHANGE, TIME_SIGNATURE } from "./components";
 
 export interface EditorControllerOptions {
   project: ProjectFile;
@@ -24,21 +26,19 @@ export interface TimelineColumn {
 
 const DEFAULT_CHART_SIZE = 15360;
 
+export { EVENT, CHART, BPM_CHANGE, TIME_SIGNATURE };
+
 export class EditorController {
-  $entities = atom<Map<string, Entity>>(new Map());
   $selectedChartId = atom<string | null>(null);
 
+  private entityManager: EntityManager;
   private columns: TimelineColumn[];
   private timelineWidth: number;
 
   constructor(options: EditorControllerOptions) {
-    const map = new Map<string, Entity>();
-    for (const entity of options.project.entities) {
-      map.set(entity.id, entity);
-    }
-    this.$entities.set(map);
+    this.entityManager = EntityManager.from(options.project.entities);
 
-    const charts = Array.from(map.values()).filter((e) => e.components.chart);
+    const charts = this.entityManager.entitiesWithComponent(CHART);
     if (charts.length > 0) {
       this.$selectedChartId.set(charts[0]!.id);
     } else {
@@ -79,27 +79,53 @@ export class EditorController {
         chart: { name: "Untitled", mode: "7k", size: DEFAULT_CHART_SIZE },
       },
     };
-    const map = this.$entities.get();
-    map.set(id, chart);
-    this.$entities.set(new Map(map));
+    this.entityManager.insert(chart);
     return id;
+  }
+
+  getEntityManager(): EntityManager {
+    return this.entityManager;
   }
 
   getSelectedChart(): Entity | undefined {
     const id = this.$selectedChartId.get();
     if (!id) return undefined;
-    return this.$entities.get().get(id);
+    return this.entityManager.get(id);
   }
 
   getChartSize(): number {
     const chart = this.getSelectedChart();
-    const chartComponent = chart?.components.chart as { size?: number } | undefined;
+    const chartComponent = chart ? this.entityManager.getComponent(chart, CHART) : undefined;
     return chartComponent?.size ?? DEFAULT_CHART_SIZE;
   }
 
   getTimingEngine(): TimingEngine {
-    // TODO: extract bpmChanges and timeSignatures from entities
-    return createTimingEngine([], []);
+    const bpmChanges = this.entityManager
+      .entitiesWithComponent(BPM_CHANGE)
+      .map((entity) => {
+        const event = this.entityManager.getComponent(entity, EVENT);
+        const bpm = this.entityManager.getComponent(entity, BPM_CHANGE);
+        return {
+          pulse: event?.y ?? 0,
+          bpm: bpm?.bpm ?? 60,
+        };
+      })
+      .sort((a, b) => a.pulse - b.pulse);
+
+    const timeSignatures = this.entityManager
+      .entitiesWithComponent(TIME_SIGNATURE)
+      .map((entity) => {
+        const event = this.entityManager.getComponent(entity, EVENT);
+        const ts = this.entityManager.getComponent(entity, TIME_SIGNATURE);
+        return {
+          pulse: event?.y ?? 0,
+          numerator: ts?.numerator ?? 4,
+          denominator: ts?.denominator ?? 4,
+        };
+      })
+      .sort((a, b) => a.pulse - b.pulse);
+
+    return createTimingEngine(bpmChanges, timeSignatures);
   }
 
   getColumns(): TimelineColumn[] {

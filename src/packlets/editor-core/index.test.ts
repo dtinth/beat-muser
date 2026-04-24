@@ -8,8 +8,9 @@
  */
 
 import { describe, expect, test } from "vite-plus/test";
-import { EditorController } from "./index";
-import type { ProjectFile, Entity } from "../project-format";
+import { EditorController, CHART } from "./index";
+import type { ProjectFile } from "../project-format";
+import type { Entity } from "../entity-manager";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -33,6 +34,28 @@ function makeChart(name: string, size = 15360): Entity {
   };
 }
 
+function makeBpmChange(y: number, bpm: number): Entity {
+  return {
+    id: `bpm-${y}-${bpm}`,
+    version: "v1",
+    components: {
+      event: { y },
+      bpmChange: { bpm },
+    },
+  };
+}
+
+function makeTimeSignature(y: number, numerator: number, denominator: number): Entity {
+  return {
+    id: `ts-${y}-${numerator}-${denominator}`,
+    version: "v1",
+    components: {
+      event: { y },
+      timeSignature: { numerator, denominator },
+    },
+  };
+}
+
 class EditorControllerTester {
   readonly controller: EditorController;
 
@@ -43,7 +66,7 @@ class EditorControllerTester {
   shouldHaveSelectedChart(expected: { name: string; mode: string; size: number }) {
     const chart = this.controller.getSelectedChart();
     expect(chart).toBeDefined();
-    expect(chart!.components.chart).toMatchObject(expected);
+    expect(this.controller.getEntityManager().getComponent(chart!, CHART)).toMatchObject(expected);
   }
 
   shouldHaveChartSize(expected: number) {
@@ -51,7 +74,7 @@ class EditorControllerTester {
   }
 
   shouldHaveEntityCount(expected: number) {
-    expect(this.controller.$entities.get().size).toBe(expected);
+    expect(this.controller.getEntityManager().toArray().length).toBe(expected);
   }
 
   shouldHaveTimingEngine() {
@@ -155,5 +178,48 @@ describe("EditorController", () => {
     expect(columns[0]).toMatchObject({ id: "measure", x: 0, width: 40 });
     expect(columns[1]).toMatchObject({ id: "time-sig", x: 40, width: 48 });
     expect(columns[2]).toMatchObject({ id: "bpm", x: 88, width: 56 });
+  });
+
+  test("extracts BPM changes from entities", () => {
+    const controller = new EditorController({
+      project: makeProject([makeChart("Hard"), makeBpmChange(0, 120), makeBpmChange(960, 180)]),
+    });
+
+    const engine = controller.getTimingEngine();
+    const secondsAt960 = engine.pulseToSeconds(960);
+    // At 120 BPM, 960 pulses = 4 beats = 2 seconds.
+    expect(secondsAt960).toBeCloseTo(2, 5);
+
+    const secondsAt1920 = engine.pulseToSeconds(1920);
+    // At 180 BPM, next 960 pulses = 4 beats = 1.333... seconds.
+    // Total = 2 + 1.333... = 3.333...
+    expect(secondsAt1920).toBeCloseTo(3.333333, 5);
+  });
+
+  test("extracts time signatures from entities", () => {
+    const controller = new EditorController({
+      project: makeProject([makeChart("Hard"), makeTimeSignature(0, 3, 4)]),
+    });
+
+    const engine = controller.getTimingEngine();
+    const boundaries = engine.getMeasureBoundaries({ start: 0, end: 2500 });
+    // 3/4 at 240 PPQN = 3 * 240 = 720 pulses per measure.
+    expect(boundaries).toEqual([0, 720, 1440, 2160]);
+  });
+
+  test("combines BPM changes and time signatures", () => {
+    const controller = new EditorController({
+      project: makeProject([
+        makeChart("Hard"),
+        makeBpmChange(0, 120),
+        makeTimeSignature(0, 3, 4),
+        makeTimeSignature(1440, 4, 4),
+      ]),
+    });
+
+    const engine = controller.getTimingEngine();
+    const boundaries = engine.getMeasureBoundaries({ start: 0, end: 3000 });
+    // 3/4 = 720 per measure, then 4/4 = 960 per measure after pulse 1440.
+    expect(boundaries).toEqual([0, 720, 1440, 2400]);
   });
 });
