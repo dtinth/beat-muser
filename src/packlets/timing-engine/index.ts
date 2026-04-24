@@ -49,6 +49,9 @@ export interface TimingEngine {
 
   /** Converts seconds to the corresponding pulse position. */
   secondsToPulse(seconds: number): number;
+
+  /** Snaps a pulse to the nearest grid point for the given snap setting. */
+  snapPulse(pulse: number, snap: string): number;
 }
 
 function getMeasureLength(sig: TimeSignature): number {
@@ -223,6 +226,23 @@ export function createTimingEngine(
       const seg = bpmSegments[idx];
       const remaining = seconds - seg.startSeconds;
       return seg.startPulse + (remaining / (60 / seg.bpm)) * PPQN;
+    },
+
+    snapPulse(pulse, snap) {
+      const interval = parseSnapInterval(snap);
+      ensureBoundariesUpTo(pulse);
+
+      const measureIdx = bisectRight(boundaries, pulse) - 1;
+      if (measureIdx < 0) return 0;
+
+      const measureStart = boundaries[measureIdx];
+      const measureEnd =
+        measureIdx + 1 < boundaries.length
+          ? boundaries[measureIdx + 1]
+          : computeNextBoundary(measureStart, findSigIndex(measureStart))[0];
+
+      const snapped = measureStart + Math.round((pulse - measureStart) / interval) * interval;
+      return Math.max(measureStart, Math.min(snapped, measureEnd - interval));
     },
   };
 }

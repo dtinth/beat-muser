@@ -170,7 +170,6 @@ function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarke
     el.style.justifyContent = "center";
     el.style.boxShadow = "inset 1px 1px 0 #fff5, inset -1px -1px 0 #0005";
     el.style.pointerEvents = "auto";
-    el.style.zIndex = "1";
 
     const textEl = document.createElement("span");
     textEl.textContent = d.text;
@@ -187,6 +186,18 @@ function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarke
   };
 }
 
+function createPlayheadRenderer(): () => RenderHandle<{}> {
+  return () => {
+    const el = document.createElement("div");
+    el.style.backgroundColor = "var(--accent-9)";
+    el.style.pointerEvents = "none";
+    return {
+      dom: el,
+      update() {},
+    };
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Behavior factory
 // ---------------------------------------------------------------------------
@@ -199,6 +210,7 @@ export function createTimelineBehaviorFactory(
   const columnTitleRenderer = createColumnTitleRenderer();
   const trailingBorderRenderer = createTrailingBorderRenderer();
   const eventMarkerRenderer = createEventMarkerRenderer();
+  const playheadRenderer = createPlayheadRenderer();
 
   return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
     const engine = controller.getTimingEngine();
@@ -222,6 +234,15 @@ export function createTimelineBehaviorFactory(
         if (height > ctx.viewportHeight) {
           ctx.setScrollTop(height - ctx.viewportHeight);
         }
+      },
+
+      onPointerEvent(_event, _contentX, contentY) {
+        const size = controller.getChartSize();
+        const height = size * SCALE_Y + PADDING_BOTTOM;
+        const rawPulse = (height - contentY) / SCALE_Y;
+        const snappedPulse = controller.snapToGrid(rawPulse);
+        controller.$cursorPulse.set(snappedPulse);
+        ctx.refresh();
       },
 
       getVisibleObjects(): RenderObject[] {
@@ -339,6 +360,21 @@ export function createTimelineBehaviorFactory(
               testId: "time-sig-marker",
             });
           }
+        }
+
+        // --- Playhead ---
+        const cursorPulse = controller.$cursorPulse.get();
+        if (cursorPulse >= 0 && cursorPulse <= size) {
+          objects.push({
+            key: "playhead",
+            x: 0,
+            y: height - cursorPulse * SCALE_Y - 1,
+            width: timelineWidth,
+            height: 1,
+            renderer: playheadRenderer,
+            data: {},
+            testId: "playhead",
+          });
         }
 
         if (rawPulseStart >= rawPulseEnd) return objects;

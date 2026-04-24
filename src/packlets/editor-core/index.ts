@@ -30,6 +30,8 @@ export { EVENT, CHART, BPM_CHANGE, TIME_SIGNATURE };
 
 export class EditorController {
   $selectedChartId = atom<string | null>(null);
+  $cursorPulse = atom<number>(0);
+  $snap = atom<string>("1/16");
 
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
@@ -97,6 +99,10 @@ export class EditorController {
     const chart = this.getSelectedChart();
     const chartComponent = chart ? this.entityManager.getComponent(chart, CHART) : undefined;
     return chartComponent?.size ?? DEFAULT_CHART_SIZE;
+  }
+
+  snapToGrid(pulse: number): number {
+    return this.getTimingEngine().snapPulse(pulse, this.$snap.get());
   }
 
   getTimingEngine(): TimingEngine {

@@ -243,3 +243,44 @@ describe("secondsToPulse", () => {
     expect(engine.secondsToPulse(-1)).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// snapPulse
+// ---------------------------------------------------------------------------
+
+describe("snapPulse", () => {
+  it("snaps to the nearest 1/4 grid point", () => {
+    const engine = createTimingEngine([], []);
+    // 4/4 measure, 1/4 snap = 240 pulses per snap.
+    expect(engine.snapPulse(0, "1/4")).toBe(0);
+    expect(engine.snapPulse(119, "1/4")).toBe(0);
+    expect(engine.snapPulse(120, "1/4")).toBe(240); // ties round up
+    expect(engine.snapPulse(121, "1/4")).toBe(240);
+    expect(engine.snapPulse(239, "1/4")).toBe(240);
+    expect(engine.snapPulse(240, "1/4")).toBe(240);
+  });
+
+  it("snaps to the nearest 1/16 grid point", () => {
+    const engine = createTimingEngine([], []);
+    // 1/16 snap = 60 pulses per snap.
+    expect(engine.snapPulse(29, "1/16")).toBe(0);
+    expect(engine.snapPulse(31, "1/16")).toBe(60);
+    expect(engine.snapPulse(60, "1/16")).toBe(60);
+  });
+
+  it("resets snap phase at each measure boundary", () => {
+    const engine = createTimingEngine(
+      [],
+      [
+        { pulse: 0, numerator: 4, denominator: 4 },
+        { pulse: 960, numerator: 3, denominator: 4 },
+      ],
+    );
+    // Measure 1: 4/4 [0, 960), 1/4 snap = 240.
+    expect(engine.snapPulse(720, "1/4")).toBe(720);
+    // Measure 2: 3/4 [960, 1680), 1/4 snap = 240.
+    // Grid points: 960, 1200, 1440, 1680.
+    expect(engine.snapPulse(1080, "1/4")).toBe(1200); // 1080 is closer to 1200 (120 away) than 960 (120 away), ties round up
+    expect(engine.snapPulse(1200, "1/4")).toBe(1200);
+  });
+});
