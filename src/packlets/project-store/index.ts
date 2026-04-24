@@ -88,18 +88,4 @@ export function createDemoProject(name: string): Project {
   };
 }
 
-import type { ProjectFile } from "../project-format";
-
-export function createDemoProjectFile(): ProjectFile {
-  return {
-    schemaVersion: 2,
-    version: crypto.randomUUID(),
-    metadata: {
-      title: "Demo Project",
-      artist: "Beat Muser",
-      genre: "Demo",
-    },
-    entities: [],
-    deletedEntities: [],
-  };
-}
+export { createDemoProjectFile } from "./demo-project";

@@ -28,6 +28,7 @@ import type {
   RenderHandle,
 } from "../scrollable-canvas";
 import type { EditorController } from "../editor-core";
+import { BPM_CHANGE, TIME_SIGNATURE, EVENT } from "../editor-core";
 
 const SCALE_Y = 0.2;
 
@@ -54,7 +55,7 @@ function createGridLineRenderer(): (data: unknown) => RenderHandle<GridLineData>
       labelEl.style.top = "-7px";
       labelEl.style.fontSize = "10px";
       labelEl.style.color = "var(--gray-11)";
-      labelEl.style.fontFamily = "sans-serif";
+      labelEl.style.fontFamily = "var(--default-font-family)";
       labelEl.style.pointerEvents = "none";
       el.appendChild(labelEl);
     }
@@ -124,7 +125,7 @@ function createColumnTitleRenderer(): (data: unknown) => RenderHandle<ColumnTitl
     el.style.justifyContent = "center";
     el.style.fontSize = "10px";
     el.style.color = "var(--gray-11)";
-    el.style.fontFamily = "sans-serif";
+    el.style.fontFamily = "var(--default-font-family)";
     el.style.pointerEvents = "none";
 
     return {
@@ -148,6 +149,43 @@ function createTrailingBorderRenderer(): () => RenderHandle<{}> {
   };
 }
 
+interface EventMarkerData {
+  text: string;
+  backgroundColor: string;
+  textColor: string;
+}
+
+function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarkerData> {
+  return (data: unknown) => {
+    const d = data as EventMarkerData;
+    const el = document.createElement("div");
+    el.style.backgroundColor = d.backgroundColor;
+    el.style.color = d.textColor;
+    el.style.fontSize = "10px";
+    el.style.fontWeight = "600";
+    el.style.fontFamily = "var(--default-font-family)";
+    el.style.display = "flex";
+    el.style.alignItems = "center";
+    el.style.justifyContent = "center";
+    el.style.boxShadow = "inset 1px 1px 0 #fff5, inset -1px -1px 0 #0005";
+    el.style.pointerEvents = "auto";
+    el.style.zIndex = "1";
+
+    const textEl = document.createElement("span");
+    textEl.textContent = d.text;
+    el.appendChild(textEl);
+
+    return {
+      dom: el,
+      update(newData: unknown) {
+        const nd = newData as EventMarkerData;
+        el.style.backgroundColor = nd.backgroundColor;
+        textEl.textContent = nd.text;
+      },
+    };
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Behavior factory
 // ---------------------------------------------------------------------------
@@ -159,6 +197,7 @@ export function createTimelineBehaviorFactory(
   const columnBgRenderer = createColumnBgRenderer();
   const columnTitleRenderer = createColumnTitleRenderer();
   const trailingBorderRenderer = createTrailingBorderRenderer();
+  const eventMarkerRenderer = createEventMarkerRenderer();
 
   return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
     const engine = controller.getTimingEngine();
@@ -189,9 +228,12 @@ export function createTimelineBehaviorFactory(
         const timelineWidth = controller.getTimelineWidth();
         const columns = controller.getColumns();
 
-        // Convert viewport Y to pulse range.
-        const pulseStart = Math.max(0, Math.floor((height - viewportBottom) / SCALE_Y));
-        const pulseEnd = Math.min(size, Math.ceil((height - viewportTop) / SCALE_Y));
+        // Convert viewport Y to pulse range. Expand slightly so event
+        // markers just outside the viewport edge are still rendered.
+        const rawPulseStart = Math.max(0, Math.floor((height - viewportBottom) / SCALE_Y));
+        const rawPulseEnd = Math.min(size, Math.ceil((height - viewportTop) / SCALE_Y));
+        const pulseStart = Math.max(0, rawPulseStart - 50);
+        const pulseEnd = Math.min(size, rawPulseEnd + 50);
 
         const objects: RenderObject[] = [];
 
@@ -240,18 +282,73 @@ export function createTimelineBehaviorFactory(
           testId: "trailing-border",
         });
 
-        if (pulseStart >= pulseEnd) return objects;
+        // --- Timing event markers ---
+        const entityManager = controller.getEntityManager();
+        const bpmColumn = columns.find((c) => c.id === "bpm");
+        const tsColumn = columns.find((c) => c.id === "time-sig");
+
+        if (bpmColumn) {
+          for (const entity of entityManager.entitiesWithComponent(BPM_CHANGE)) {
+            const event = entityManager.getComponent(entity, EVENT);
+            const bpm = entityManager.getComponent(entity, BPM_CHANGE);
+            if (!event || !bpm) continue;
+            const pulse = event.y;
+            if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+            objects.push({
+              key: `bpm-${entity.id}`,
+              x: bpmColumn.x,
+              y: height - pulse * SCALE_Y - 14,
+              width: bpmColumn.width,
+              height: 14,
+              renderer: eventMarkerRenderer,
+              data: {
+                text: String(bpm.bpm),
+                backgroundColor: "var(--yellow-6)",
+                textColor: "#fff",
+              },
+              testId: "bpm-change-marker",
+            });
+          }
+        }
+
+        if (tsColumn) {
+          for (const entity of entityManager.entitiesWithComponent(TIME_SIGNATURE)) {
+            const event = entityManager.getComponent(entity, EVENT);
+            const ts = entityManager.getComponent(entity, TIME_SIGNATURE);
+            if (!event || !ts) continue;
+            const pulse = event.y;
+            if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+            objects.push({
+              key: `ts-${entity.id}`,
+              x: tsColumn.x,
+              y: height - pulse * SCALE_Y - 14,
+              width: tsColumn.width,
+              height: 14,
+              renderer: eventMarkerRenderer,
+              data: {
+                text: `${ts.numerator}/${ts.denominator}`,
+                backgroundColor: "var(--tomato-6)",
+                textColor: "#fff",
+              },
+              testId: "time-sig-marker",
+            });
+          }
+        }
+
+        if (rawPulseStart >= rawPulseEnd) return objects;
 
         // --- Measure lines ---
         const measureBoundaries = engine.getMeasureBoundaries({
-          start: pulseStart,
-          end: pulseEnd,
+          start: rawPulseStart,
+          end: rawPulseEnd,
         });
         const measureSet = new Set(measureBoundaries);
 
         const allBoundaries = engine.getMeasureBoundaries({
           start: 0,
-          end: pulseEnd,
+          end: rawPulseEnd,
         });
 
         for (const pulse of measureBoundaries) {
@@ -274,7 +371,7 @@ export function createTimelineBehaviorFactory(
 
         // --- Beat lines (1/4, exclude measure boundaries) ---
         const beatPoints = engine
-          .getSnapPoints("1/4", { start: pulseStart, end: pulseEnd })
+          .getSnapPoints("1/4", { start: rawPulseStart, end: rawPulseEnd })
           .filter((p) => !measureSet.has(p));
         const beatSet = new Set(beatPoints);
 
@@ -294,7 +391,7 @@ export function createTimelineBehaviorFactory(
 
         // --- Snap lines (1/16, exclude measures and beats) ---
         const gridPoints = engine
-          .getSnapPoints("1/16", { start: pulseStart, end: pulseEnd })
+          .getSnapPoints("1/16", { start: rawPulseStart, end: rawPulseEnd })
           .filter((p) => !measureSet.has(p) && !beatSet.has(p));
 
         for (const pulse of gridPoints) {
