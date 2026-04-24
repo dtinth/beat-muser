@@ -256,13 +256,10 @@ export function createTimelineBehaviorFactory(
         controller.setScrollTop(scrollTop);
       },
 
-      onPointerEvent(_event, _contentX, contentY) {
-        const size = controller.getChartSize();
-        const scaleY = controller.getScaleY();
-        const trackHeight = size * scaleY;
-        const rawPulse = (trackHeight - contentY) / scaleY;
-        const snappedPulse = controller.snapToGrid(rawPulse);
-        controller.$cursorPulse.set(snappedPulse);
+      onPointerEvent(_event, contentX, contentY) {
+        const viewportX = contentX - ctx.scrollLeft;
+        const viewportY = contentY - ctx.scrollTop;
+        controller.setCursor(viewportX, viewportY);
         ctx.refresh();
       },
 

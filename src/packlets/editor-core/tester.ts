@@ -142,14 +142,8 @@ export class EditorTester {
     }
   }
 
-  hover({ y }: { x?: number; y: number }) {
-    const scrollTop = this.instance.$scrollTop.get();
-    const contentY = y + scrollTop;
-    const trackHeight = this.instance.getTrackHeight();
-    const scaleY = this.instance.getScaleY();
-    const rawPulse = (trackHeight - contentY) / scaleY;
-    const snappedPulse = this.instance.snapToGrid(rawPulse);
-    this.instance.$cursorPulse.set(snappedPulse);
+  hover({ x, y }: { x?: number; y: number }) {
+    this.instance.setCursor(x ?? 0, y);
   }
 
   zoom(value: number) {

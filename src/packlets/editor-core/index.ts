@@ -81,6 +81,8 @@ export class EditorController {
   $scrollLeft = atom<number>(0);
   $viewportWidth = atom<number>(0);
   $viewportHeight = atom<number>(0);
+  $cursorViewportX = atom<number>(0);
+  $cursorViewportY = atom<number>(0);
 
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
@@ -276,6 +278,23 @@ export class EditorController {
   setViewportSize(width: number, height: number): void {
     this.$viewportWidth.set(width);
     this.$viewportHeight.set(height);
+  }
+
+  setCursor(viewportX: number, viewportY: number): void {
+    this.$cursorViewportX.set(viewportX);
+    this.$cursorViewportY.set(viewportY);
+    this.recomputeCursorPulse();
+  }
+
+  recomputeCursorPulse(): void {
+    const viewportY = this.$cursorViewportY.get();
+    const scrollTop = this.$scrollTop.get();
+    const contentY = viewportY + scrollTop;
+    const trackHeight = this.getTrackHeight();
+    const scaleY = this.getScaleY();
+    const rawPulse = (trackHeight - contentY) / scaleY;
+    const snappedPulse = this.snapToGrid(rawPulse);
+    this.$cursorPulse.set(snappedPulse);
   }
 
   setZoom(zoom: number): void {
