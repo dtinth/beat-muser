@@ -51,5 +51,20 @@ export class CommandRegistry {
   }
 }
 
+export class CommandSet {
+  private commands: Command[] = [];
+
+  add(command: Command): void {
+    this.commands.push(command);
+  }
+
+  registerTo(registry: CommandRegistry): () => void {
+    const unregisters = this.commands.map((c) => registry.register(c));
+    return () => {
+      unregisters.forEach((fn) => fn());
+    };
+  }
+}
+
 /** Global singleton for the active editor instance. */
 export const globalCommandRegistry = new CommandRegistry();

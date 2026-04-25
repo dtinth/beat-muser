@@ -40,7 +40,7 @@ import { ScrollableCanvas } from "../scrollable-canvas";
 import { EditorController } from "../editor-core";
 import type { ProjectFile } from "../project-format";
 import { createTimelineBehaviorFactory } from "./timeline-behavior";
-import { globalCommandRegistry } from "../command-registry";
+import { globalCommandRegistry, CommandSet } from "../command-registry";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -267,24 +267,20 @@ export function ProjectViewPage() {
   const [controller] = useState(() => new EditorController({ project }));
 
   useEffect(() => {
-    const unregisters = [
-      globalCommandRegistry.register({
-        id: "zoomIn",
-        title: "Zoom In",
-        shortcut: "Ctrl++",
-        execute: () => controller.zoomIn(),
-      }),
-      globalCommandRegistry.register({
-        id: "zoomOut",
-        title: "Zoom Out",
-        shortcut: "Ctrl+-",
-        execute: () => controller.zoomOut(),
-      }),
-    ];
-
-    return () => {
-      unregisters.forEach((fn) => fn());
-    };
+    const commands = new CommandSet();
+    commands.add({
+      id: "zoomIn",
+      title: "Zoom In",
+      shortcut: "Ctrl++",
+      execute: () => controller.zoomIn(),
+    });
+    commands.add({
+      id: "zoomOut",
+      title: "Zoom Out",
+      shortcut: "Ctrl+-",
+      execute: () => controller.zoomOut(),
+    });
+    return commands.registerTo(globalCommandRegistry);
   }, [controller]);
 
   const behaviorFactory = useMemo(() => createTimelineBehaviorFactory(controller), [controller]);
