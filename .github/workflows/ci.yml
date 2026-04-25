@@ -100,7 +100,8 @@ jobs:
           cp ci-reports/allure-results-playwright/* ci-reports/allure-results/ 2>/dev/null || true
       - run: npx allure generate ci-reports/allure-results
       - run: node bin/generate-report-index.ts
-      - name: Generate CI badge
+      - run: node bin/generate-badges.ts
+      - name: Generate build status badge
         run: |
           if [ "${{ needs.check.result }}" == "success" ] && [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.e2e.result }}" == "success" ]; then
             COLOR="31c453"

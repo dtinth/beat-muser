@@ -32,6 +32,7 @@
     "allure": "^3.6.2",
     "allure-playwright": "^3.7.1",
     "allure-vitest": "^3.7.1",
+    "badge-maker": "^5.0.2",
     "typescript": "~6.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:"

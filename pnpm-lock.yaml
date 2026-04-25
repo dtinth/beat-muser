@@ -76,6 +76,9 @@ importers:
       allure-vitest:
         specifier: ^3.7.1
         version: 3.7.1(@vitest/runner@4.1.5)(allure-playwright@3.7.1(@playwright/test@1.59.1))(vitest@4.1.5)
+      badge-maker:
+        specifier: ^5.0.2
+        version: 5.0.2
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -1636,6 +1639,9 @@ packages:
     resolution: {integrity: sha512-UVbdAw1ljdcvvp8zI41bM6Ujcho9yCaC8NkG7v6LBDiRD6Q6mtl076KIr+DOeVGQidRHzQTZxIVrFCG8qpogEA==}
     hasBin: true
 
+  anafanafo@2.0.0:
+    resolution: {integrity: sha512-Nlfq7NC4AOkTJerWRIZcOAiMNtIDVIGWGvQ98O7Jl6Kr2Dk0dX5u4MqN778kSRTy5KRqchpLdF2RtLFEz9FVkQ==}
+
   ansi-to-html@0.7.2:
     resolution: {integrity: sha512-v6MqmEpNlxF+POuyhKkidusCHWWkaLcGRURzivcU3I9tv7k4JVhFcnukrM5Rlk2rUywdZuzYAZ+kbZqWCnfN3g==}
     engines: {node: '>=8.0.0'}
@@ -1661,12 +1667,20 @@ packages:
   axios@1.15.2:
     resolution: {integrity: sha512-wLrXxPtcrPTsNlJmKjkPnNPK2Ihe0hn0wGSaTEiHRPxwjvJwT3hKmXF4dpqxmPO9SoNb2FsYXj/xEo0gHN+D5A==}
 
+  badge-maker@5.0.2:
+    resolution: {integrity: sha512-Xd3YUmKPEShQcn6PFB03Wxq0RNJRFwVVroyRz0qIjSXwniYUGsGWNHqtNsQYi/Sbs8Ni7qAEf7LKgDOtcAoCDg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
 
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
+
+  binary-search@1.3.6:
+    resolution: {integrity: sha512-nbE1WxOTTrUWIfsfZ4aHGYu5DOuNkbxGokjV6Z2kxfJK3uaAb8zNK1muzOeipoLHZjInT4Br88BHpzevc681xA==}
 
   brace-expansion@5.0.5:
     resolution: {integrity: sha512-VZznLgtwhn+Mact9tfiwx64fA9erHH/MCXEUfB/0bX/6Fz6ny5EGTXYltMocqg4xFAQZtnO3DHWWXi8RiuN7cQ==}
@@ -1687,6 +1701,9 @@ packages:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
     engines: {node: '>=18'}
 
+  char-width-table-consumer@1.0.0:
+    resolution: {integrity: sha512-Fz4UD0LBpxPgL9i29CJ5O4KANwaMnX/OhhbxzvNa332h+9+nRKyeuLw4wA51lt/ex67+/AdsoBQJF3kgX2feYQ==}
+
   charenc@0.0.2:
     resolution: {integrity: sha512-yrLQ/yVUFXkzg7EDQsPieE/53+0RlaWTs+wBrvW36cyilJ2SaDWfl4Yj7MtLTXleV9uEKefbAGUPv2/iWSooRA==}
 
@@ -1705,6 +1722,12 @@ packages:
   clsx@2.1.1:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
+
+  color-convert@0.5.3:
+    resolution: {integrity: sha512-RwBeO/B/vZR3dfKL1ye/vx8MHZ40ugzpyfeVG5GsiuGnrlMWe2o8wxBbLCpw9CsxV+wHuzYlCiWnybrIA0ling==}
+
+  color-name@1.1.4:
+    resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
 
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
@@ -1736,6 +1759,12 @@ packages:
 
   crypt@0.0.2:
     resolution: {integrity: sha512-mCxBlsHFYh9C+HVpiEacem8FEBnMXgU9gy4zmNC+SXAZNB/1idgp/aulFJ4FgCi7GPEVbfyng092GqL2k2rmow==}
+
+  css-color-converter@2.0.0:
+    resolution: {integrity: sha512-oLIG2soZz3wcC3aAl/7Us5RS8Hvvc6I8G8LniF/qfMmrm7fIKQ8RIDDRZeKyGL2SrWfNqYspuLShbnjBMVWm8g==}
+
+  css-unit-converter@1.1.2:
+    resolution: {integrity: sha512-IiJwMC8rdZE0+xiEZHeru6YoONC4rfPMqGm2W85jMIbkFvv5nFTwJVFHam2eFrN6txmoUYFAFXiv8ICVeTO0MA==}
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
@@ -4518,6 +4547,10 @@ snapshots:
       - preact
       - typescript
 
+  anafanafo@2.0.0:
+    dependencies:
+      char-width-table-consumer: 1.0.0
+
   ansi-to-html@0.7.2:
     dependencies:
       entities: 2.2.0
@@ -4546,9 +4579,16 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
+  badge-maker@5.0.2:
+    dependencies:
+      anafanafo: 2.0.0
+      css-color-converter: 2.0.0
+
   balanced-match@4.0.4: {}
 
   base64-js@1.5.1: {}
+
+  binary-search@1.3.6: {}
 
   brace-expansion@5.0.5:
     dependencies:
@@ -4570,6 +4610,10 @@ snapshots:
 
   chai@6.2.2: {}
 
+  char-width-table-consumer@1.0.0:
+    dependencies:
+      binary-search: 1.3.6
+
   charenc@0.0.2: {}
 
   chokidar@4.0.3:
@@ -4583,6 +4627,10 @@ snapshots:
       typanion: 3.14.0
 
   clsx@2.1.1: {}
+
+  color-convert@0.5.3: {}
+
+  color-name@1.1.4: {}
 
   combined-stream@1.0.8:
     dependencies:
@@ -4614,6 +4662,14 @@ snapshots:
       which: 2.0.2
 
   crypt@0.0.2: {}
+
+  css-color-converter@2.0.0:
+    dependencies:
+      color-convert: 0.5.3
+      color-name: 1.1.4
+      css-unit-converter: 1.1.2
+
+  css-unit-converter@1.1.2: {}
 
   csstype@3.2.3: {}
 
