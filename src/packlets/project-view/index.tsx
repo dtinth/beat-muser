@@ -285,7 +285,11 @@ export function ProjectViewPage() {
       registry: globalCommandRegistry,
     });
 
+    const onKeyDown = (e: KeyboardEvent) => handler.onKeyDown(e);
+    window.addEventListener("keydown", onKeyDown);
+
     return () => {
+      window.removeEventListener("keydown", onKeyDown);
       handler.dispose();
       unregister();
     };

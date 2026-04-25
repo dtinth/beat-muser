@@ -12,7 +12,7 @@
 
 import { createNanoEvents } from "nanoevents";
 import type { Emitter } from "nanoevents";
-import { tinykeys } from "tinykeys";
+import { createKeybindingsHandler } from "tinykeys";
 import type { KeyBindingMap } from "tinykeys";
 
 export interface Command {
@@ -81,20 +81,16 @@ export class CommandSet {
 
 export class KeyboardShortcutHandler {
   private registry: CommandRegistry;
-  private target: Window | HTMLElement;
-  private unsubTinykeys?: () => void;
+  private handler: (event: Event) => void = () => {};
   private unsubRegistry?: () => void;
 
-  constructor(options: { registry: CommandRegistry; target?: Window | HTMLElement }) {
+  constructor(options: { registry: CommandRegistry }) {
     this.registry = options.registry;
-    this.target = options.target ?? window;
     this.unsubRegistry = this.registry.subscribe(() => this.refresh());
     this.refresh();
   }
 
   private refresh() {
-    this.unsubTinykeys?.();
-
     const bindings: KeyBindingMap = {};
     const isMac = navigator.platform.includes("Mac");
 
@@ -108,11 +104,14 @@ export class KeyboardShortcutHandler {
       };
     }
 
-    this.unsubTinykeys = tinykeys(this.target, bindings);
+    this.handler = createKeybindingsHandler(bindings);
+  }
+
+  onKeyDown(event: KeyboardEvent): void {
+    this.handler(event);
   }
 
   dispose() {
-    this.unsubTinykeys?.();
     this.unsubRegistry?.();
   }
 }
