@@ -62,8 +62,8 @@ jobs:
           retention-days: 1
 
   deploy-reports:
-    needs: [test, e2e]
-    if: github.ref == 'refs/heads/main' && always() && (needs.test.result == 'success' || needs.test.result == 'failure') && (needs.e2e.result == 'success' || needs.e2e.result == 'failure')
+    needs: [check, test, e2e]
+    if: github.ref == 'refs/heads/main' && always() && (needs.check.result == 'success' || needs.check.result == 'failure') && (needs.test.result == 'success' || needs.test.result == 'failure') && (needs.e2e.result == 'success' || needs.e2e.result == 'failure')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -100,6 +100,39 @@ jobs:
           cp ci-reports/allure-results-playwright/* ci-reports/allure-results/ 2>/dev/null || true
       - run: npx allure generate ci-reports/allure-results
       - run: node bin/generate-report-index.ts
+      - name: Generate CI badge
+        run: |
+          if [ "${{ needs.check.result }}" == "success" ] && [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.e2e.result }}" == "success" ]; then
+            COLOR="31c453"
+            STATUS="passing"
+          else
+            COLOR="e05d44"
+            STATUS="failing"
+          fi
+          cat > ci-reports/badge.svg <<'EOF'
+          <svg xmlns="http://www.w3.org/2000/svg" width="102" height="20" role="img" aria-label="build: STATUS">
+            <title>build: STATUS</title>
+            <linearGradient id="s" x2="0" y2="100%">
+              <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+              <stop offset="1" stop-opacity=".1"/>
+            </linearGradient>
+            <clipPath id="r">
+              <rect width="102" height="20" rx="3" fill="#fff"/>
+            </clipPath>
+            <g clip-path="url(#r)">
+              <rect width="37" height="20" fill="#555"/>
+              <rect x="37" width="65" height="20" fill="#COLOR"/>
+              <rect width="102" height="20" fill="url(#s)"/>
+            </g>
+            <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
+              <text x="18.5" y="15" fill="#010101" fill-opacity=".3">build</text>
+              <text x="18.5" y="14">build</text>
+              <text x="68.5" y="15" fill="#010101" fill-opacity=".3">STATUS</text>
+              <text x="68.5" y="14">STATUS</text>
+            </g>
+          </svg>
+          EOF
+          sed -i "s/STATUS/${STATUS}/g; s/COLOR/${COLOR}/g" ci-reports/badge.svg
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
