@@ -232,13 +232,9 @@ export function createTimelineBehaviorFactory(
 ): ScrollableCanvasBehaviorFactory {
   return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
     controller.setViewportSize(ctx.viewportWidth, ctx.viewportHeight);
-    let prevZoom = controller.$zoom.get();
 
-    const unsubZoom = controller.$zoom.subscribe(() => {
-      const newScrollTop = controller.computeZoomScrollOffset(prevZoom);
-      prevZoom = controller.$zoom.get();
-      controller.setScrollTop(newScrollTop);
-      ctx.setScrollTop(newScrollTop);
+    const unsubOutbox = controller.outbox.on("setScrollTop", (top) => {
+      ctx.setScrollTop(top);
     });
 
     const unsubVisible = controller.$visibleRenderObjects.subscribe(() => {
@@ -277,7 +273,7 @@ export function createTimelineBehaviorFactory(
       },
 
       [Symbol.dispose]() {
-        unsubZoom();
+        unsubOutbox();
         unsubVisible();
       },
     };

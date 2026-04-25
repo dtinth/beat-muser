@@ -147,10 +147,7 @@ export class EditorTester {
   }
 
   zoom(value: number) {
-    const prevZoom = this.instance.$zoom.get();
     this.instance.setZoom(value);
-    const newScrollTop = this.instance.computeZoomScrollOffset(prevZoom);
-    this.instance.setScrollTop(newScrollTop);
   }
 
   scrollTo(y: number) {

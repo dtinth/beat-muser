@@ -6,6 +6,8 @@
  */
 
 import { atom } from "nanostores";
+import { createNanoEvents } from "nanoevents";
+import type { Emitter } from "nanoevents";
 import type { ProjectFile } from "../project-format";
 import { EntityManager, type Entity } from "../entity-manager";
 import { createTimingEngine } from "../timing-engine";
@@ -61,6 +63,10 @@ export interface TimelineRenderSpec {
   layer?: "scroll" | "sticky";
 }
 
+export interface EditorOutboxEvents {
+  setScrollTop: (top: number) => void;
+}
+
 const DEFAULT_CHART_SIZE = 15360;
 
 export {
@@ -96,6 +102,7 @@ export class EditorController {
   $cursorViewportX = atom<number>(0);
   $cursorViewportY = atom<number>(-1);
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
+  outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
@@ -337,20 +344,25 @@ export class EditorController {
   }
 
   setZoom(zoom: number): void {
+    const prevZoom = this.$zoom.get();
     this.$zoom.set(zoom);
+    const newScrollTop = this.computeZoomScrollOffset(prevZoom);
+    this.$scrollTop.set(newScrollTop);
+    this.recomputeCursorPulse();
     this.updateVisibleRenderObjects();
+    this.outbox.emit("setScrollTop", newScrollTop);
   }
 
   zoomIn(): void {
     const current = this.$zoom.get();
     const next = ZOOM_PRESETS.find((z) => z > current);
-    if (next) this.$zoom.set(next);
+    if (next) this.setZoom(next);
   }
 
   zoomOut(): void {
     const current = this.$zoom.get();
     const prev = [...ZOOM_PRESETS].reverse().find((z) => z < current);
-    if (prev) this.$zoom.set(prev);
+    if (prev) this.setZoom(prev);
   }
 
   /**

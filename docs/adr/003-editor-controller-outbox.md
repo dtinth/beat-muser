@@ -1,6 +1,6 @@
 # ADR 003: EditorController Outbox Pattern
 
-**Status:** Accepted (implementation pending)
+**Status:** Accepted
 
 **Date:** 2026-04-25
 
@@ -46,10 +46,6 @@ scrollable-canvas scrolls
 2. **Controller emits UI commands via the outbox.** The outbox is an event emitter typed to UI actions (e.g., `setScrollTop`).
 3. **Behavior subscribes to the outbox** and translates commands into `scrollable-canvas` API calls.
 4. **No controller method calls `ctx.*` directly.** All UI side effects go through the outbox.
-
-## Status
-
-- Outbox interface defined but not yet wired into `EditorController` or `timeline-behavior`.
 
 ## Consequences
 
