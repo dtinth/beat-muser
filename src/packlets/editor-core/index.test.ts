@@ -19,7 +19,7 @@ describe("EditorController", () => {
   test("given an empty project, creates a default chart", () => {
     const editor = new EditorTester({ getProjectToLoad: () => makeProject() });
 
-    editor.chart.shouldHaveName("Untitled");
+    editor.chart.shouldHaveName("Main Chart");
     editor.chart.shouldHaveSize(15360);
   });
 

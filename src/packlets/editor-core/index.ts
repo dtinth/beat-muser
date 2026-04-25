@@ -204,7 +204,7 @@ export class EditorController {
       id,
       version: id,
       components: {
-        chart: { name: "Untitled", size: DEFAULT_CHART_SIZE },
+        chart: { name: "Main Chart", size: DEFAULT_CHART_SIZE },
       },
     };
     this.entityManager.insert(chart);
