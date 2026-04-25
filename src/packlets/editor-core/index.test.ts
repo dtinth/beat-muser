@@ -268,7 +268,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmEntity!.id);
     });
 
-    test.skip("clicking on a time signature selects it", () => {
+    test("clicking on a time signature selects it", () => {
       let tsEntity: Entity;
       const editor = new EditorTester({
         getProjectToLoad: () =>
