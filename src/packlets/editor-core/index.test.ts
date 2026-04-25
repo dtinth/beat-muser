@@ -436,7 +436,7 @@ describe("EditorController", () => {
       editor.selection.shouldBeEmpty();
     });
 
-    test.skip("playhead does not move during box-select", () => {
+    test("playhead does not move during box-select", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
           makeProject((p) => {
