@@ -287,7 +287,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(tsEntity!.id);
     });
 
-    test.skip("clicking empty space deselects", () => {
+    test("clicking empty space deselects", () => {
       let bpmEntity: Entity;
       const editor = new EditorTester({
         getProjectToLoad: () =>
