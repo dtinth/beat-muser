@@ -105,7 +105,6 @@ export class EditorController {
   $cursorViewportY = atom<number>(-1);
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
   $selection = atom<Set<string>>(new Set());
-  $boxPreviewSelection = atom<Set<string>>(new Set());
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
   private entityManager: EntityManager;
@@ -429,72 +428,19 @@ export class EditorController {
     this.updateVisibleRenderObjects();
   }
 
-  private isSelected(entityId: string): boolean {
-    return this.$selection.get().has(entityId) || this.$boxPreviewSelection.get().has(entityId);
-  }
-
-  private updateBoxPreview(): void {
+  private isInBox(pulse: number, colIndex: number): boolean {
+    if (!this.isBoxSelecting) return false;
     const minCol = Math.min(this.boxStartColumnIndex, this.boxEndColumnIndex);
     const maxCol = Math.max(this.boxStartColumnIndex, this.boxEndColumnIndex);
     const minPulse = Math.min(this.boxStartPulse, this.boxEndPulse);
     const maxPulse = Math.max(this.boxStartPulse, this.boxEndPulse);
-    const columns = this.getColumns();
-    const preview = new Set<string>();
-
-    for (const entity of this.entityManager.entitiesWithComponent(EVENT)) {
-      const event = this.entityManager.getComponent(entity, EVENT);
-      if (!event) continue;
-      const pulse = event.y;
-      if (pulse < minPulse || pulse > maxPulse) continue;
-
-      let colIndex = -1;
-      const note = this.entityManager.getComponent(entity, NOTE);
-      const levelRef = this.entityManager.getComponent(entity, LEVEL_REF);
-      if (note && levelRef) {
-        for (let i = 0; i < columns.length; i++) {
-          const col = columns[i]!;
-          if (col.levelId === levelRef.levelId && col.laneIndex === note.lane) {
-            colIndex = i;
-            break;
-          }
-        }
-      }
-      if (colIndex === -1) {
-        const bpm = this.entityManager.getComponent(entity, BPM_CHANGE);
-        if (bpm) {
-          for (let i = 0; i < columns.length; i++) {
-            if (columns[i]!.id === "bpm") {
-              colIndex = i;
-              break;
-            }
-          }
-        }
-      }
-      if (colIndex === -1) {
-        const ts = this.entityManager.getComponent(entity, TIME_SIGNATURE);
-        if (ts) {
-          for (let i = 0; i < columns.length; i++) {
-            if (columns[i]!.id === "time-sig") {
-              colIndex = i;
-              break;
-            }
-          }
-        }
-      }
-
-      if (colIndex >= minCol && colIndex <= maxCol) {
-        preview.add(entity.id);
-      }
-    }
-
-    this.$boxPreviewSelection.set(preview);
+    return pulse >= minPulse && pulse <= maxPulse && colIndex >= minCol && colIndex <= maxCol;
   }
 
   handlePointerMove(viewportX: number, viewportY: number): void {
     if (this.isBoxSelecting) {
       this.boxEndColumnIndex = this.getColumnIndexFromViewportX(viewportX);
       this.boxEndPulse = this.computePulseFromViewportY(viewportY);
-      this.updateBoxPreview();
       this.updateVisibleRenderObjects();
       return;
     }
@@ -562,7 +508,6 @@ export class EditorController {
 
     this.$selection.set(next);
     this.isBoxSelecting = false;
-    this.$boxPreviewSelection.set(new Set());
     this.updateVisibleRenderObjects();
   }
 
@@ -760,6 +705,7 @@ export class EditorController {
       );
       if (!laneCol) continue;
 
+      const colIndex = columns.indexOf(laneCol);
       specs.push({
         key: `note-${entity.id}`,
         type: "event-marker",
@@ -771,7 +717,7 @@ export class EditorController {
           text: "",
           backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
           textColor: "#fff",
-          selected: this.isSelected(entity.id),
+          selected: this.$selection.get().has(entity.id) || this.isInBox(pulse, colIndex),
         },
         testId: "note",
         entityId: entity.id,
@@ -781,6 +727,8 @@ export class EditorController {
     // --- Timing event markers ---
     const bpmColumn = columns.find((c) => c.id === "bpm");
     const tsColumn = columns.find((c) => c.id === "time-sig");
+    const bpmColIndex = bpmColumn ? columns.indexOf(bpmColumn) : -1;
+    const tsColIndex = tsColumn ? columns.indexOf(tsColumn) : -1;
 
     if (bpmColumn) {
       for (const entity of entityManager.entitiesWithComponent(BPM_CHANGE)) {
@@ -801,7 +749,7 @@ export class EditorController {
             text: String(bpm.bpm),
             backgroundColor: "var(--yellow-6)",
             textColor: "#fff",
-            selected: this.isSelected(entity.id),
+            selected: this.$selection.get().has(entity.id) || this.isInBox(pulse, bpmColIndex),
           },
           testId: "bpm-change-marker",
           entityId: entity.id,
@@ -828,7 +776,7 @@ export class EditorController {
             text: `${ts.numerator}/${ts.denominator}`,
             backgroundColor: "var(--tomato-6)",
             textColor: "#fff",
-            selected: this.isSelected(entity.id),
+            selected: this.$selection.get().has(entity.id) || this.isInBox(pulse, tsColIndex),
           },
           testId: "time-sig-marker",
           entityId: entity.id,
