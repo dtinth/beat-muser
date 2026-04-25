@@ -378,7 +378,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmEntity!.id);
     });
 
-    test.skip("shift+click adds another event to selection", () => {
+    test("shift+click adds another event to selection", () => {
       let bpmA: Entity;
       let bpmB: Entity;
       const editor = new EditorTester({
