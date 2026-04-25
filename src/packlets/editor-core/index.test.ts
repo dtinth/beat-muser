@@ -452,7 +452,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmEntity!.id);
     });
 
-    test.skip("regular click clears multi-selection", () => {
+    test("regular click clears multi-selection", () => {
       let bpmA: Entity;
       let bpmB: Entity;
       const editor = new EditorTester({
