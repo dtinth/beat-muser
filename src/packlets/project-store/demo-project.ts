@@ -1,28 +1,29 @@
+import { uuidv7 } from "uuidv7";
 import type { ProjectFile } from "../project-format";
 import type { Entity } from "../entity-manager";
 
 export function createDemoProjectFile(): ProjectFile {
-  const chartId = crypto.randomUUID();
-  const levelId = crypto.randomUUID();
+  const chartId = uuidv7();
+  const levelId = uuidv7();
   const entities: Entity[] = [
     {
       id: chartId,
-      version: crypto.randomUUID(),
+      version: uuidv7(),
       components: {
         chart: { name: "Hard", size: 15360 },
       },
     },
     {
       id: levelId,
-      version: crypto.randomUUID(),
+      version: uuidv7(),
       components: {
         level: { name: "Hard", mode: "beat-7k", sortOrder: 0 },
         chartRef: { chartId },
       },
     },
     {
-      id: crypto.randomUUID(),
-      version: crypto.randomUUID(),
+      id: uuidv7(),
+      version: uuidv7(),
       components: {
         event: { y: 0 },
         bpmChange: { bpm: 128 },
@@ -30,8 +31,8 @@ export function createDemoProjectFile(): ProjectFile {
       },
     },
     {
-      id: crypto.randomUUID(),
-      version: crypto.randomUUID(),
+      id: uuidv7(),
+      version: uuidv7(),
       components: {
         event: { y: 2880 },
         bpmChange: { bpm: 160 },
@@ -39,8 +40,8 @@ export function createDemoProjectFile(): ProjectFile {
       },
     },
     {
-      id: crypto.randomUUID(),
-      version: crypto.randomUUID(),
+      id: uuidv7(),
+      version: uuidv7(),
       components: {
         event: { y: 0 },
         timeSignature: { numerator: 4, denominator: 4 },
@@ -48,8 +49,8 @@ export function createDemoProjectFile(): ProjectFile {
       },
     },
     {
-      id: crypto.randomUUID(),
-      version: crypto.randomUUID(),
+      id: uuidv7(),
+      version: uuidv7(),
       components: {
         event: { y: 3840 },
         timeSignature: { numerator: 3, denominator: 4 },
@@ -58,8 +59,8 @@ export function createDemoProjectFile(): ProjectFile {
     },
     // Sample notes across SC and keys 1-7
     {
-      id: crypto.randomUUID(),
-      version: crypto.randomUUID(),
+      id: uuidv7(),
+      version: uuidv7(),
       components: {
         event: { y: 240 },
         note: { lane: 8 },
@@ -68,8 +69,8 @@ export function createDemoProjectFile(): ProjectFile {
       },
     },
     {
-      id: crypto.randomUUID(),
-      version: crypto.randomUUID(),
+      id: uuidv7(),
+      version: uuidv7(),
       components: {
         event: { y: 480 },
         note: { lane: 1 },
@@ -78,8 +79,8 @@ export function createDemoProjectFile(): ProjectFile {
       },
     },
     {
-      id: crypto.randomUUID(),
-      version: crypto.randomUUID(),
+      id: uuidv7(),
+      version: uuidv7(),
       components: {
         event: { y: 960 },
         note: { lane: 4 },
@@ -88,8 +89,8 @@ export function createDemoProjectFile(): ProjectFile {
       },
     },
     {
-      id: crypto.randomUUID(),
-      version: crypto.randomUUID(),
+      id: uuidv7(),
+      version: uuidv7(),
       components: {
         event: { y: 1200 },
         note: { lane: 8 },
@@ -98,8 +99,8 @@ export function createDemoProjectFile(): ProjectFile {
       },
     },
     {
-      id: crypto.randomUUID(),
-      version: crypto.randomUUID(),
+      id: uuidv7(),
+      version: uuidv7(),
       components: {
         event: { y: 1440 },
         note: { lane: 7 },
@@ -111,7 +112,7 @@ export function createDemoProjectFile(): ProjectFile {
 
   return {
     schemaVersion: 2,
-    version: crypto.randomUUID(),
+    version: uuidv7(),
     metadata: {
       title: "Demo Project",
       artist: "Beat Muser",

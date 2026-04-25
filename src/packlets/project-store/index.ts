@@ -7,6 +7,7 @@
  */
 
 import { get, set } from "idb-keyval";
+import { uuidv7 } from "uuidv7";
 import type { Project, ProjectSource } from "./types";
 import { slugify } from "./slugify";
 
@@ -40,7 +41,7 @@ export async function addProject(displayName: string, source: ProjectSource): Pr
 
   const now = new Date().toISOString();
   const project: Project = {
-    id: crypto.randomUUID(),
+    id: uuidv7(),
     slug,
     displayName,
     source,
@@ -78,7 +79,7 @@ export const DEMO_SLUG = "__demo__";
 export function createDemoProject(name: string): Project {
   const now = new Date().toISOString();
   return {
-    id: crypto.randomUUID(),
+    id: uuidv7(),
     slug: DEMO_SLUG,
     displayName: name,
     source: { provider: "examples", name },

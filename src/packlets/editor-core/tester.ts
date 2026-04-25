@@ -7,6 +7,7 @@
  */
 
 import { expect } from "vite-plus/test";
+import { uuidv7 } from "uuidv7";
 import { EditorController, CHART } from "./index";
 import type { ProjectFile } from "../project-format";
 import { EntityComponentType, type Entity } from "../entity-manager";
@@ -25,8 +26,8 @@ export class EntityBuilder {
 
   build(): Entity {
     return {
-      id: crypto.randomUUID(),
-      version: crypto.randomUUID(),
+      id: uuidv7(),
+      version: uuidv7(),
       components: { ...this.components },
     };
   }

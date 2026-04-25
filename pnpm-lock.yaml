@@ -51,6 +51,9 @@ importers:
       typebox:
         specifier: ^1.1.28
         version: 1.1.28
+      uuidv7:
+        specifier: ^1.2.1
+        version: 1.2.1
     devDependencies:
       '@playwright/test':
         specifier: ^1.59.1
@@ -2651,6 +2654,10 @@ packages:
     resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  uuidv7@1.2.1:
+    resolution: {integrity: sha512-4kPkK3/XTQW9Hbm4CaqfICn+kY9LJtDVEOfgsRRra/+n2Ofg4NqzRFceAkxvQ/Ud/6BpHOPzj8cirqM7TzTN5Q==}
+    hasBin: true
 
   vite-plus@0.1.18:
     resolution: {integrity: sha512-RiWUoOmQiJMtd4Dfm6WD0v0Selqh/nQzmaGVIrkfnr+2s5UxGVZy7n2TCO5ZnR7w9noMIgtUAQN8GtKhwHEiOQ==}
@@ -5489,6 +5496,8 @@ snapshots:
   use-sync-external-store@1.6.0(react@19.2.5):
     dependencies:
       react: 19.2.5
+
+  uuidv7@1.2.1: {}
 
   vite-plus@0.1.18(@types/node@25.6.0)(@vitest/coverage-v8@4.1.5)(@voidzero-dev/vite-plus-core@0.1.18(@types/node@25.6.0)(typescript@6.0.3)(yaml@2.8.3))(typescript@6.0.3)(yaml@2.8.3):
     dependencies:

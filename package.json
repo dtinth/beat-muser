@@ -21,7 +21,8 @@
     "react-router": "^7.14.1",
     "sonner": "^2.0.7",
     "tinykeys": "^3.0.0",
-    "typebox": "^1.1.28"
+    "typebox": "^1.1.28",
+    "uuidv7": "^1.2.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
