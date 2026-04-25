@@ -443,8 +443,6 @@ export class EditorController {
     if (this.isBoxSelecting) {
       this.boxEndColumnIndex = this.getColumnIndexFromViewportX(viewportX);
       this.boxEndPulse = this.computePulseFromViewportY(viewportY);
-      this.updateVisibleRenderObjects();
-      return;
     }
     this.$cursorViewportX.set(viewportX);
     this.$cursorViewportY.set(viewportY);

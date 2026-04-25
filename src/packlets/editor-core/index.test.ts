@@ -476,7 +476,7 @@ describe("EditorController", () => {
       editor.selection.shouldBeEmpty();
     });
 
-    test("playhead does not move during box-select", () => {
+    test("playhead moves during box-select", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
           makeProject((p) => {
@@ -490,7 +490,7 @@ describe("EditorController", () => {
       editor.pointerDown({ x: 250, y: 150 });
       editor.pointerMove({ x: 250, y: 50 });
 
-      expect(editor.instance.$cursorPulse.get()).toBe(pulseBefore);
+      expect(editor.instance.$cursorPulse.get()).not.toBe(pulseBefore);
     });
 
     test("shift+click adds another event to selection", () => {
