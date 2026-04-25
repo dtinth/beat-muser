@@ -382,13 +382,15 @@ export class EditorController {
   private getColumnIndexFromViewportX(viewportX: number): number {
     const contentX = viewportX + this.$scrollLeft.get();
     const columns = this.getColumns();
+    if (columns.length === 0) return 0;
+    if (contentX < columns[0]!.x) return 0;
     for (let i = 0; i < columns.length; i++) {
       const col = columns[i]!;
       if (contentX >= col.x && contentX < col.x + col.width) {
         return i;
       }
     }
-    return -1;
+    return columns.length - 1;
   }
 
   private computePulseFromViewportY(viewportY: number): number {
