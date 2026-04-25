@@ -259,10 +259,15 @@ export function createTimelineBehaviorFactory(
         controller.setScrollTop(scrollTop);
       },
 
-      onPointerEvent(_event, contentX, contentY) {
+      onPointerEvent(event, contentX, contentY) {
         const viewportX = contentX - ctx.scrollLeft;
         const viewportY = contentY - ctx.scrollTop;
-        controller.setCursor(viewportX, viewportY);
+        if (event.type === "pointermove") {
+          controller.setCursor(viewportX, viewportY);
+        }
+        if (event.type === "pointerdown") {
+          controller.handlePointerDown({ x: viewportX, y: viewportY });
+        }
       },
 
       getVisibleObjects(): RenderObject[] {

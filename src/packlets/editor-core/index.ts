@@ -27,6 +27,7 @@ import {
   SOUND_EVENT,
 } from "./components";
 import { getGameModeLayout } from "./lane-layouts";
+import { Point, Rect } from "../geometry";
 
 export interface EditorControllerOptions {
   project: ProjectFile;
@@ -61,6 +62,7 @@ export interface TimelineRenderSpec {
   data: Record<string, unknown>;
   testId?: string;
   layer?: "scroll" | "sticky";
+  entityId?: string;
 }
 
 export interface EditorOutboxEvents {
@@ -344,8 +346,47 @@ export class EditorController {
     this.$visibleRenderObjects.set(this.getVisibleRenderSpecs());
   }
 
-  onClick(_viewportX: number, _viewportY: number): void {
-    // TODO: implement hit-testing and selection
+  hitTest(point: Point): string | null {
+    const scrollLeft = this.$scrollLeft.get();
+    const scrollTop = this.$scrollTop.get();
+    const contentX = point.x + scrollLeft;
+    const contentY = point.y + scrollTop;
+
+    const specs = this.getVisibleRenderSpecs();
+    const HIT_TOLERANCE = 4;
+
+    let bestId: string | null = null;
+    let bestDistance = Infinity;
+
+    for (const spec of specs) {
+      if (!spec.entityId) continue;
+
+      const hitRect = Rect.expand(
+        { x: spec.x, y: spec.y, width: spec.width, height: spec.height },
+        HIT_TOLERANCE,
+      );
+      if (!Rect.contains(hitRect, { x: contentX, y: contentY })) continue;
+
+      const center = Rect.center({ x: spec.x, y: spec.y, width: spec.width, height: spec.height });
+      const distance = Point.distance({ x: contentX, y: contentY }, center);
+
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestId = spec.entityId;
+      }
+    }
+
+    return bestId;
+  }
+
+  handlePointerDown(point: Point): void {
+    const hit = this.hitTest(point);
+    if (hit) {
+      this.$selection.set(new Set([hit]));
+    } else {
+      this.$selection.set(new Set());
+    }
+    this.updateVisibleRenderObjects();
   }
 
   setZoom(zoom: number): void {
@@ -542,6 +583,7 @@ export class EditorController {
       );
       if (!laneCol) continue;
 
+      const isSelected = this.$selection.get().has(entity.id);
       specs.push({
         key: `note-${entity.id}`,
         type: "event-marker",
@@ -553,8 +595,10 @@ export class EditorController {
           text: "",
           backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
           textColor: "#fff",
+          selected: isSelected,
         },
         testId: "note",
+        entityId: entity.id,
       });
     }
 
@@ -570,6 +614,7 @@ export class EditorController {
         const pulse = event.y;
         if (pulse < pulseStart || pulse >= pulseEnd) continue;
 
+        const isSelected = this.$selection.get().has(entity.id);
         specs.push({
           key: `bpm-${entity.id}`,
           type: "event-marker",
@@ -581,8 +626,10 @@ export class EditorController {
             text: String(bpm.bpm),
             backgroundColor: "var(--yellow-6)",
             textColor: "#fff",
+            selected: isSelected,
           },
           testId: "bpm-change-marker",
+          entityId: entity.id,
         });
       }
     }
@@ -595,6 +642,7 @@ export class EditorController {
         const pulse = event.y;
         if (pulse < pulseStart || pulse >= pulseEnd) continue;
 
+        const isSelected = this.$selection.get().has(entity.id);
         specs.push({
           key: `ts-${entity.id}`,
           type: "event-marker",
@@ -606,8 +654,10 @@ export class EditorController {
             text: `${ts.numerator}/${ts.denominator}`,
             backgroundColor: "var(--tomato-6)",
             textColor: "#fff",
+            selected: isSelected,
           },
           testId: "time-sig-marker",
+          entityId: entity.id,
         });
       }
     }

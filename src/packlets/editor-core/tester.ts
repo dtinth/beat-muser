@@ -158,12 +158,12 @@ export class EditorTester {
     this.instance.onConnected();
   }
 
-  hover({ x, y }: { x?: number; y: number }) {
+  pointerMove({ x, y }: { x?: number; y: number }) {
     this.instance.setCursor(x ?? 0, y);
   }
 
-  click(point: PointType) {
-    this.instance.onClick(point.x, point.y);
+  pointerDown(point: PointType) {
+    this.instance.handlePointerDown(point);
   }
 
   eventRect(entityId: string): Rect {

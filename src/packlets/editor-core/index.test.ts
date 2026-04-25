@@ -206,7 +206,7 @@ describe("EditorController", () => {
       // Content height = 240. With viewport 480, initial scroll = 0 (content fits).
       // Hover at viewport y=100 → contentY=100 → rawPulse = (200-100)/0.2 = 500.
       // Snap 1/16 = 60 pulses. 500/60 = 8.33 → round to 8 → 480.
-      editor.hover({ x: 250, y: 100 });
+      editor.pointerMove({ x: 250, y: 100 });
       editor.playhead.shouldBeAtPulse(480);
     });
 
@@ -222,7 +222,7 @@ describe("EditorController", () => {
       // Hover at viewport y=250 → contentY=2882 → rawPulse = (3072-2882)/0.2 = 950.
       // Snap 1/16 = 60. 950/60 = 15.83 → round to 16 → 960.
       // Clamped to [0, 900] (measure end 960 minus interval 60), so 900.
-      editor.hover({ x: 250, y: 250 });
+      editor.pointerMove({ x: 250, y: 250 });
       editor.playhead.shouldBeAtPulse(900);
     });
 
@@ -237,7 +237,7 @@ describe("EditorController", () => {
       // trackHeight = 2000, contentHeight = 2040, initial scroll = 1560.
       // Hover at viewport y=100 → contentY=1660 → rawPulse = (2000-1660)/0.2 = 1700.
       // Snap 1/16 = 60. 1700/60 = 28.33 → 1680.
-      editor.hover({ x: 250, y: 100 });
+      editor.pointerMove({ x: 250, y: 100 });
       editor.playhead.shouldBeAtPulse(1680);
 
       // Scroll up (decrease scrollTop) by 400.
@@ -264,7 +264,7 @@ describe("EditorController", () => {
           }),
       });
 
-      editor.click(Rect.center(editor.eventRect(bpmEntity!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(bpmEntity!.id)));
       editor.selection.shouldContain(bpmEntity!.id);
     });
 
@@ -283,7 +283,7 @@ describe("EditorController", () => {
           }),
       });
 
-      editor.click(Rect.center(editor.eventRect(tsEntity!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(tsEntity!.id)));
       editor.selection.shouldContain(tsEntity!.id);
     });
 
@@ -302,10 +302,10 @@ describe("EditorController", () => {
           }),
       });
 
-      editor.click(Rect.center(editor.eventRect(bpmEntity!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(bpmEntity!.id)));
       editor.selection.shouldContain(bpmEntity!.id);
 
-      editor.click({ x: 0, y: 0 });
+      editor.pointerDown({ x: 0, y: 0 });
       editor.selection.shouldBeEmpty();
     });
 
@@ -326,10 +326,10 @@ describe("EditorController", () => {
           }),
       });
 
-      editor.click(Rect.center(editor.eventRect(bpmA!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)));
       editor.selection.shouldContain(bpmA!.id);
 
-      editor.click(Rect.center(editor.eventRect(bpmB!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(bpmB!.id)));
       editor.selection.shouldContain(bpmB!.id);
     });
 
@@ -348,7 +348,7 @@ describe("EditorController", () => {
           }),
       });
 
-      editor.click(Rect.center(editor.eventRect(bpmEntity!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(bpmEntity!.id)));
       const spec = editor.instance.$visibleRenderObjects
         .get()
         .find((s) => s.key.endsWith(`-${bpmEntity!.id}`));
@@ -374,7 +374,7 @@ describe("EditorController", () => {
       const rect = editor.eventRect(bpmEntity!.id);
       const center = Rect.center(rect);
       // Click 3px above center (within ±4px tolerance).
-      editor.click({ x: center.x, y: center.y - 3 });
+      editor.pointerDown({ x: center.x, y: center.y - 3 });
       editor.selection.shouldContain(bpmEntity!.id);
     });
   });
