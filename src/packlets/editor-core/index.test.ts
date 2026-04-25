@@ -333,7 +333,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmB!.id);
     });
 
-    test.skip("selected event renders with highlight", () => {
+    test("selected event renders with highlight", () => {
       let bpmEntity: Entity;
       const editor = new EditorTester({
         getProjectToLoad: () =>
