@@ -20,6 +20,7 @@ export interface Command {
   title: string;
   shortcut?: string;
   shortcutMac?: string;
+  enabled?: () => boolean;
   execute: () => void;
 }
 
@@ -118,3 +119,5 @@ export class KeyboardShortcutHandler {
 
 /** Global singleton for the active editor instance. */
 export const globalCommandRegistry = new CommandRegistry();
+
+export { CommandPalette } from "./palette";

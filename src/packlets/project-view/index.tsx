@@ -40,7 +40,12 @@ import { ScrollableCanvas } from "../scrollable-canvas";
 import { EditorController } from "../editor-core";
 import type { ProjectFile } from "../project-format";
 import { createTimelineBehaviorFactory } from "./timeline-behavior";
-import { globalCommandRegistry, CommandSet, KeyboardShortcutHandler } from "../command-registry";
+import {
+  globalCommandRegistry,
+  CommandSet,
+  KeyboardShortcutHandler,
+  CommandPalette,
+} from "../command-registry";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -265,6 +270,7 @@ export function ProjectViewPage() {
   const { showError } = useToast();
 
   const [controller] = useState(() => new EditorController({ project }));
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
     const commands = new CommandSet();
@@ -279,6 +285,12 @@ export function ProjectViewPage() {
       title: "Zoom Out",
       shortcut: "Minus",
       execute: () => controller.zoomOut(),
+    });
+    commands.add({
+      id: "openCommandPalette",
+      title: "Open Command Palette",
+      shortcut: "$mod+KeyK",
+      execute: () => setPaletteOpen(true),
     });
     const unregister = commands.registerTo(globalCommandRegistry);
     const handler = new KeyboardShortcutHandler({
@@ -335,69 +347,76 @@ export function ProjectViewPage() {
   }, [error, showError]);
 
   return (
-    <ProjectLayout
-      leftPanels={<LeftPanels project={project} />}
-      rightPanels={<RightPanels controller={controller} />}
-      toolbar={
-        <Toolbar>
-          <ToolbarGroup label="Mode">
-            <ToolbarButton icon={<MousePointer2 size={16} />} label="Select" active />
-            <ToolbarButton icon={<Pencil size={16} />} label="Pencil" />
-            <ToolbarButton icon={<Eraser size={16} />} label="Erase" />
-            <ToolbarButton icon={<Hand size={16} />} label="Pan" />
-          </ToolbarGroup>
+    <>
+      <ProjectLayout
+        leftPanels={<LeftPanels project={project} />}
+        rightPanels={<RightPanels controller={controller} />}
+        toolbar={
+          <Toolbar>
+            <ToolbarGroup label="Mode">
+              <ToolbarButton icon={<MousePointer2 size={16} />} label="Select" active />
+              <ToolbarButton icon={<Pencil size={16} />} label="Pencil" />
+              <ToolbarButton icon={<Eraser size={16} />} label="Erase" />
+              <ToolbarButton icon={<Hand size={16} />} label="Pan" />
+            </ToolbarGroup>
 
-          <ToolbarDivider />
+            <ToolbarDivider />
 
-          <ToolbarGroup label="History">
-            <ToolbarButton icon={<Undo2 size={16} />} label="Undo" />
-            <ToolbarButton icon={<Redo2 size={16} />} label="Redo" />
-            <ToolbarButton icon={<Save size={16} />} label="Save" />
-          </ToolbarGroup>
+            <ToolbarGroup label="History">
+              <ToolbarButton icon={<Undo2 size={16} />} label="Undo" />
+              <ToolbarButton icon={<Redo2 size={16} />} label="Redo" />
+              <ToolbarButton icon={<Save size={16} />} label="Save" />
+            </ToolbarGroup>
 
-          <ToolbarDivider />
+            <ToolbarDivider />
 
-          <ToolbarGroup label="Transport">
-            <ToolbarButton icon={<Play size={16} />} label="Play" />
-            <ToolbarButton icon={<Pause size={16} />} label="Pause" />
-            <TransportDisplay time={timeStr} pulse={String(cursorPulse)} measure={measureStr} />
-          </ToolbarGroup>
+            <ToolbarGroup label="Transport">
+              <ToolbarButton icon={<Play size={16} />} label="Play" />
+              <ToolbarButton icon={<Pause size={16} />} label="Pause" />
+              <TransportDisplay time={timeStr} pulse={String(cursorPulse)} measure={measureStr} />
+            </ToolbarGroup>
 
-          <ToolbarDivider />
+            <ToolbarDivider />
 
-          <ToolbarGroup label="Snap">
-            <ToolbarDropdown
-              value={snap}
-              options={["1/4", "1/8", "1/12", "1/16", "1/24", "1/32", "1/48", "1/64"]}
-              onSelect={(value) => controller.setSnap(value)}
-            />
-          </ToolbarGroup>
+            <ToolbarGroup label="Snap">
+              <ToolbarDropdown
+                value={snap}
+                options={["1/4", "1/8", "1/12", "1/16", "1/24", "1/32", "1/48", "1/64"]}
+                onSelect={(value) => controller.setSnap(value)}
+              />
+            </ToolbarGroup>
 
-          <ToolbarDivider />
+            <ToolbarDivider />
 
-          <ToolbarGroup label="Zoom">
-            <ToolbarButton
-              icon={<ZoomOut size={16} />}
-              label="Zoom Out"
-              onClick={() => globalCommandRegistry.execute("zoomOut")}
-            />
-            <ToolbarDropdown
-              value={zoomPercent}
-              options={["25%", "50%", "75%", "100%", "125%", "150%", "200%", "400%"]}
-              onSelect={(value) => {
-                const pct = parseInt(value.replace("%", ""), 10);
-                controller.setZoom(pct / 100);
-              }}
-            />
-            <ToolbarButton
-              icon={<ZoomIn size={16} />}
-              label="Zoom In"
-              onClick={() => globalCommandRegistry.execute("zoomIn")}
-            />
-          </ToolbarGroup>
-        </Toolbar>
-      }
-      timeline={<ScrollableCanvas behavior={behaviorFactory} />}
-    />
+            <ToolbarGroup label="Zoom">
+              <ToolbarButton
+                icon={<ZoomOut size={16} />}
+                label="Zoom Out"
+                onClick={() => globalCommandRegistry.execute("zoomOut")}
+              />
+              <ToolbarDropdown
+                value={zoomPercent}
+                options={["25%", "50%", "75%", "100%", "125%", "150%", "200%", "400%"]}
+                onSelect={(value) => {
+                  const pct = parseInt(value.replace("%", ""), 10);
+                  controller.setZoom(pct / 100);
+                }}
+              />
+              <ToolbarButton
+                icon={<ZoomIn size={16} />}
+                label="Zoom In"
+                onClick={() => globalCommandRegistry.execute("zoomIn")}
+              />
+            </ToolbarGroup>
+          </Toolbar>
+        }
+        timeline={<ScrollableCanvas behavior={behaviorFactory} />}
+      />
+      <CommandPalette
+        registry={globalCommandRegistry}
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
+    </>
   );
 }
