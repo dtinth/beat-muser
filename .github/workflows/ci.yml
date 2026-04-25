@@ -54,6 +54,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && always() && (needs.test.result == 'success' || needs.test.result == 'failure') && (needs.e2e.result == 'success' || needs.e2e.result == 'failure')
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      actions: read
       pages: write
       id-token: write
     environment:
