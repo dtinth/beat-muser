@@ -403,7 +403,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmB!.id);
     });
 
-    test.skip("shift+click on selected event removes it from selection", () => {
+    test("shift+click on selected event removes it from selection", () => {
       let bpmA: Entity;
       let bpmB: Entity;
       const editor = new EditorTester({
