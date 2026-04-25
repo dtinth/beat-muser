@@ -676,4 +676,92 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmA!.id);
     });
   });
+
+  describe("delete selection", () => {
+    test.skip("deleting selected notes removes them and clears selection", () => {
+      let noteA: Entity;
+      let noteB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteA = c.note(240, 1, level.id);
+                noteB = c.note(480, 2, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteA!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(noteB!.id)), { shiftKey: true });
+      editor.deleteSelection();
+
+      editor.selection.shouldBeEmpty();
+      expect(editor.instance.getEntityManager().get(noteA!.id)).toBeUndefined();
+      expect(editor.instance.getEntityManager().get(noteB!.id)).toBeUndefined();
+    });
+  });
+
+  describe("undo/redo", () => {
+    test.skip("undo restores deleted notes and re-selects visible ones", () => {
+      let noteA: Entity;
+      let noteB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteA = c.note(240, 1, level.id);
+                noteB = c.note(480, 2, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteA!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(noteB!.id)), { shiftKey: true });
+      editor.deleteSelection();
+      editor.undo();
+
+      expect(editor.instance.getEntityManager().get(noteA!.id)).toBeDefined();
+      expect(editor.instance.getEntityManager().get(noteB!.id)).toBeDefined();
+      editor.selection.shouldContain(noteA!.id);
+      editor.selection.shouldContain(noteB!.id);
+    });
+
+    test.skip("redo re-deletes restored notes", () => {
+      let noteA: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteA = c.note(240, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteA!.id)));
+      editor.deleteSelection();
+      editor.undo();
+      editor.redo();
+
+      editor.selection.shouldBeEmpty();
+      expect(editor.instance.getEntityManager().get(noteA!.id)).toBeUndefined();
+    });
+  });
 });

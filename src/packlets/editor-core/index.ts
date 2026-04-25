@@ -527,6 +527,18 @@ export class EditorController {
     if (prev) this.setZoom(prev);
   }
 
+  deleteSelection(): void {
+    // TODO: implement
+  }
+
+  undo(): void {
+    // TODO: implement
+  }
+
+  redo(): void {
+    // TODO: implement
+  }
+
   onConnected(): void {
     const contentHeight = this.getContentHeight();
     const viewportHeight = this.$viewportHeight.get();

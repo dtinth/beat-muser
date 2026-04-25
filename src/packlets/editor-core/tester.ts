@@ -186,6 +186,18 @@ export class EditorTester {
     this.instance.setScroll(point);
   }
 
+  deleteSelection() {
+    this.instance.deleteSelection();
+  }
+
+  undo() {
+    this.instance.undo();
+  }
+
+  redo() {
+    this.instance.redo();
+  }
+
   get scrollHeight() {
     return this.instance.getContentHeight();
   }
