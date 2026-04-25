@@ -135,11 +135,12 @@ export class EditorTester {
     const viewportHeight = options?.viewport?.height ?? 480;
     this.instance.setViewportSize(viewportWidth, viewportHeight);
 
-    // Match timeline-behavior's onConnected initial scroll.
-    const contentHeight = this.instance.getContentHeight();
-    if (contentHeight > viewportHeight) {
-      this.instance.setScrollTop(contentHeight - viewportHeight);
-    }
+    // Subscribe to outbox so onConnected scroll notifications are applied.
+    const unsub = this.instance.outbox.on("setScrollTop", (top) => {
+      this.instance.setScrollTop(top);
+    });
+    this.instance.onConnected();
+    unsub();
   }
 
   hover({ x, y }: { x?: number; y: number }) {

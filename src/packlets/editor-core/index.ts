@@ -365,6 +365,14 @@ export class EditorController {
     if (prev) this.setZoom(prev);
   }
 
+  onConnected(): void {
+    const contentHeight = this.getContentHeight();
+    const viewportHeight = this.$viewportHeight.get();
+    if (contentHeight > viewportHeight) {
+      this.outbox.emit("setScrollTop", contentHeight - viewportHeight);
+    }
+  }
+
   /**
    * Computes the new scroll top after a zoom change so that the playhead
    * stays at the same viewport Y position.

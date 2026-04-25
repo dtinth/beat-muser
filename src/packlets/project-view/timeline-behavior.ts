@@ -251,10 +251,7 @@ export function createTimelineBehaviorFactory(
 
       onConnected() {
         controller.setViewportSize(ctx.viewportWidth, ctx.viewportHeight);
-        const contentHeight = controller.getContentHeight();
-        if (contentHeight > controller.$viewportHeight.get()) {
-          ctx.setScrollTop(contentHeight - controller.$viewportHeight.get());
-        }
+        controller.onConnected();
       },
 
       onScroll(scrollLeft: number, scrollTop: number) {
