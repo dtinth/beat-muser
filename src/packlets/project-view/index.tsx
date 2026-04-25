@@ -287,11 +287,7 @@ export function ProjectViewPage() {
   const zoomPercent = `${Math.round(zoom * 100)}%`;
 
   const engine = controller.getTimingEngine();
-  const seconds = engine.pulseToSeconds(cursorPulse);
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  const ms = Math.floor((seconds % 1) * 1000);
-  const timeStr = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
+  const timeStr = engine.formatTime(engine.pulseToSeconds(cursorPulse));
 
   const measureInfo = engine.getMeasureAtPulse(cursorPulse);
   const beatLength = 240; // 1 quarter note = PPQN

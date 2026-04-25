@@ -135,12 +135,12 @@ export class EditorTester {
     const viewportHeight = options?.viewport?.height ?? 480;
     this.instance.setViewportSize(viewportWidth, viewportHeight);
 
-    // Subscribe to outbox so onConnected scroll notifications are applied.
-    const unsub = this.instance.outbox.on("setScrollTop", (top) => {
+    // Subscribe to outbox so scroll notifications (e.g. from onConnected or
+    // setZoom) are applied, closing the loop just like the real DOM does.
+    this.instance.outbox.on("setScrollTop", (top) => {
       this.instance.setScrollTop(top);
     });
     this.instance.onConnected();
-    unsub();
   }
 
   hover({ x, y }: { x?: number; y: number }) {
@@ -170,19 +170,13 @@ export class EditorTester {
     shouldBeAtTime: (expected: string) => {
       const engine = this.instance.getTimingEngine();
       const seconds = engine.pulseToSeconds(this.instance.$cursorPulse.get());
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      const ms = Math.floor((seconds % 1) * 1000);
-      const timeStr = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
-      expect(timeStr).toBe(expected);
+      expect(engine.formatTime(seconds)).toBe(expected);
     },
     shouldHavePositionRelativeToViewport: (expectedY: number) => {
-      const trackHeight = this.instance.getTrackHeight();
-      const scaleY = this.instance.getScaleY();
-      const cursorPulse = this.instance.$cursorPulse.get();
-      const scrollTop = this.instance.$scrollTop.get();
-      const playheadContentY = trackHeight - cursorPulse * scaleY - 1;
-      const playheadViewportY = playheadContentY - scrollTop;
+      const specs = this.instance.$visibleRenderObjects.get();
+      const playhead = specs.find((s) => s.type === "playhead");
+      expect(playhead).toBeDefined();
+      const playheadViewportY = playhead!.y - this.instance.$scrollTop.get();
       expect(playheadViewportY).toBe(expectedY);
     },
   };
@@ -209,11 +203,7 @@ export class EditorTester {
       shouldBeAtTime: (expected: string) => {
         const engine = this.instance.getTimingEngine();
         const seconds = engine.pulseToSeconds(pulse);
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        const ms = Math.floor((seconds % 1) * 1000);
-        const timeStr = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}.${String(ms).padStart(3, "0")}`;
-        expect(timeStr).toBe(expected);
+        expect(engine.formatTime(seconds)).toBe(expected);
       },
     }),
   };
