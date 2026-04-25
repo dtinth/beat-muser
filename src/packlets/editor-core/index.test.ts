@@ -430,7 +430,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmB!.id);
     });
 
-    test.skip("shift+click on empty space does nothing", () => {
+    test("shift+click on empty space does nothing", () => {
       let bpmEntity: Entity;
       const editor = new EditorTester({
         getProjectToLoad: () =>
