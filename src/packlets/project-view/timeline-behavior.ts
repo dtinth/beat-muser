@@ -212,6 +212,19 @@ function createPlayheadRenderer(): () => RenderHandle<{}> {
 // Behavior factory
 // ---------------------------------------------------------------------------
 
+function createSelectionBoxRenderer(): () => RenderHandle<{}> {
+  return () => {
+    const el = document.createElement("div");
+    el.style.backgroundColor = "rgba(159, 238, 42, 0.15)";
+    el.style.border = "1px dashed rgba(159, 238, 42, 0.6)";
+    el.style.pointerEvents = "none";
+    return {
+      dom: el,
+      update() {},
+    };
+  };
+}
+
 const rendererMap: Record<string, Renderer> = {
   "column-bg": createColumnBgRenderer(),
   "column-title": createColumnTitleRenderer(),
@@ -219,6 +232,7 @@ const rendererMap: Record<string, Renderer> = {
   "event-marker": createEventMarkerRenderer(),
   playhead: createPlayheadRenderer(),
   "grid-line": createGridLineRenderer(),
+  "selection-box": createSelectionBoxRenderer(),
 };
 
 function specToRenderObject(spec: TimelineRenderSpec): RenderObject {
@@ -275,10 +289,13 @@ export function createTimelineBehaviorFactory(
         const viewportX = contentX - ctx.scrollLeft;
         const viewportY = contentY - ctx.scrollTop;
         if (event.type === "pointermove") {
-          controller.setCursor(viewportX, viewportY);
+          controller.handlePointerMove(viewportX, viewportY);
         }
         if (event.type === "pointerdown") {
           controller.handlePointerDown({ x: viewportX, y: viewportY }, event.shiftKey);
+        }
+        if (event.type === "pointerup") {
+          controller.handlePointerUp();
         }
       },
 

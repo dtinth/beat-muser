@@ -159,11 +159,15 @@ export class EditorTester {
   }
 
   pointerMove({ x, y }: { x?: number; y: number }) {
-    this.instance.setCursor(x ?? 0, y);
+    this.instance.handlePointerMove(x ?? 0, y);
   }
 
   pointerDown(point: PointType, options?: { shiftKey?: boolean }) {
     this.instance.handlePointerDown(point, options?.shiftKey ?? false);
+  }
+
+  pointerUp() {
+    this.instance.handlePointerUp();
   }
 
   eventRect(entityId: string): Rect {

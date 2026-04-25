@@ -111,6 +111,13 @@ export class EditorController {
   private columns: TimelineColumn[];
   private timelineWidth: number;
 
+  // Box selection state
+  private isBoxSelecting = false;
+  private boxStartColumnIndex = 0;
+  private boxEndColumnIndex = 0;
+  private boxStartPulse = 0;
+  private boxEndPulse = 0;
+
   constructor(options: EditorControllerOptions) {
     this.entityManager = EntityManager.from(options.project.entities);
 
@@ -315,13 +322,6 @@ export class EditorController {
     this.updateVisibleRenderObjects();
   }
 
-  setCursor(viewportX: number, viewportY: number): void {
-    this.$cursorViewportX.set(viewportX);
-    this.$cursorViewportY.set(viewportY);
-    this.recomputeCursorPulse();
-    this.updateVisibleRenderObjects();
-  }
-
   setSnap(snap: string): void {
     this.$snap.set(snap);
     const currentPulse = this.$cursorPulse.get();
@@ -379,10 +379,30 @@ export class EditorController {
     return bestId;
   }
 
+  private getColumnIndexFromViewportX(viewportX: number): number {
+    const contentX = viewportX + this.$scrollLeft.get();
+    const columns = this.getColumns();
+    for (let i = 0; i < columns.length; i++) {
+      const col = columns[i]!;
+      if (contentX >= col.x && contentX < col.x + col.width) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  private computePulseFromViewportY(viewportY: number): number {
+    const scrollTop = this.$scrollTop.get();
+    const contentY = viewportY + scrollTop;
+    const trackHeight = this.getTrackHeight();
+    const scaleY = this.getScaleY();
+    return (trackHeight - contentY) / scaleY;
+  }
+
   handlePointerDown(point: Point, shiftKey: boolean = false): void {
     const hit = this.hitTest(point);
-    if (shiftKey) {
-      if (hit) {
+    if (hit) {
+      if (shiftKey) {
         const next = new Set(this.$selection.get());
         if (next.has(hit)) {
           next.delete(hit);
@@ -390,15 +410,95 @@ export class EditorController {
           next.add(hit);
         }
         this.$selection.set(next);
-      }
-      // Shift+click on empty space: do nothing.
-    } else {
-      if (hit) {
-        this.$selection.set(new Set([hit]));
       } else {
+        this.$selection.set(new Set([hit]));
+      }
+    } else {
+      this.isBoxSelecting = true;
+      const colIndex = this.getColumnIndexFromViewportX(point.x);
+      const pulse = this.computePulseFromViewportY(point.y);
+      this.boxStartColumnIndex = colIndex;
+      this.boxEndColumnIndex = colIndex;
+      this.boxStartPulse = pulse;
+      this.boxEndPulse = pulse;
+      if (!shiftKey) {
         this.$selection.set(new Set());
       }
     }
+    this.updateVisibleRenderObjects();
+  }
+
+  handlePointerMove(viewportX: number, viewportY: number): void {
+    if (this.isBoxSelecting) {
+      this.boxEndColumnIndex = this.getColumnIndexFromViewportX(viewportX);
+      this.boxEndPulse = this.computePulseFromViewportY(viewportY);
+      this.updateVisibleRenderObjects();
+      return;
+    }
+    this.$cursorViewportX.set(viewportX);
+    this.$cursorViewportY.set(viewportY);
+    this.recomputeCursorPulse();
+    this.updateVisibleRenderObjects();
+  }
+
+  handlePointerUp(): void {
+    if (!this.isBoxSelecting) return;
+
+    const minCol = Math.min(this.boxStartColumnIndex, this.boxEndColumnIndex);
+    const maxCol = Math.max(this.boxStartColumnIndex, this.boxEndColumnIndex);
+    const minPulse = Math.min(this.boxStartPulse, this.boxEndPulse);
+    const maxPulse = Math.max(this.boxStartPulse, this.boxEndPulse);
+    const columns = this.getColumns();
+    const next = new Set(this.$selection.get());
+
+    for (const entity of this.entityManager.entitiesWithComponent(EVENT)) {
+      const event = this.entityManager.getComponent(entity, EVENT);
+      if (!event) continue;
+      const pulse = event.y;
+      if (pulse < minPulse || pulse > maxPulse) continue;
+
+      let colIndex = -1;
+      const note = this.entityManager.getComponent(entity, NOTE);
+      const levelRef = this.entityManager.getComponent(entity, LEVEL_REF);
+      if (note && levelRef) {
+        for (let i = 0; i < columns.length; i++) {
+          const col = columns[i]!;
+          if (col.levelId === levelRef.levelId && col.laneIndex === note.lane) {
+            colIndex = i;
+            break;
+          }
+        }
+      }
+      if (colIndex === -1) {
+        const bpm = this.entityManager.getComponent(entity, BPM_CHANGE);
+        if (bpm) {
+          for (let i = 0; i < columns.length; i++) {
+            if (columns[i]!.id === "bpm") {
+              colIndex = i;
+              break;
+            }
+          }
+        }
+      }
+      if (colIndex === -1) {
+        const ts = this.entityManager.getComponent(entity, TIME_SIGNATURE);
+        if (ts) {
+          for (let i = 0; i < columns.length; i++) {
+            if (columns[i]!.id === "time-sig") {
+              colIndex = i;
+              break;
+            }
+          }
+        }
+      }
+
+      if (colIndex >= minCol && colIndex <= maxCol) {
+        next.add(entity.id);
+      }
+    }
+
+    this.$selection.set(next);
+    this.isBoxSelecting = false;
     this.updateVisibleRenderObjects();
   }
 
@@ -758,6 +858,28 @@ export class EditorController {
         data: { color: "var(--gray-6)" },
         testId: "snap-line",
       });
+    }
+
+    // --- Selection box (during drag) ---
+    if (this.isBoxSelecting) {
+      const minCol = Math.min(this.boxStartColumnIndex, this.boxEndColumnIndex);
+      const maxCol = Math.max(this.boxStartColumnIndex, this.boxEndColumnIndex);
+      const minPulse = Math.min(this.boxStartPulse, this.boxEndPulse);
+      const maxPulse = Math.max(this.boxStartPulse, this.boxEndPulse);
+      if (minCol >= 0 && maxCol >= 0 && minCol < columns.length && maxCol < columns.length) {
+        const startCol = columns[minCol]!;
+        const endCol = columns[maxCol]!;
+        specs.push({
+          key: "selection-box",
+          type: "selection-box",
+          x: startCol.x,
+          y: trackHeight - maxPulse * scaleY,
+          width: endCol.x + endCol.width - startCol.x,
+          height: (maxPulse - minPulse) * scaleY,
+          data: {},
+          testId: "selection-box",
+        });
+      }
     }
 
     return specs;

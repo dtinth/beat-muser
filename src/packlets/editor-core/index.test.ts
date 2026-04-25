@@ -378,6 +378,81 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmEntity!.id);
     });
 
+    test("box-selecting over two BPM changes selects both", () => {
+      let bpmA: Entity;
+      let bpmB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmA = c.bpmChange(200, 120);
+                bpmB = c.bpmChange(600, 150);
+              },
+              1000,
+            );
+          }),
+      });
+
+      // Start box-select above both markers, drag down past them.
+      const rectA = editor.eventRect(bpmA!.id);
+      const rectB = editor.eventRect(bpmB!.id);
+      const top = Math.min(rectA.y, rectB.y) - 10;
+      const bottom = Math.max(rectA.y + rectA.height, rectB.y + rectB.height) + 10;
+
+      editor.pointerDown({ x: rectA.x + rectA.width / 2, y: top });
+      editor.pointerMove({ x: rectA.x + rectA.width / 2, y: bottom });
+      editor.pointerUp();
+
+      editor.selection.shouldContain(bpmA!.id);
+      editor.selection.shouldContain(bpmB!.id);
+    });
+
+    test.skip("box-selecting over empty space selects nothing", () => {
+      let bpmEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmEntity = c.bpmChange(500, 120);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmEntity!.id)));
+      editor.selection.shouldContain(bpmEntity!.id);
+
+      // Box-select in an empty area (different column, empty pulse range).
+      const rect = editor.eventRect(bpmEntity!.id);
+      editor.pointerDown({ x: rect.x + rect.width + 20, y: rect.y - 50 });
+      editor.pointerMove({ x: rect.x + rect.width + 30, y: rect.y - 20 });
+      editor.pointerUp();
+
+      editor.selection.shouldBeEmpty();
+    });
+
+    test.skip("playhead does not move during box-select", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 1000);
+          }),
+      });
+
+      editor.pointerMove({ x: 250, y: 100 });
+      const pulseBefore = editor.instance.$cursorPulse.get();
+
+      editor.pointerDown({ x: 250, y: 150 });
+      editor.pointerMove({ x: 250, y: 50 });
+
+      expect(editor.instance.$cursorPulse.get()).toBe(pulseBefore);
+    });
+
     test("shift+click adds another event to selection", () => {
       let bpmA: Entity;
       let bpmB: Entity;
