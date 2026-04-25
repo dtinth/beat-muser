@@ -12,6 +12,12 @@ export default defineConfig({
           ["allure-vitest/reporter", { resultsDir: "ci-reports/allure-results-vitest" }],
         ]
       : ["default"],
+    coverage: {
+      provider: "v8",
+      reporter: ["html", "text-summary"],
+      reportsDirectory: "ci-reports/coverage",
+      include: ["src/**/*.{ts,tsx}"],
+    },
   },
   staged: {
     "*": "vp check --fix",

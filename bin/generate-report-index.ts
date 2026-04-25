@@ -102,6 +102,13 @@ const html = `<!DOCTYPE html>
         </div>
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="color-fg-muted"><path d="m9 18 6-6-6-6"/></svg>
       </a>
+      <a href="./coverage/index.html" class="report-card d-flex flex-items-center p-3 border rounded-2 color-fg-default no-underline width-full" style="max-width: 280px;">
+        <div class="flex-auto">
+          <div class="f4 text-bold mb-1">Coverage Report</div>
+          <div class="color-fg-muted f6">Code coverage (V8)</div>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="color-fg-muted"><path d="m9 18 6-6-6-6"/></svg>
+      </a>
     </div>
 
     <div class="Box">
