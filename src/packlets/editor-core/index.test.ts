@@ -249,7 +249,7 @@ describe("EditorController", () => {
   });
 
   describe("selection", () => {
-    test.skip("clicking on a BPM change selects it", () => {
+    test("clicking on a BPM change selects it", () => {
       let bpmEntity: Entity;
       const editor = new EditorTester({
         getProjectToLoad: () =>
