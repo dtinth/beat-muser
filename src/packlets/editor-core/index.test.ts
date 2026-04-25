@@ -98,6 +98,25 @@ describe("EditorController", () => {
     expect(editor.columns.count).toBe(before);
   });
 
+  test("hiding a level decreases columns; unhiding restores count", () => {
+    const editor = new EditorTester({
+      getProjectToLoad: () =>
+        makeProject((p) => {
+          p.addChart("Hard", undefined, 1000);
+        }),
+    });
+
+    const chartId = editor.instance.$selectedChartId.get()!;
+    const levelId = editor.instance.addLevel(chartId, "Easy", "beat-7k");
+    const withLevel = editor.columns.count;
+
+    editor.instance.toggleLevelVisibility(levelId);
+    expect(editor.columns.count).toBeLessThan(withLevel);
+
+    editor.instance.toggleLevelVisibility(levelId);
+    expect(editor.columns.count).toBe(withLevel);
+  });
+
   test("extracts BPM changes from entities", () => {
     const editor = new EditorTester({
       getProjectToLoad: () =>
