@@ -409,7 +409,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmB!.id);
     });
 
-    test.skip("box-selecting over empty space selects nothing", () => {
+    test("box-selecting over empty space selects nothing", () => {
       let bpmEntity: Entity;
       const editor = new EditorTester({
         getProjectToLoad: () =>
