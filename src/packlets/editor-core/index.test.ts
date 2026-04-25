@@ -309,7 +309,7 @@ describe("EditorController", () => {
       editor.selection.shouldBeEmpty();
     });
 
-    test.skip("clicking on overlapping events selects the closest by center", () => {
+    test("clicking on overlapping events selects the closest by center", () => {
       let bpmA: Entity;
       let bpmB: Entity;
       const editor = new EditorTester({
