@@ -13,6 +13,7 @@ export default defineConfig({
         ]
       : ["default"],
     coverage: {
+      enabled: true,
       provider: "v8",
       reporter: ["html", "text-summary"],
       reportsDirectory: "ci-reports/coverage",
