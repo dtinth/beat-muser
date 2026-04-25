@@ -20,11 +20,14 @@ export interface Command {
 export class CommandRegistry {
   private commands = new Map<string, Command>();
 
-  register(command: Command): void {
+  register(command: Command): () => void {
     if (this.commands.has(command.id)) {
       throw new Error(`Command "${command.id}" is already registered`);
     }
     this.commands.set(command.id, command);
+    return () => {
+      this.commands.delete(command.id);
+    };
   }
 
   get(id: string): Command | undefined {

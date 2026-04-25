@@ -267,21 +267,23 @@ export function ProjectViewPage() {
   const [controller] = useState(() => new EditorController({ project }));
 
   useEffect(() => {
-    globalCommandRegistry.register({
-      id: "zoomIn",
-      title: "Zoom In",
-      shortcut: "Ctrl++",
-      execute: () => controller.zoomIn(),
-    });
-    globalCommandRegistry.register({
-      id: "zoomOut",
-      title: "Zoom Out",
-      shortcut: "Ctrl+-",
-      execute: () => controller.zoomOut(),
-    });
+    const unregisters = [
+      globalCommandRegistry.register({
+        id: "zoomIn",
+        title: "Zoom In",
+        shortcut: "Ctrl++",
+        execute: () => controller.zoomIn(),
+      }),
+      globalCommandRegistry.register({
+        id: "zoomOut",
+        title: "Zoom Out",
+        shortcut: "Ctrl+-",
+        execute: () => controller.zoomOut(),
+      }),
+    ];
 
     return () => {
-      // No unregister API; global registry is singleton for active editor.
+      unregisters.forEach((fn) => fn());
     };
   }, [controller]);
 
