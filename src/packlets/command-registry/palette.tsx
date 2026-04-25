@@ -66,6 +66,11 @@ export function CommandPalette({ registry, open, onClose }: CommandPaletteProps)
         }
         return;
       }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        return;
+      }
     }
 
     window.addEventListener("keydown", onKeyDown);
@@ -132,11 +137,16 @@ export function CommandPalette({ registry, open, onClose }: CommandPaletteProps)
               onMouseEnter={() => setSelectedIndex(i)}
             >
               <Text size="2">{cmd.title}</Text>
-              {(cmd.shortcut || cmd.shortcutMac) && (
-                <Text size="1" color="gray">
-                  {cmd.shortcut}
-                </Text>
-              )}
+              {(() => {
+                const isMac = navigator.platform.includes("Mac");
+                const shortcut = isMac && cmd.shortcutMac ? cmd.shortcutMac : cmd.shortcut;
+                if (!shortcut) return null;
+                return (
+                  <Text size="1" color="gray">
+                    {shortcut}
+                  </Text>
+                );
+              })()}
             </Box>
           ))}
           {commands.length === 0 && (

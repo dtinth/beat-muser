@@ -20,7 +20,6 @@ export interface Command {
   title: string;
   shortcut?: string;
   shortcutMac?: string;
-  enabled?: () => boolean;
   execute: () => void;
 }
 

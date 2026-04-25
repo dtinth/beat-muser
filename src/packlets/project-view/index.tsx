@@ -297,7 +297,10 @@ export function ProjectViewPage() {
       registry: globalCommandRegistry,
     });
 
-    const onKeyDown = (e: KeyboardEvent) => handler.onKeyDown(e);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (paletteOpen) return;
+      handler.onKeyDown(e);
+    };
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
