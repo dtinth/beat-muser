@@ -10,23 +10,32 @@
  * is defined at registration time via closures.
  */
 
+import { createNanoEvents } from "nanoevents";
+import type { Emitter } from "nanoevents";
+import { tinykeys } from "tinykeys";
+import type { KeyBindingMap } from "tinykeys";
+
 export interface Command {
   id: string;
   title: string;
   shortcut?: string;
+  shortcutMac?: string;
   execute: () => void;
 }
 
 export class CommandRegistry {
   private commands = new Map<string, Command>();
+  private emitter: Emitter<{ change: () => void }> = createNanoEvents();
 
   register(command: Command): () => void {
     if (this.commands.has(command.id)) {
       throw new Error(`Command "${command.id}" is already registered`);
     }
     this.commands.set(command.id, command);
+    this.emitter.emit("change");
     return () => {
       this.commands.delete(command.id);
+      this.emitter.emit("change");
     };
   }
 
@@ -49,6 +58,10 @@ export class CommandRegistry {
   findByShortcut(shortcut: string): Command | undefined {
     return this.getAll().find((c) => c.shortcut === shortcut);
   }
+
+  subscribe(cb: () => void): () => void {
+    return this.emitter.on("change", cb);
+  }
 }
 
 export class CommandSet {
@@ -63,6 +76,44 @@ export class CommandSet {
     return () => {
       unregisters.forEach((fn) => fn());
     };
+  }
+}
+
+export class KeyboardShortcutHandler {
+  private registry: CommandRegistry;
+  private target: Window | HTMLElement;
+  private unsubTinykeys?: () => void;
+  private unsubRegistry?: () => void;
+
+  constructor(options: { registry: CommandRegistry; target?: Window | HTMLElement }) {
+    this.registry = options.registry;
+    this.target = options.target ?? window;
+    this.unsubRegistry = this.registry.subscribe(() => this.refresh());
+    this.refresh();
+  }
+
+  private refresh() {
+    this.unsubTinykeys?.();
+
+    const bindings: KeyBindingMap = {};
+    const isMac = navigator.platform.includes("Mac");
+
+    for (const command of this.registry.getAll()) {
+      const shortcut = isMac && command.shortcutMac ? command.shortcutMac : command.shortcut;
+      if (!shortcut) continue;
+
+      bindings[shortcut] = (event) => {
+        event.preventDefault();
+        command.execute();
+      };
+    }
+
+    this.unsubTinykeys = tinykeys(this.target, bindings);
+  }
+
+  dispose() {
+    this.unsubTinykeys?.();
+    this.unsubRegistry?.();
   }
 }
 

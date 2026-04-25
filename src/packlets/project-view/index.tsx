@@ -40,7 +40,7 @@ import { ScrollableCanvas } from "../scrollable-canvas";
 import { EditorController } from "../editor-core";
 import type { ProjectFile } from "../project-format";
 import { createTimelineBehaviorFactory } from "./timeline-behavior";
-import { globalCommandRegistry, CommandSet } from "../command-registry";
+import { globalCommandRegistry, CommandSet, KeyboardShortcutHandler } from "../command-registry";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -271,16 +271,24 @@ export function ProjectViewPage() {
     commands.add({
       id: "zoomIn",
       title: "Zoom In",
-      shortcut: "Ctrl++",
+      shortcut: "Equal",
       execute: () => controller.zoomIn(),
     });
     commands.add({
       id: "zoomOut",
       title: "Zoom Out",
-      shortcut: "Ctrl+-",
+      shortcut: "Minus",
       execute: () => controller.zoomOut(),
     });
-    return commands.registerTo(globalCommandRegistry);
+    const unregister = commands.registerTo(globalCommandRegistry);
+    const handler = new KeyboardShortcutHandler({
+      registry: globalCommandRegistry,
+    });
+
+    return () => {
+      handler.dispose();
+      unregister();
+    };
   }, [controller]);
 
   const behaviorFactory = useMemo(() => createTimelineBehaviorFactory(controller), [controller]);
