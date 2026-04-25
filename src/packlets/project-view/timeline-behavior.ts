@@ -278,7 +278,7 @@ export function createTimelineBehaviorFactory(
           controller.setCursor(viewportX, viewportY);
         }
         if (event.type === "pointerdown") {
-          controller.handlePointerDown({ x: viewportX, y: viewportY });
+          controller.handlePointerDown({ x: viewportX, y: viewportY }, event.shiftKey);
         }
       },
 

@@ -379,12 +379,25 @@ export class EditorController {
     return bestId;
   }
 
-  handlePointerDown(point: Point): void {
+  handlePointerDown(point: Point, shiftKey: boolean = false): void {
     const hit = this.hitTest(point);
-    if (hit) {
-      this.$selection.set(new Set([hit]));
+    if (shiftKey) {
+      if (hit) {
+        const next = new Set(this.$selection.get());
+        if (next.has(hit)) {
+          next.delete(hit);
+        } else {
+          next.add(hit);
+        }
+        this.$selection.set(next);
+      }
+      // Shift+click on empty space: do nothing.
     } else {
-      this.$selection.set(new Set());
+      if (hit) {
+        this.$selection.set(new Set([hit]));
+      } else {
+        this.$selection.set(new Set());
+      }
     }
     this.updateVisibleRenderObjects();
   }

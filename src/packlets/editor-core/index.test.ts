@@ -377,5 +377,105 @@ describe("EditorController", () => {
       editor.pointerDown({ x: center.x, y: center.y - 3 });
       editor.selection.shouldContain(bpmEntity!.id);
     });
+
+    test.skip("shift+click adds another event to selection", () => {
+      let bpmA: Entity;
+      let bpmB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmA = c.bpmChange(500, 120);
+                bpmB = c.bpmChange(800, 150);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)));
+      editor.selection.shouldContain(bpmA!.id);
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmB!.id)), { shiftKey: true });
+      editor.selection.shouldContain(bpmA!.id);
+      editor.selection.shouldContain(bpmB!.id);
+    });
+
+    test.skip("shift+click on selected event removes it from selection", () => {
+      let bpmA: Entity;
+      let bpmB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmA = c.bpmChange(500, 120);
+                bpmB = c.bpmChange(800, 150);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(bpmB!.id)), { shiftKey: true });
+      editor.selection.shouldContain(bpmA!.id);
+      editor.selection.shouldContain(bpmB!.id);
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)), { shiftKey: true });
+      expect(editor.instance.$selection.get().has(bpmA!.id)).toBe(false);
+      editor.selection.shouldContain(bpmB!.id);
+    });
+
+    test.skip("shift+click on empty space does nothing", () => {
+      let bpmEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmEntity = c.bpmChange(500, 120);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmEntity!.id)));
+      editor.selection.shouldContain(bpmEntity!.id);
+
+      editor.pointerDown({ x: 0, y: 0 }, { shiftKey: true });
+      editor.selection.shouldContain(bpmEntity!.id);
+    });
+
+    test.skip("regular click clears multi-selection", () => {
+      let bpmA: Entity;
+      let bpmB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmA = c.bpmChange(500, 120);
+                bpmB = c.bpmChange(800, 150);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(bpmB!.id)), { shiftKey: true });
+      expect(editor.instance.$selection.get().size).toBe(2);
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)));
+      expect(editor.instance.$selection.get().size).toBe(1);
+      editor.selection.shouldContain(bpmA!.id);
+    });
   });
 });

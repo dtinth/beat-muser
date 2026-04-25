@@ -162,8 +162,8 @@ export class EditorTester {
     this.instance.setCursor(x ?? 0, y);
   }
 
-  pointerDown(point: PointType) {
-    this.instance.handlePointerDown(point);
+  pointerDown(point: PointType, options?: { shiftKey?: boolean }) {
+    this.instance.handlePointerDown(point, options?.shiftKey ?? false);
   }
 
   eventRect(entityId: string): Rect {
