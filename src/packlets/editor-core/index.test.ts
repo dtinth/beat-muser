@@ -81,6 +81,23 @@ describe("EditorController", () => {
     editor.columns.at(3).shouldMatch({ id: "spacer", x: 144, width: 8 });
   });
 
+  test("adding a level increases columns; removing it restores count", () => {
+    const editor = new EditorTester({
+      getProjectToLoad: () =>
+        makeProject((p) => {
+          p.addChart("Hard", undefined, 1000);
+        }),
+    });
+
+    const before = editor.columns.count;
+    const chartId = editor.instance.$selectedChartId.get()!;
+    const levelId = editor.instance.addLevel(chartId, "Easy", "beat-7k");
+    expect(editor.columns.count).toBeGreaterThan(before);
+
+    editor.instance.removeLevel(levelId);
+    expect(editor.columns.count).toBe(before);
+  });
+
   test("extracts BPM changes from entities", () => {
     const editor = new EditorTester({
       getProjectToLoad: () =>

@@ -247,19 +247,25 @@ export class EditorTester {
     }),
   };
 
-  columns = {
-    shouldHaveCount: (expected: number) => {
-      expect(this.instance.getColumns().length).toBe(expected);
-    },
-    shouldHaveTotalWidth: (expected: number) => {
-      expect(this.instance.getTimelineWidth()).toBe(expected);
-    },
-    at: (index: number) => ({
-      shouldMatch: (expected: Partial<{ id: string; x: number; width: number }>) => {
-        const col = this.instance.getColumns()[index];
-        expect(col).toBeDefined();
-        expect(col).toMatchObject(expected);
+  get columns() {
+    const instance = this.instance;
+    return {
+      get count() {
+        return instance.getColumns().length;
       },
-    }),
-  };
+      shouldHaveCount: (expected: number) => {
+        expect(instance.getColumns().length).toBe(expected);
+      },
+      shouldHaveTotalWidth: (expected: number) => {
+        expect(instance.getTimelineWidth()).toBe(expected);
+      },
+      at: (index: number) => ({
+        shouldMatch: (expected: Partial<{ id: string; x: number; width: number }>) => {
+          const col = instance.getColumns()[index];
+          expect(col).toBeDefined();
+          expect(col).toMatchObject(expected);
+        },
+      }),
+    };
+  }
 }
