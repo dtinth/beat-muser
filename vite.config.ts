@@ -4,8 +4,14 @@ export default defineConfig({
   server: { port: 15036 },
   test: {
     exclude: ["**/node_modules/**", "**/tests/**"],
-    reporters: process.env.CI ? ["default", "html"] : ["default"],
-    outputFile: process.env.CI ? { html: "./ci-reports/vitest/index.html" } : undefined,
+    setupFiles: process.env.CI ? ["allure-vitest/setup"] : [],
+    reporters: process.env.CI
+      ? [
+          "default",
+          "github-actions",
+          ["allure-vitest/reporter", { resultsDir: "ci-reports/allure-results-vitest" }],
+        ]
+      : ["default"],
   },
   staged: {
     "*": "vp check --fix",

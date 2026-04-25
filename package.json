@@ -27,7 +27,9 @@
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitest/ui": "^4.1.5",
+    "allure": "^3.6.2",
+    "allure-playwright": "^3.7.1",
+    "allure-vitest": "^3.7.1",
     "typescript": "~6.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:"

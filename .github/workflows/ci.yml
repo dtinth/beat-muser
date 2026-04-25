@@ -27,8 +27,8 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vitest-report
-          path: ci-reports/vitest/
+          name: allure-results-vitest
+          path: ci-reports/allure-results-vitest/
           retention-days: 1
 
   e2e:
@@ -42,6 +42,12 @@ jobs:
       - uses: dtinth/setup-playwright-test-docker@main
       - run: pitchfork start dev
       - run: npx playwright test
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-playwright
+          path: ci-reports/allure-results-playwright/
+          retention-days: 1
       - if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -68,12 +74,21 @@ jobs:
           cache: true
       - uses: actions/download-artifact@v4
         with:
-          name: vitest-report
-          path: ci-reports/vitest/
+          name: allure-results-vitest
+          path: ci-reports/allure-results-vitest/
+      - uses: actions/download-artifact@v4
+        with:
+          name: allure-results-playwright
+          path: ci-reports/allure-results-playwright/
       - uses: actions/download-artifact@v4
         with:
           name: playwright-report
           path: ci-reports/playwright/
+      - run: |
+          mkdir -p ci-reports/allure-results
+          cp ci-reports/allure-results-vitest/* ci-reports/allure-results/ 2>/dev/null || true
+          cp ci-reports/allure-results-playwright/* ci-reports/allure-results/ 2>/dev/null || true
+      - run: npx allure generate ci-reports/allure-results
       - run: node bin/generate-report-index.ts
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
