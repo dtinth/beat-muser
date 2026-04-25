@@ -409,6 +409,46 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmB!.id);
     });
 
+    test("box-select preview highlights events before pointerup", () => {
+      let bpmA: Entity;
+      let bpmB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmA = c.bpmChange(200, 120);
+                bpmB = c.bpmChange(600, 150);
+              },
+              1000,
+            );
+          }),
+      });
+
+      const rectA = editor.eventRect(bpmA!.id);
+      const rectB = editor.eventRect(bpmB!.id);
+      const top = Math.min(rectA.y, rectB.y) - 10;
+      const bottom = Math.max(rectA.y + rectA.height, rectB.y + rectB.height) + 10;
+
+      editor.pointerDown({ x: rectA.x + rectA.width / 2, y: top });
+      editor.pointerMove({ x: rectA.x + rectA.width / 2, y: bottom });
+
+      // $selection should still be empty before pointerup.
+      expect(editor.instance.$selection.get().size).toBe(0);
+
+      // But render specs should show preview as selected.
+      const specs = editor.instance.$visibleRenderObjects.get();
+      const specA = specs.find((s) => s.key === `bpm-${bpmA!.id}`);
+      const specB = specs.find((s) => s.key === `bpm-${bpmB!.id}`);
+      expect((specA!.data as Record<string, unknown>).selected).toBe(true);
+      expect((specB!.data as Record<string, unknown>).selected).toBe(true);
+
+      editor.pointerUp();
+      editor.selection.shouldContain(bpmA!.id);
+      editor.selection.shouldContain(bpmB!.id);
+    });
+
     test("box-selecting over empty space selects nothing", () => {
       let bpmEntity: Entity;
       const editor = new EditorTester({
