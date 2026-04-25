@@ -268,6 +268,27 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmEntity!.id);
     });
 
+    test("clicking on a note selects it", () => {
+      let noteEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+      editor.selection.shouldContain(noteEntity!.id);
+    });
+
     test("clicking on a time signature selects it", () => {
       let tsEntity: Entity;
       const editor = new EditorTester({
