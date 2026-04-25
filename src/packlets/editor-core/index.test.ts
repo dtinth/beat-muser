@@ -166,6 +166,32 @@ describe("EditorController", () => {
     editor.timing.shouldHaveMeasureBoundaries({ start: 0, end: 3000 }, [0, 720, 1440, 2400]);
   });
 
+  test("zoomIn increases zoom to next preset", () => {
+    const editor = new EditorTester({
+      getProjectToLoad: () =>
+        makeProject((p) => {
+          p.addChart("Hard", undefined, 1000);
+        }),
+    });
+
+    expect(editor.instance.$zoom.get()).toBe(1);
+    editor.instance.zoomIn();
+    expect(editor.instance.$zoom.get()).toBe(1.25);
+  });
+
+  test("zoomOut decreases zoom to previous preset", () => {
+    const editor = new EditorTester({
+      getProjectToLoad: () =>
+        makeProject((p) => {
+          p.addChart("Hard", undefined, 1000);
+        }),
+    });
+
+    expect(editor.instance.$zoom.get()).toBe(1);
+    editor.instance.zoomOut();
+    expect(editor.instance.$zoom.get()).toBe(0.75);
+  });
+
   describe("zoom scroll compensation", () => {
     test("keeps playhead viewport position stable when zooming in", () => {
       const editor = new EditorTester({
