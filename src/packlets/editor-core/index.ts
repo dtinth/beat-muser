@@ -102,6 +102,7 @@ export class EditorController {
   $cursorViewportX = atom<number>(0);
   $cursorViewportY = atom<number>(-1);
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
+  $selection = atom<Set<string>>(new Set());
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
   private entityManager: EntityManager;
@@ -341,6 +342,10 @@ export class EditorController {
 
   updateVisibleRenderObjects(): void {
     this.$visibleRenderObjects.set(this.getVisibleRenderSpecs());
+  }
+
+  onClick(_viewportX: number, _viewportY: number): void {
+    // TODO: implement hit-testing and selection
   }
 
   setZoom(zoom: number): void {

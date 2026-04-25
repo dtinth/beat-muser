@@ -12,7 +12,8 @@ import type { ProjectFile } from "../project-format";
 import { EntityComponentType, type Entity } from "../entity-manager";
 import { createDemoProjectFile } from "../project-store";
 import type { Static, TSchema } from "typebox";
-import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF } from "./components";
+import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, NOTE, LEVEL_REF, LEVEL } from "./components";
+import { Rect, type Point as PointType } from "../geometry";
 
 export class EntityBuilder {
   private components: Record<string, unknown> = {};
@@ -68,6 +69,12 @@ export class ChartBuilder {
       e.with(EVENT, { y }).with(TIME_SIGNATURE, { numerator, denominator }),
     );
   }
+
+  note(y: number, lane: number, levelId: string): Entity {
+    return this.addWithChartRef((e) =>
+      e.with(EVENT, { y }).with(NOTE, { lane }).with(LEVEL_REF, { levelId }),
+    );
+  }
 }
 
 export class ProjectBuilder {
@@ -91,6 +98,14 @@ export class ProjectBuilder {
       callback(new ChartBuilder(chart.id, this));
     }
     return chart;
+  }
+
+  addLevel(chartId: string, name: string, mode: string, sortOrder?: number): Entity {
+    const level = entity((e) =>
+      e.with(LEVEL, { name, mode, sortOrder: sortOrder ?? 0 }).with(CHART_REF, { chartId }),
+    );
+    this.add(level);
+    return level;
   }
 
   build(): ProjectFile {
@@ -147,6 +162,17 @@ export class EditorTester {
     this.instance.setCursor(x ?? 0, y);
   }
 
+  click(point: PointType) {
+    this.instance.onClick(point.x, point.y);
+  }
+
+  eventRect(entityId: string): Rect {
+    const specs = this.instance.$visibleRenderObjects.get();
+    const spec = specs.find((s) => s.key.endsWith(`-${entityId}`));
+    expect(spec).toBeDefined();
+    return { x: spec!.x, y: spec!.y, width: spec!.width, height: spec!.height };
+  }
+
   zoom(value: number) {
     this.instance.setZoom(value);
   }
@@ -162,6 +188,15 @@ export class EditorTester {
   get scrollTop() {
     return this.instance.$scrollTop.get();
   }
+
+  selection = {
+    shouldContain: (id: string) => {
+      expect(this.instance.$selection.get().has(id)).toBe(true);
+    },
+    shouldBeEmpty: () => {
+      expect(this.instance.$selection.get().size).toBe(0);
+    },
+  };
 
   playhead = {
     shouldBeAtPulse: (expected: number) => {

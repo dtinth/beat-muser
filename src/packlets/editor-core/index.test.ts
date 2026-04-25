@@ -8,6 +8,8 @@
 import { describe, expect, test } from "vite-plus/test";
 import { EditorTester, makeProject } from "./tester";
 import { CHART } from "./index";
+import { Rect } from "../geometry";
+import type { Entity } from "../entity-manager";
 
 // ---------------------------------------------------------------------------
 // Acceptance tests
@@ -243,6 +245,137 @@ describe("EditorController", () => {
       // rawPulse = (2000-1260)/0.2 = 3700. Snap → 3720.
       editor.scrollTo(1160);
       editor.playhead.shouldBeAtPulse(3720);
+    });
+  });
+
+  describe("selection", () => {
+    test.skip("clicking on a BPM change selects it", () => {
+      let bpmEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmEntity = c.bpmChange(500, 120);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.click(Rect.center(editor.eventRect(bpmEntity!.id)));
+      editor.selection.shouldContain(bpmEntity!.id);
+    });
+
+    test.skip("clicking on a time signature selects it", () => {
+      let tsEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                tsEntity = c.timeSignature(500, 3, 4);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.click(Rect.center(editor.eventRect(tsEntity!.id)));
+      editor.selection.shouldContain(tsEntity!.id);
+    });
+
+    test.skip("clicking empty space deselects", () => {
+      let bpmEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmEntity = c.bpmChange(500, 120);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.click(Rect.center(editor.eventRect(bpmEntity!.id)));
+      editor.selection.shouldContain(bpmEntity!.id);
+
+      editor.click({ x: 0, y: 0 });
+      editor.selection.shouldBeEmpty();
+    });
+
+    test.skip("clicking on overlapping events selects the closest by center", () => {
+      let bpmA: Entity;
+      let bpmB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmA = c.bpmChange(500, 120);
+                bpmB = c.bpmChange(503, 150);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.click(Rect.center(editor.eventRect(bpmA!.id)));
+      editor.selection.shouldContain(bpmA!.id);
+
+      editor.click(Rect.center(editor.eventRect(bpmB!.id)));
+      editor.selection.shouldContain(bpmB!.id);
+    });
+
+    test.skip("selected event renders with highlight", () => {
+      let bpmEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmEntity = c.bpmChange(500, 120);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.click(Rect.center(editor.eventRect(bpmEntity!.id)));
+      const spec = editor.instance.$visibleRenderObjects
+        .get()
+        .find((s) => s.key.endsWith(`-${bpmEntity!.id}`));
+      expect(spec).toBeDefined();
+      expect((spec!.data as Record<string, unknown>).selected).toBe(true);
+    });
+
+    test.skip("hit-test within tolerance selects event", () => {
+      let bpmEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmEntity = c.bpmChange(500, 120);
+              },
+              1000,
+            );
+          }),
+      });
+
+      const rect = editor.eventRect(bpmEntity!.id);
+      const center = Rect.center(rect);
+      // Click 3px above center (within ±4px tolerance).
+      editor.click({ x: center.x, y: center.y - 3 });
+      editor.selection.shouldContain(bpmEntity!.id);
     });
   });
 });
