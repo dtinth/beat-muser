@@ -38,6 +38,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import type { Point } from "../geometry";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -87,8 +88,7 @@ export interface ScrollableCanvasContext {
   viewportToContent(x: number, y: number): { x: number; y: number };
   contentToViewport(x: number, y: number): { x: number; y: number };
   refresh(): void;
-  setScrollTop(top: number): void;
-  setScrollLeft(left: number): void;
+  setScroll(point: Point): void;
   readonly scrollLeft: number;
   readonly scrollTop: number;
   readonly viewportWidth: number;
@@ -210,14 +210,9 @@ function mountScrollableCanvas(
         pendingRaf = requestAnimationFrame(doRender);
       }
     },
-    setScrollTop(top) {
-      pendingScrollTop = top;
-      if (pendingRaf === null) {
-        pendingRaf = requestAnimationFrame(doRender);
-      }
-    },
-    setScrollLeft(left) {
-      pendingScrollLeft = left;
+    setScroll({ x, y }) {
+      pendingScrollLeft = x;
+      pendingScrollTop = y;
       if (pendingRaf === null) {
         pendingRaf = requestAnimationFrame(doRender);
       }

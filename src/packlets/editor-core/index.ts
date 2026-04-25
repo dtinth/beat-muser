@@ -66,7 +66,7 @@ export interface TimelineRenderSpec {
 }
 
 export interface EditorOutboxEvents {
-  setScrollTop: (top: number) => void;
+  setScroll: (point: Point) => void;
 }
 
 const DEFAULT_CHART_SIZE = 15360;
@@ -97,8 +97,7 @@ export class EditorController {
   $snap = atom<string>("1/16");
   $zoom = atom<number>(1); // zoom multiplier, 1 = 100%
   $visibleLevelIds = atom<Set<string>>(new Set());
-  $scrollTop = atom<number>(0);
-  $scrollLeft = atom<number>(0);
+  $scroll = atom<Point>({ x: 0, y: 0 });
   $viewportWidth = atom<number>(0);
   $viewportHeight = atom<number>(0);
   $cursorViewportX = atom<number>(0);
@@ -292,7 +291,7 @@ export class EditorController {
     const size = this.getChartSize();
     const scaleY = this.getScaleY();
     const trackHeight = this.getTrackHeight();
-    const scrollTop = this.$scrollTop.get();
+    const scrollTop = this.$scroll.get().y;
     const viewportHeight = this.$viewportHeight.get();
     const viewportBottom = scrollTop + viewportHeight;
 
@@ -306,14 +305,10 @@ export class EditorController {
     };
   }
 
-  setScrollTop(top: number): void {
-    this.$scrollTop.set(top);
+  setScroll(point: Point): void {
+    this.$scroll.set(point);
     this.recomputeCursorPulse();
     this.updateVisibleRenderObjects();
-  }
-
-  setScrollLeft(left: number): void {
-    this.$scrollLeft.set(left);
   }
 
   setViewportSize(width: number, height: number): void {
@@ -333,7 +328,7 @@ export class EditorController {
   recomputeCursorPulse(): void {
     const viewportY = this.$cursorViewportY.get();
     if (viewportY < 0) return;
-    const scrollTop = this.$scrollTop.get();
+    const scrollTop = this.$scroll.get().y;
     const contentY = viewportY + scrollTop;
     const trackHeight = this.getTrackHeight();
     const scaleY = this.getScaleY();
@@ -347,10 +342,9 @@ export class EditorController {
   }
 
   hitTest(point: Point): string | null {
-    const scrollLeft = this.$scrollLeft.get();
-    const scrollTop = this.$scrollTop.get();
-    const contentX = point.x + scrollLeft;
-    const contentY = point.y + scrollTop;
+    const scroll = this.$scroll.get();
+    const contentX = point.x + scroll.x;
+    const contentY = point.y + scroll.y;
 
     const specs = this.getVisibleRenderSpecs();
     const HIT_TOLERANCE = 4;
@@ -380,7 +374,7 @@ export class EditorController {
   }
 
   private getColumnIndexFromViewportX(viewportX: number): number {
-    const contentX = viewportX + this.$scrollLeft.get();
+    const contentX = viewportX + this.$scroll.get().x;
     const columns = this.getColumns();
     if (columns.length === 0) return 0;
     if (contentX < columns[0]!.x) return 0;
@@ -394,7 +388,7 @@ export class EditorController {
   }
 
   private computePulseFromViewportY(viewportY: number): number {
-    const scrollTop = this.$scrollTop.get();
+    const scrollTop = this.$scroll.get().y;
     const contentY = viewportY + scrollTop;
     const trackHeight = this.getTrackHeight();
     const scaleY = this.getScaleY();
@@ -515,10 +509,10 @@ export class EditorController {
     const prevZoom = this.$zoom.get();
     this.$zoom.set(zoom);
     const newScrollTop = this.computeZoomScrollOffset(prevZoom);
-    this.$scrollTop.set(newScrollTop);
+    this.$scroll.set({ x: this.$scroll.get().x, y: newScrollTop });
     this.recomputeCursorPulse();
     this.updateVisibleRenderObjects();
-    this.outbox.emit("setScrollTop", newScrollTop);
+    this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: newScrollTop });
   }
 
   zoomIn(): void {
@@ -537,7 +531,7 @@ export class EditorController {
     const contentHeight = this.getContentHeight();
     const viewportHeight = this.$viewportHeight.get();
     if (contentHeight > viewportHeight) {
-      this.outbox.emit("setScrollTop", contentHeight - viewportHeight);
+      this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: contentHeight - viewportHeight });
     }
   }
 
@@ -554,7 +548,7 @@ export class EditorController {
     const oldScaleY = BASE_SCALE_Y * oldZoom;
     const newScaleY = BASE_SCALE_Y * newZoom;
     const cursorPulse = this.$cursorPulse.get();
-    const oldScrollTop = this.$scrollTop.get();
+    const oldScrollTop = this.$scroll.get().y;
     const oldTrackHeight = size * oldScaleY;
     const newTrackHeight = size * newScaleY;
     const oldPlayheadY = oldTrackHeight - cursorPulse * oldScaleY - 1;

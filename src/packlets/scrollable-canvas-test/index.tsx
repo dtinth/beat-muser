@@ -139,7 +139,7 @@ class ScrollableCanvasTestController {
 
       const unsubDelta = this.$pendingScrollDelta.subscribe((delta: number) => {
         if (delta !== 0) {
-          ctx.setScrollTop(ctx.scrollTop + delta);
+          ctx.setScroll({ x: ctx.scrollLeft, y: ctx.scrollTop + delta });
           this.$pendingScrollDelta.set(0);
         }
       });
@@ -154,7 +154,7 @@ class ScrollableCanvasTestController {
           const count = this.$blockCount.get();
           const height = getContentHeight(count);
           if (height > ctx.viewportHeight) {
-            ctx.setScrollTop(height - ctx.viewportHeight);
+            ctx.setScroll({ x: ctx.scrollLeft, y: height - ctx.viewportHeight });
           }
         },
 

@@ -152,8 +152,8 @@ export class EditorTester {
 
     // Subscribe to outbox so scroll notifications (e.g. from onConnected or
     // setZoom) are applied, closing the loop just like the real DOM does.
-    this.instance.outbox.on("setScrollTop", (top) => {
-      this.instance.setScrollTop(top);
+    this.instance.outbox.on("setScroll", (point) => {
+      this.instance.setScroll(point);
     });
     this.instance.onConnected();
   }
@@ -181,8 +181,8 @@ export class EditorTester {
     this.instance.setZoom(value);
   }
 
-  scrollTo(y: number) {
-    this.instance.setScrollTop(y);
+  scrollTo(point: PointType) {
+    this.instance.setScroll(point);
   }
 
   get scrollHeight() {
@@ -190,7 +190,7 @@ export class EditorTester {
   }
 
   get scrollTop() {
-    return this.instance.$scrollTop.get();
+    return this.instance.$scroll.get().y;
   }
 
   selection = {
@@ -215,7 +215,7 @@ export class EditorTester {
       const specs = this.instance.$visibleRenderObjects.get();
       const playhead = specs.find((s) => s.type === "playhead");
       expect(playhead).toBeDefined();
-      const playheadViewportY = playhead!.y - this.instance.$scrollTop.get();
+      const playheadViewportY = playhead!.y - this.instance.$scroll.get().y;
       expect(playheadViewportY).toBe(expectedY);
     },
   };

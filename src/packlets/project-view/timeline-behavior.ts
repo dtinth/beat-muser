@@ -259,8 +259,8 @@ export function createTimelineBehaviorFactory(
   return (ctx: ScrollableCanvasContext): ScrollableCanvasBehavior => {
     controller.setViewportSize(ctx.viewportWidth, ctx.viewportHeight);
 
-    const unsubOutbox = controller.outbox.on("setScrollTop", (top) => {
-      ctx.setScrollTop(top);
+    const unsubOutbox = controller.outbox.on("setScroll", (point) => {
+      ctx.setScroll(point);
     });
 
     const unsubVisible = controller.$visibleRenderObjects.subscribe(() => {
@@ -281,8 +281,7 @@ export function createTimelineBehaviorFactory(
       },
 
       onScroll(scrollLeft: number, scrollTop: number) {
-        controller.setScrollLeft(scrollLeft);
-        controller.setScrollTop(scrollTop);
+        controller.setScroll({ x: scrollLeft, y: scrollTop });
       },
 
       onPointerEvent(event, contentX, contentY) {

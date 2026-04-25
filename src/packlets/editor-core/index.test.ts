@@ -176,7 +176,7 @@ describe("EditorController", () => {
       });
       editor.instance.$cursorPulse.set(500);
       editor.instance.$zoom.set(1);
-      editor.scrollTo(100);
+      editor.scrollTo({ x: 0, y: 100 });
 
       editor.zoom(2);
       editor.playhead.shouldHavePositionRelativeToViewport(-1);
@@ -191,7 +191,7 @@ describe("EditorController", () => {
       });
       editor.instance.$cursorPulse.set(300);
       editor.instance.$zoom.set(2);
-      editor.scrollTo(50);
+      editor.scrollTo({ x: 0, y: 50 });
 
       editor.zoom(1);
       editor.playhead.shouldHavePositionRelativeToViewport(229);
@@ -206,7 +206,7 @@ describe("EditorController", () => {
       });
       editor.instance.$cursorPulse.set(1000); // top of chart
       editor.instance.$zoom.set(1);
-      editor.scrollTo(50);
+      editor.scrollTo({ x: 0, y: 50 });
 
       editor.zoom(2);
       expect(editor.scrollTop).toBe(50);
@@ -221,7 +221,7 @@ describe("EditorController", () => {
       });
       editor.instance.$cursorPulse.set(0); // bottom of chart
       editor.instance.$zoom.set(1);
-      editor.scrollTo(0);
+      editor.scrollTo({ x: 0, y: 0 });
 
       editor.zoom(2);
       // Track height doubles from 200 to 400, so scroll must increase by 200
@@ -279,7 +279,7 @@ describe("EditorController", () => {
       // Scroll up (decrease scrollTop) by 400.
       // New scrollTop = 1160, same viewport y=100 → contentY=1260.
       // rawPulse = (2000-1260)/0.2 = 3700. Snap → 3720.
-      editor.scrollTo(1160);
+      editor.scrollTo({ x: 0, y: 1160 });
       editor.playhead.shouldBeAtPulse(3720);
     });
   });
