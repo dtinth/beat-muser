@@ -11,6 +11,18 @@ test.describe("Project view timeline", () => {
     await page.goto("/projects/__demo__");
     await expect(page.locator('[data-testid="time-sig-marker"]:has-text("4/4")')).toBeVisible();
   });
+
+  test("clicking a BPM change marker selects it with outline", async ({ page }) => {
+    await page.goto("/projects/__demo__");
+    const marker = page.locator('[data-testid="bpm-change-marker"]:has-text("128")');
+    await expect(marker).toBeVisible();
+
+    await marker.click();
+
+    // Selected markers get a 2px accent outline with 1px offset.
+    await expect(marker).toHaveCSS("outline", "rgb(189, 238, 99) solid 2px");
+    await expect(marker).toHaveCSS("outline-offset", "1px");
+  });
 });
 
 test.describe("Command palette", () => {

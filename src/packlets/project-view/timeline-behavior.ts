@@ -151,6 +151,7 @@ interface EventMarkerData {
   text: string;
   backgroundColor: string;
   textColor: string;
+  selected?: boolean;
 }
 
 function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarkerData> {
@@ -167,6 +168,10 @@ function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarke
     el.style.justifyContent = "center";
     el.style.boxShadow = "inset 1px 1px 0 #fff5, inset -1px -1px 0 #0005";
     el.style.pointerEvents = "auto";
+    if (d.selected) {
+      el.style.outline = "2px solid var(--accent-9)";
+      el.style.outlineOffset = "1px";
+    }
 
     const textEl = document.createElement("span");
     textEl.textContent = d.text;
@@ -178,6 +183,13 @@ function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarke
         const nd = newData as EventMarkerData;
         el.style.backgroundColor = nd.backgroundColor;
         textEl.textContent = nd.text;
+        if (nd.selected) {
+          el.style.outline = "2px solid var(--accent-9)";
+          el.style.outlineOffset = "1px";
+        } else {
+          el.style.outline = "";
+          el.style.outlineOffset = "";
+        }
       },
     };
   };
