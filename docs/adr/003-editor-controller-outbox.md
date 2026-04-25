@@ -18,7 +18,7 @@ But in practice, the flow became bidirectional and fragile. The zoom subscriptio
 
 ## Decision
 
-The controller exposes a **`nanoevents` outbox** for UI commands.
+The controller exposes an **outbox** for UI commands.
 
 ### Data Flow
 
@@ -43,13 +43,12 @@ scrollable-canvas scrolls
 ### Rules
 
 1. **Controller owns all state.** Behavior is thin glue — it forwards user input to the controller and acts on controller commands.
-2. **Controller emits UI commands via the outbox.** The outbox is a `nanoevents` emitter typed to UI actions (e.g., `setScrollTop`).
+2. **Controller emits UI commands via the outbox.** The outbox is an event emitter typed to UI actions (e.g., `setScrollTop`).
 3. **Behavior subscribes to the outbox** and translates commands into `scrollable-canvas` API calls.
 4. **No controller method calls `ctx.*` directly.** All UI side effects go through the outbox.
 
 ## Status
 
-- `nanoevents` installed (`vp add nanoevents`).
 - Outbox interface defined but not yet wired into `EditorController` or `timeline-behavior`.
 
 ## Consequences
@@ -69,4 +68,7 @@ scrollable-canvas scrolls
 
 - `src/packlets/editor-core/index.ts` — `EditorController`
 - `src/packlets/project-view/timeline-behavior.ts` — behavior factory
-- `package.json` — `nanoevents` dependency
+
+## See Also
+
+- **ADR 004: Event Emitter Library Choice** — Why we chose `nanoevents` for the outbox implementation.
