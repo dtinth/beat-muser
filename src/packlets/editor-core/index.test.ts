@@ -678,7 +678,7 @@ describe("EditorController", () => {
   });
 
   describe("delete selection", () => {
-    test.skip("deleting selected notes removes them and clears selection", () => {
+    test("deleting selected notes removes them and clears selection", () => {
       let noteA: Entity;
       let noteB: Entity;
       const editor = new EditorTester({
@@ -708,7 +708,7 @@ describe("EditorController", () => {
   });
 
   describe("undo/redo", () => {
-    test.skip("undo restores deleted notes and re-selects visible ones", () => {
+    test("undo restores deleted notes and re-selects visible ones", () => {
       let noteA: Entity;
       let noteB: Entity;
       const editor = new EditorTester({
@@ -738,7 +738,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(noteB!.id);
     });
 
-    test.skip("redo re-deletes restored notes", () => {
+    test("redo re-deletes restored notes", () => {
       let noteA: Entity;
       const editor = new EditorTester({
         getProjectToLoad: () =>

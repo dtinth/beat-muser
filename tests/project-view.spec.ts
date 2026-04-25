@@ -25,6 +25,23 @@ test.describe("Project view timeline", () => {
   });
 });
 
+test.describe("Undo/redo", () => {
+  test("smoke: delete note then undo restores it", async ({ page }) => {
+    await page.goto("/projects/__demo__");
+    await page.waitForLoadState("networkidle");
+
+    const notes = page.locator('[data-testid="note"]');
+    await expect(notes).toHaveCount(5);
+
+    await notes.first().click();
+    await page.keyboard.press("Delete");
+    await expect(notes).toHaveCount(4);
+
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(notes).toHaveCount(5);
+  });
+});
+
 test.describe("Command palette", () => {
   test("smoke: open, search, execute zoom in", async ({ page }) => {
     await page.goto("/projects/__demo__");

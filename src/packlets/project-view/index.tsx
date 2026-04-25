@@ -292,6 +292,24 @@ export function ProjectViewPage() {
       shortcut: "$mod+KeyK",
       execute: () => setPaletteOpen(true),
     });
+    commands.add({
+      id: "deleteSelection",
+      title: "Delete Selection",
+      shortcut: "Delete",
+      execute: () => controller.deleteSelection(),
+    });
+    commands.add({
+      id: "undo",
+      title: "Undo",
+      shortcut: "$mod+KeyZ",
+      execute: () => controller.undo(),
+    });
+    commands.add({
+      id: "redo",
+      title: "Redo",
+      shortcut: "$mod+Shift+KeyZ",
+      execute: () => controller.redo(),
+    });
     const unregister = commands.registerTo(globalCommandRegistry);
     const handler = new KeyboardShortcutHandler({
       registry: globalCommandRegistry,

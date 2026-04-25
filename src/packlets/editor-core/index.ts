@@ -28,6 +28,7 @@ import {
 } from "./components";
 import { getGameModeLayout } from "./lane-layouts";
 import { Point, Rect } from "../geometry";
+import { uuidv7 } from "uuidv7";
 
 export interface EditorControllerOptions {
   project: ProjectFile;
@@ -91,6 +92,62 @@ const BASE_SCALE_Y = 0.2;
 
 const PADDING_BOTTOM = 40;
 
+const HISTORY_LIMIT = 100;
+
+export interface UserAction {
+  title: string;
+  do(): void;
+  undo(): void;
+}
+
+class DeleteUserAction implements UserAction {
+  title = "Delete selection";
+  private controller: EditorController;
+  private entityIds: string[];
+  private entities: Entity[];
+
+  constructor(controller: EditorController, entityIds: string[], entities: Entity[]) {
+    this.controller = controller;
+    this.entityIds = entityIds;
+    this.entities = entities;
+  }
+
+  do(): void {
+    const em = this.controller.getEntityManager();
+    for (const id of this.entityIds) {
+      em.remove(id);
+    }
+    for (const entity of this.entities) {
+      this.controller.project.deletedEntities.push({
+        id: entity.id,
+        version: uuidv7(),
+      });
+    }
+    this.controller.$selection.set(new Set());
+    this.controller.updateVisibleRenderObjects();
+  }
+
+  undo(): void {
+    const em = this.controller.getEntityManager();
+    for (const entity of this.entities) {
+      em.insert(entity);
+    }
+    const deletedIds = new Set(this.entityIds);
+    this.controller.project.deletedEntities = this.controller.project.deletedEntities.filter(
+      (de) => !deletedIds.has(de.id),
+    );
+    const visibleLevels = new Set(this.controller.getVisibleLevels().map((l) => l.id));
+    const selection = new Set<string>();
+    for (const entity of this.entities) {
+      const levelRef = em.getComponent(entity, LEVEL_REF);
+      if (levelRef && !visibleLevels.has(levelRef.levelId)) continue;
+      selection.add(entity.id);
+    }
+    this.controller.$selection.set(selection);
+    this.controller.updateVisibleRenderObjects();
+  }
+}
+
 export class EditorController {
   $selectedChartId = atom<string | null>(null);
   $cursorPulse = atom<number>(0);
@@ -104,9 +161,11 @@ export class EditorController {
   $cursorViewportY = atom<number>(-1);
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
   $selection = atom<Set<string>>(new Set());
+  $history = atom<{ undo: UserAction[]; redo: UserAction[] }>({ undo: [], redo: [] });
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
   private entityManager: EntityManager;
+  project: ProjectFile;
   private columns: TimelineColumn[];
   private timelineWidth: number;
 
@@ -118,6 +177,7 @@ export class EditorController {
   private boxEndPulse = 0;
 
   constructor(options: EditorControllerOptions) {
+    this.project = options.project;
     this.entityManager = EntityManager.from(options.project.entities);
 
     const charts = this.entityManager.entitiesWithComponent(CHART);
@@ -527,16 +587,48 @@ export class EditorController {
     if (prev) this.setZoom(prev);
   }
 
+  applyAction(action: UserAction): void {
+    action.do();
+    const history = this.$history.get();
+    const undo = [...history.undo, action];
+    if (undo.length > HISTORY_LIMIT) {
+      undo.shift();
+    }
+    this.$history.set({ undo, redo: [] });
+  }
+
   deleteSelection(): void {
-    // TODO: implement
+    const selection = this.$selection.get();
+    if (selection.size === 0) return;
+
+    const entityIds = Array.from(selection);
+    const entities = entityIds
+      .map((id) => this.entityManager.get(id))
+      .filter((e): e is Entity => e !== undefined);
+
+    this.applyAction(new DeleteUserAction(this, entityIds, entities));
   }
 
   undo(): void {
-    // TODO: implement
+    const history = this.$history.get();
+    const action = history.undo.pop();
+    if (!action) return;
+    action.undo();
+    this.$history.set({
+      undo: history.undo,
+      redo: [...history.redo, action],
+    });
   }
 
   redo(): void {
-    // TODO: implement
+    const history = this.$history.get();
+    const action = history.redo.pop();
+    if (!action) return;
+    action.do();
+    this.$history.set({
+      undo: [...history.undo, action],
+      redo: history.redo,
+    });
   }
 
   onConnected(): void {
