@@ -19,9 +19,9 @@ test.describe("Project view timeline", () => {
 
     await marker.click();
 
-    // Selected markers get a 2px accent outline with 1px offset.
-    await expect(marker).toHaveCSS("outline", "rgb(189, 238, 99) solid 2px");
-    await expect(marker).toHaveCSS("outline-offset", "1px");
+    // Selected markers get cyan-10 background and black text.
+    await expect(marker).toHaveCSS("background-color", "rgb(35, 175, 208)");
+    await expect(marker).toHaveCSS("color", "rgb(0, 0, 0)");
   });
 });
 

@@ -169,8 +169,8 @@ function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarke
     el.style.boxShadow = "inset 1px 1px 0 #fff5, inset -1px -1px 0 #0005";
     el.style.pointerEvents = "auto";
     if (d.selected) {
-      el.style.outline = "2px solid var(--accent-9)";
-      el.style.outlineOffset = "1px";
+      el.style.backgroundColor = "var(--cyan-10)";
+      el.style.color = "#000";
     }
 
     const textEl = document.createElement("span");
@@ -184,11 +184,11 @@ function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarke
         el.style.backgroundColor = nd.backgroundColor;
         textEl.textContent = nd.text;
         if (nd.selected) {
-          el.style.outline = "2px solid var(--accent-9)";
-          el.style.outlineOffset = "1px";
+          el.style.backgroundColor = "var(--cyan-10)";
+          el.style.color = "#000";
         } else {
-          el.style.outline = "";
-          el.style.outlineOffset = "";
+          el.style.backgroundColor = nd.backgroundColor;
+          el.style.color = nd.textColor;
         }
       },
     };
