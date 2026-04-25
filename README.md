@@ -1,5 +1,10 @@
 # Beat Muser
 
+[![Tests](https://dtinth.github.io/beat-muser/badge-tests.svg)](https://dtinth.github.io/beat-muser/allure/)
+[![Playwright](https://dtinth.github.io/beat-muser/badge-playwright.svg)](https://dtinth.github.io/beat-muser/playwright/)
+[![Packlets](https://dtinth.github.io/beat-muser/badge-packlets.svg)](https://dtinth.github.io/beat-muser/)
+[![Coverage](https://dtinth.github.io/beat-muser/badge-coverage.svg)](https://dtinth.github.io/beat-muser/coverage/)
+
 Rhythm game notechart/beatmap editor.
 
 ## Domain Model
