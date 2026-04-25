@@ -356,7 +356,7 @@ describe("EditorController", () => {
       expect((spec!.data as Record<string, unknown>).selected).toBe(true);
     });
 
-    test.skip("hit-test within tolerance selects event", () => {
+    test("hit-test within tolerance selects event", () => {
       let bpmEntity: Entity;
       const editor = new EditorTester({
         getProjectToLoad: () =>
