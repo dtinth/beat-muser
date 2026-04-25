@@ -404,6 +404,7 @@ export function ProjectViewPage() {
                   const pct = parseInt(value.replace("%", ""), 10);
                   controller.setZoom(pct / 100);
                 }}
+                testId="zoom-dropdown"
               />
               <ToolbarButton
                 icon={<ZoomIn size={16} />}

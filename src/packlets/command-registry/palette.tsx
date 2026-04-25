@@ -121,6 +121,7 @@ export function CommandPalette({ registry, open, onClose }: CommandPaletteProps)
           {commands.map((cmd, i) => (
             <Box
               key={cmd.id}
+              data-testid={`palette-item-${cmd.id}`}
               onClick={() => {
                 cmd.execute();
                 onClose();

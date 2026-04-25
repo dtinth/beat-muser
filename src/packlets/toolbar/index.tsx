@@ -87,13 +87,15 @@ interface DropdownSelectProps {
   value: string;
   options: string[];
   onSelect?: (value: string) => void;
+  testId?: string;
 }
 
-export function ToolbarDropdown({ value, options, onSelect }: DropdownSelectProps) {
+export function ToolbarDropdown({ value, options, onSelect, testId }: DropdownSelectProps) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
         <Box
+          data-testid={testId}
           style={{
             display: "flex",
             alignItems: "center",
