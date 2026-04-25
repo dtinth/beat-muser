@@ -39,6 +39,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Point } from "../geometry";
+import { RenderObjectReconciler } from "./reconciler";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -76,7 +77,13 @@ export interface RenderObject {
   data: unknown;
   /** Optional test ID applied as `data-testid` for debugging/testing. */
   testId?: string;
-  /** Rendering layer. `"scroll"` (default) scrolls with content. `"sticky"` stays fixed to viewport top while scrolling horizontally. */
+  /**
+   * Rendering layer. `"scroll"` (default) scrolls with content.
+   * `"sticky"` stays fixed to viewport top while scrolling horizontally.
+   *
+   * **Note:** The layer is read only when a handle is first created.
+   * Changing `layer` on subsequent renders has no effect.
+   */
   layer?: "scroll" | "sticky";
 }
 
@@ -187,7 +194,19 @@ function mountScrollableCanvas(
   let pendingScrollLeft: number | null = null;
   let isDisposed = false;
   let hasConnected = false;
-  const handles = new Map<string, RenderHandle>();
+  const reconciler = new RenderObjectReconciler({
+    onAdd(_key, handle, obj) {
+      positionElement(handle.dom, obj);
+      const layer = obj.layer === "sticky" ? stickyLayer : scrollLayer;
+      layer?.appendChild(handle.dom);
+    },
+    onUpdate(_key, handle, obj) {
+      positionElement(handle.dom, obj);
+    },
+    onRemove(_key, handle) {
+      handle.dom.remove();
+    },
+  });
 
   const ctx: ScrollableCanvasContext = {
     viewportToContent(x, y) {
@@ -266,31 +285,7 @@ function mountScrollableCanvas(
 
       isInGetVisibleObjects = true;
       const visibleObjects = behaviorInstance.getVisibleObjects();
-      const activeKeys = new Set<string>();
-
-      for (const obj of visibleObjects) {
-        activeKeys.add(obj.key);
-        const existing = handles.get(obj.key);
-        const layer = obj.layer === "sticky" ? stickyLayer : scrollLayer;
-
-        if (existing) {
-          existing.update(obj.data);
-          positionElement(existing.dom, obj);
-        } else {
-          const handle = obj.renderer(obj.data);
-          handles.set(obj.key, handle);
-          positionElement(handle.dom, obj);
-          layer?.appendChild(handle.dom);
-        }
-      }
-
-      for (const [key, handle] of handles) {
-        if (!activeKeys.has(key)) {
-          handle[Symbol.dispose]?.();
-          handle.dom.remove();
-          handles.delete(key);
-        }
-      }
+      reconciler.reconcile(visibleObjects);
     } finally {
       isInGetVisibleObjects = false;
     }
@@ -337,11 +332,7 @@ function mountScrollableCanvas(
     container.removeEventListener("pointerdown", handlePointerEvent);
     container.removeEventListener("pointermove", handlePointerEvent);
     container.removeEventListener("pointerup", handlePointerEvent);
-    for (const handle of handles.values()) {
-      handle[Symbol.dispose]?.();
-      handle.dom.remove();
-    }
-    handles.clear();
+    reconciler.disposeAll();
     behaviorInstance[Symbol.dispose]?.();
   };
 }
