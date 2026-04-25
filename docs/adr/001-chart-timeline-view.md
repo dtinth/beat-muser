@@ -8,13 +8,9 @@
 
 ---
 
-## ⚠️ Temporary Artifact — To Be Removed After Implementation
+## Note on Historical Context
 
-> **This ADR exists because the code does not yet exist.** Its sole purpose is to serve as a reference during implementation. Once the timeline view is built, the source code itself must be self-explanatory.
->
-> **When implementing:** Document subtleties, edge cases, and non-obvious behavior directly in code comments, JSDoc, and variable names. A reader should understand the system by reading the code and its inline documentation — they should not need to read this ADR.
->
-> **After implementation:** This file should be deleted. If architectural context is still needed, it should live in the relevant packlet's `@packageDocumentation` comment or in a short README next to the code, not in a separate ADR.
+> This ADR was written before the timeline view was fully implemented. It captures the reasoning and trade-offs considered during the design phase. The codebase may have evolved since then; see the relevant packlets' `@packageDocumentation` comments and inline documentation for the current implementation.
 
 ---
 
