@@ -40,6 +40,7 @@ import { ScrollableCanvas } from "../scrollable-canvas";
 import { EditorController } from "../editor-core";
 import type { ProjectFile } from "../project-format";
 import { createTimelineBehaviorFactory } from "./timeline-behavior";
+import { globalCommandRegistry } from "../command-registry";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -264,6 +265,26 @@ export function ProjectViewPage() {
   const { showError } = useToast();
 
   const [controller] = useState(() => new EditorController({ project }));
+
+  useEffect(() => {
+    globalCommandRegistry.register({
+      id: "zoomIn",
+      title: "Zoom In",
+      shortcut: "Ctrl++",
+      execute: () => controller.zoomIn(),
+    });
+    globalCommandRegistry.register({
+      id: "zoomOut",
+      title: "Zoom Out",
+      shortcut: "Ctrl+-",
+      execute: () => controller.zoomOut(),
+    });
+
+    return () => {
+      // No unregister API; global registry is singleton for active editor.
+    };
+  }, [controller]);
+
   const behaviorFactory = useMemo(() => createTimelineBehaviorFactory(controller), [controller]);
 
   const [cursorPulse, setCursorPulse] = useState(controller.$cursorPulse.get());
@@ -348,7 +369,7 @@ export function ProjectViewPage() {
             <ToolbarButton
               icon={<ZoomOut size={16} />}
               label="Zoom Out"
-              onClick={() => controller.zoomOut()}
+              onClick={() => globalCommandRegistry.execute("zoomOut")}
             />
             <ToolbarDropdown
               value={zoomPercent}
@@ -361,7 +382,7 @@ export function ProjectViewPage() {
             <ToolbarButton
               icon={<ZoomIn size={16} />}
               label="Zoom In"
-              onClick={() => controller.zoomIn()}
+              onClick={() => globalCommandRegistry.execute("zoomIn")}
             />
           </ToolbarGroup>
         </Toolbar>
