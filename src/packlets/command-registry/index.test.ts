@@ -4,8 +4,54 @@
  * Unit tests for the command registry system.
  */
 
-import { describe, expect, test, vi } from "vite-plus/test";
-import { CommandRegistry, CommandSet } from "./index";
+import { describe, expect, test, vi, beforeAll, afterEach } from "vite-plus/test";
+import { CommandRegistry, CommandSet, KeyboardShortcutHandler } from "./index";
+
+// Polyfill KeyboardEvent for Node.js test environment (tinykeys uses instanceof)
+beforeAll(() => {
+  if (typeof globalThis.KeyboardEvent === "undefined") {
+    globalThis.KeyboardEvent = class KeyboardEvent {
+      key: string;
+      code: string;
+      ctrlKey: boolean;
+      metaKey: boolean;
+      shiftKey: boolean;
+      altKey: boolean;
+      defaultPrevented = false;
+
+      constructor(
+        _type: string,
+        init: {
+          key?: string;
+          code?: string;
+          ctrlKey?: boolean;
+          metaKey?: boolean;
+          shiftKey?: boolean;
+          altKey?: boolean;
+        } = {},
+      ) {
+        this.key = init.key ?? "";
+        this.code = init.code ?? "";
+        this.ctrlKey = init.ctrlKey ?? false;
+        this.metaKey = init.metaKey ?? false;
+        this.shiftKey = init.shiftKey ?? false;
+        this.altKey = init.altKey ?? false;
+      }
+
+      preventDefault() {
+        this.defaultPrevented = true;
+      }
+
+      getModifierState(key: string) {
+        if (key === "Meta") return this.metaKey;
+        if (key === "Control") return this.ctrlKey;
+        if (key === "Shift") return this.shiftKey;
+        if (key === "Alt") return this.altKey;
+        return false;
+      }
+    } as unknown as typeof KeyboardEvent;
+  }
+});
 
 describe("CommandRegistry", () => {
   test("registers a command and executes it", () => {
@@ -143,5 +189,121 @@ describe("CommandSet", () => {
     unregister();
     expect(registry.getAll()).toHaveLength(1);
     expect(registry.get("pre")).toBeDefined();
+  });
+});
+
+describe("KeyboardShortcutHandler", () => {
+  function keyEvent(
+    init: {
+      key?: string;
+      code?: string;
+      ctrlKey?: boolean;
+      metaKey?: boolean;
+    } = {},
+  ): KeyboardEvent {
+    return new KeyboardEvent("keydown", init);
+  }
+
+  test("onKeyDown executes command for matching shortcut", () => {
+    const registry = new CommandRegistry();
+    const execute = vi.fn();
+    registry.register({ id: "zoomIn", title: "Zoom In", shortcut: "Equal", execute });
+
+    const handler = new KeyboardShortcutHandler({ registry });
+    handler.onKeyDown(keyEvent({ code: "Equal", key: "=" }));
+
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  test("onKeyDown calls preventDefault for matched shortcuts", () => {
+    const registry = new CommandRegistry();
+    registry.register({ id: "zoomIn", title: "Zoom In", shortcut: "Equal", execute: vi.fn() });
+
+    const handler = new KeyboardShortcutHandler({ registry });
+    const event = keyEvent({ code: "Equal", key: "=" });
+    handler.onKeyDown(event);
+
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  test("onKeyDown does nothing for unmatched keys", () => {
+    const registry = new CommandRegistry();
+    const execute = vi.fn();
+    registry.register({ id: "zoomIn", title: "Zoom In", shortcut: "Equal", execute });
+
+    const handler = new KeyboardShortcutHandler({ registry });
+    handler.onKeyDown(keyEvent({ code: "Minus", key: "-" }));
+
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  test("rebuilds bindings when registry changes", () => {
+    const registry = new CommandRegistry();
+    const zoomOut = vi.fn();
+    registry.register({ id: "zoomIn", title: "Zoom In", shortcut: "Equal", execute: vi.fn() });
+
+    const handler = new KeyboardShortcutHandler({ registry });
+    handler.onKeyDown(keyEvent({ code: "Minus", key: "-" }));
+    expect(zoomOut).not.toHaveBeenCalled();
+
+    registry.register({ id: "zoomOut", title: "Zoom Out", shortcut: "Minus", execute: zoomOut });
+    handler.onKeyDown(keyEvent({ code: "Minus", key: "-" }));
+    expect(zoomOut).toHaveBeenCalledTimes(1);
+  });
+
+  describe("platform-specific shortcuts", () => {
+    const originalPlatform = Object.getOwnPropertyDescriptor(globalThis.navigator, "platform");
+
+    afterEach(() => {
+      if (originalPlatform) {
+        Object.defineProperty(globalThis.navigator, "platform", originalPlatform);
+      }
+    });
+
+    test("uses shortcutMac on macOS", () => {
+      Object.defineProperty(globalThis.navigator, "platform", {
+        value: "MacIntel",
+        writable: false,
+        configurable: true,
+      });
+
+      const registry = new CommandRegistry();
+      const execute = vi.fn();
+      registry.register({
+        id: "save",
+        title: "Save",
+        shortcut: "Control+KeyS",
+        shortcutMac: "Meta+KeyS",
+        execute,
+      });
+
+      const handler = new KeyboardShortcutHandler({ registry });
+      handler.onKeyDown(keyEvent({ code: "KeyS", key: "s", metaKey: true }));
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    test("uses shortcut on non-macOS", () => {
+      Object.defineProperty(globalThis.navigator, "platform", {
+        value: "Win32",
+        writable: false,
+        configurable: true,
+      });
+
+      const registry = new CommandRegistry();
+      const execute = vi.fn();
+      registry.register({
+        id: "save",
+        title: "Save",
+        shortcut: "Control+KeyS",
+        shortcutMac: "Meta+KeyS",
+        execute,
+      });
+
+      const handler = new KeyboardShortcutHandler({ registry });
+      handler.onKeyDown(keyEvent({ code: "KeyS", key: "s", ctrlKey: true }));
+
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
   });
 });
