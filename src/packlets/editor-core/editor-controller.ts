@@ -8,10 +8,9 @@
 import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
 import type { Emitter } from "nanoevents";
-import { EntityManager, type Entity, EntityBuilder } from "../entity-manager";
+import { EntityManager, type Entity } from "../entity-manager";
 import type { TimingEngine } from "../timing-engine";
-import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, LEVEL_REF, NOTE } from "./components";
-import { getGameModeLayout } from "./lane-layouts";
+import { EVENT, NOTE, LEVEL_REF, BPM_CHANGE, TIME_SIGNATURE } from "./components";
 import { Point, Rect } from "../geometry";
 import {
   type EditorControllerOptions,
@@ -36,6 +35,9 @@ import { HistorySlice } from "./slices/history-slice";
 import { BoxSelectionSlice } from "./slices/box-selection-slice";
 import { ToolSlice } from "./slices/tool-slice";
 import { TimingSlice } from "./slices/timing-slice";
+import { ColumnsSlice } from "./slices/columns-slice";
+import { TimingColumnsSlice } from "./slices/timing-columns-slice";
+import { LevelColumnsSlice } from "./slices/level-columns-slice";
 
 export class EditorController {
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
@@ -108,8 +110,9 @@ export class EditorController {
     return this.ctx.get(TimingSlice);
   }
 
-  private columns: TimelineColumn[];
-  private timelineWidth: number;
+  private get columnsSlice(): ColumnsSlice {
+    return this.ctx.get(ColumnsSlice);
+  }
 
   private get entityManager(): EntityManager {
     return this.ctx.get(ProjectSlice).entityManager;
@@ -128,20 +131,9 @@ export class EditorController {
     this.ctx.register(HistorySlice);
     this.ctx.register(ToolSlice);
     this.ctx.register(TimingSlice);
-
-    const { columns, width } = this.computeColumns();
-    this.columns = columns;
-    this.timelineWidth = width;
-
-    this.ctx.get(ChartSlice).$selectedChartId.subscribe(() => {
-      this.refreshColumns();
-      this.updateVisibleRenderObjects();
-    });
-
-    this.ctx.get(LevelSlice).onLevelsChanged(() => {
-      this.refreshColumns();
-      this.updateVisibleRenderObjects();
-    });
+    this.ctx.register(ColumnsSlice);
+    this.ctx.register(TimingColumnsSlice);
+    this.ctx.register(LevelColumnsSlice);
 
     this.ctx.get(ViewportSlice).onViewportChanged(() => {
       this.recomputeCursorPulse();
@@ -164,92 +156,12 @@ export class EditorController {
       this.viewport.setScroll({ x: this.$scroll.get().x, y: newScrollTop });
       this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: newScrollTop });
     });
-  }
 
-  private computeColumns(): { columns: TimelineColumn[]; width: number } {
-    const chartId = this.$selectedChartId.get();
+    this.ctx.get(ColumnsSlice).$columns.subscribe(() => {
+      this.updateVisibleRenderObjects();
+    });
 
-    const defs: TimelineColumn[] = [
-      { id: "measure", title: "", width: 40, x: 0 },
-      {
-        id: "time-sig",
-        title: "Time",
-        width: 48,
-        x: 40,
-        placementHandler: (pulse) => {
-          if (!chartId) return null;
-          const ts = this.getTimingEngine().getTimeSignatureAtPulse(pulse);
-          return new EntityBuilder()
-            .with(EVENT, { y: pulse })
-            .with(TIME_SIGNATURE, { numerator: ts.numerator, denominator: ts.denominator })
-            .with(CHART_REF, { chartId })
-            .build();
-        },
-      },
-      {
-        id: "bpm",
-        title: "BPM",
-        width: 56,
-        x: 88,
-        placementHandler: (pulse) => {
-          if (!chartId) return null;
-          const bpm = this.getTimingEngine().getBpmAtPulse(pulse);
-          return new EntityBuilder()
-            .with(EVENT, { y: pulse })
-            .with(BPM_CHANGE, { bpm })
-            .with(CHART_REF, { chartId })
-            .build();
-        },
-      },
-      { id: "spacer", title: "", width: 8, x: 144 },
-    ];
-
-    let x = 0;
-    const columns: TimelineColumn[] = [];
-    for (const def of defs) {
-      columns.push({ ...def, x });
-      x += def.width;
-    }
-
-    // Add gameplay lanes for visible levels.
-    if (chartId) {
-      const visibleLevels = this.ctx.get(LevelSlice).getVisibleLevels(chartId);
-      for (const level of visibleLevels) {
-        const layout = getGameModeLayout(level.mode);
-        if (!layout) continue;
-        for (const lane of layout.lanes) {
-          columns.push({
-            id: `level-${level.id}-lane-${lane.laneIndex}`,
-            title: lane.name,
-            width: lane.width,
-            x,
-            backgroundColor: lane.backgroundColor,
-            noteColor: lane.noteColor,
-            levelId: level.id,
-            laneIndex: lane.laneIndex,
-            placementHandler: (pulse) => {
-              return new EntityBuilder()
-                .with(EVENT, { y: pulse })
-                .with(NOTE, { lane: lane.laneIndex })
-                .with(LEVEL_REF, { levelId: level.id })
-                .with(CHART_REF, { chartId })
-                .build();
-            },
-          });
-          x += lane.width;
-        }
-      }
-    }
-
-    // Trailing line after last column.
-    const width = x + 1;
-    return { columns, width };
-  }
-
-  refreshColumns(): void {
-    const { columns, width } = this.computeColumns();
-    this.columns = columns;
-    this.timelineWidth = width;
+    this.ctx.get(ColumnsSlice).refreshColumns();
   }
 
   getLevelsForChart(chartId: string): LevelInfo[] {
@@ -437,7 +349,7 @@ export class EditorController {
 
   handlePointerUp(): void {
     if (!this.boxSelection.isActive()) return;
-    this.boxSelection.finalize(this.getColumns(), this.entityManager.entitiesWithComponent(EVENT));
+    this.boxSelection.finalize(this.entityManager.entitiesWithComponent(EVENT));
     this.updateVisibleRenderObjects();
   }
 
@@ -562,11 +474,11 @@ export class EditorController {
   }
 
   getColumns(): TimelineColumn[] {
-    return this.columns;
+    return this.columnsSlice.$columns.get();
   }
 
   getTimelineWidth(): number {
-    return this.timelineWidth;
+    return this.columnsSlice.$timelineWidth.get();
   }
 
   getVisibleRenderSpecs(): TimelineRenderSpec[] {

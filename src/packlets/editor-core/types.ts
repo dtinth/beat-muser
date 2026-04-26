@@ -11,16 +11,19 @@ export interface EditorControllerOptions {
   project: import("../project-format").ProjectFile;
 }
 
-export interface TimelineColumn {
+export interface ColumnDefinition {
   id: string;
   title: string;
   width: number;
-  x: number;
   backgroundColor?: string;
   levelId?: string;
   laneIndex?: number;
   noteColor?: string;
   placementHandler?: (pulse: number) => Entity | null;
+}
+
+export interface TimelineColumn extends ColumnDefinition {
+  x: number;
 }
 
 export interface LevelInfo {

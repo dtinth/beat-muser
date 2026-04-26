@@ -1,8 +1,8 @@
 import { Slice } from "../slice";
 import { SelectionSlice } from "./selection-slice";
+import { ColumnsSlice } from "./columns-slice";
 import { EVENT, BPM_CHANGE, TIME_SIGNATURE, NOTE, LEVEL_REF } from "../components";
 import type { Entity } from "../../entity-manager";
-import type { TimelineColumn } from "../types";
 
 export class BoxSelectionSlice extends Slice {
   static readonly sliceKey = "box-selection";
@@ -55,7 +55,7 @@ export class BoxSelectionSlice extends Slice {
     };
   }
 
-  finalize(columns: TimelineColumn[], entities: Entity[]): Set<string> {
+  finalize(entities: Entity[]): Set<string> {
     const box = this.boxSelection;
     if (!box.active) return new Set();
 
@@ -64,6 +64,7 @@ export class BoxSelectionSlice extends Slice {
     const minPulse = Math.min(box.startPulse, box.endPulse);
     const maxPulse = Math.max(box.startPulse, box.endPulse);
 
+    const columns = this.ctx.get(ColumnsSlice).$columns.get();
     const next = new Set(this.ctx.get(SelectionSlice).$selection.get());
 
     for (const entity of entities) {
