@@ -14,7 +14,7 @@ import { createTimingEngine } from "../timing-engine";
 import type { TimingEngine } from "../timing-engine";
 import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, LEVEL_REF, LEVEL, NOTE } from "./components";
 import { getGameModeLayout } from "./lane-layouts";
-import { Point, Rect, type Dimension } from "../geometry";
+import { Point, Rect } from "../geometry";
 import {
   type EditorControllerOptions,
   type TimelineColumn,
@@ -23,7 +23,6 @@ import {
   type EditorOutboxEvents,
   type UserAction,
   BASE_SCALE_Y,
-  PADDING_BOTTOM,
   HISTORY_LIMIT,
 } from "./types";
 import { DeleteUserAction, EraseUserAction, PlaceEntityUserAction } from "./user-actions";
@@ -33,11 +32,10 @@ import { ZoomSlice } from "./slices/zoom-slice";
 import { ProjectSlice } from "./slices/project-slice";
 import { ChartSlice } from "./slices/chart-slice";
 import { LevelSlice } from "./slices/level-slice";
+import { ViewportSlice } from "./slices/viewport-slice";
 
 export class EditorController {
   $cursorPulse = atom<number>(0);
-  $scroll = atom<Point>({ x: 0, y: 0 });
-  $viewportSize = atom<Dimension>({ width: 0, height: 0 });
   $cursorViewportPos = atom<Point>({ x: 0, y: -1 });
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
   $selection = atom<Set<string>>(new Set());
@@ -64,6 +62,18 @@ export class EditorController {
     return this.ctx.get(LevelSlice).$hiddenLevelIds;
   }
 
+  get $scroll() {
+    return this.ctx.get(ViewportSlice).$scroll;
+  }
+
+  get $viewportSize() {
+    return this.ctx.get(ViewportSlice).$viewportSize;
+  }
+
+  private get viewport(): ViewportSlice {
+    return this.ctx.get(ViewportSlice);
+  }
+
   private columns: TimelineColumn[];
   private timelineWidth: number;
   private timingEngineCache: TimingEngine | null = null;
@@ -85,6 +95,7 @@ export class EditorController {
     this.ctx.register(ProjectSlice, (ctx) => new ProjectSlice(ctx, options.project));
     this.ctx.register(ChartSlice);
     this.ctx.register(LevelSlice);
+    this.ctx.register(ViewportSlice);
     this.ctx.register(SnapSlice);
     this.ctx.register(ZoomSlice);
 
@@ -110,7 +121,7 @@ export class EditorController {
 
     this.ctx.get(ZoomSlice).onZoomChanged(({ oldZoom, newZoom }) => {
       const newScrollTop = this.computeZoomScrollOffset(oldZoom, newZoom);
-      this.$scroll.set({ x: this.$scroll.get().x, y: newScrollTop });
+      this.viewport.setScroll({ x: this.$scroll.get().x, y: newScrollTop });
       this.recomputeCursorPulse();
       this.updateVisibleRenderObjects();
       this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: newScrollTop });
@@ -252,43 +263,25 @@ export class EditorController {
   }
 
   getScaleY(): number {
-    return BASE_SCALE_Y * this.$zoom.get();
+    return this.viewport.getScaleY();
   }
 
   getTrackHeight(): number {
-    return this.getChartSize() * this.getScaleY();
+    return this.viewport.getTrackHeight();
   }
 
   getContentHeight(): number {
-    return this.getTrackHeight() + PADDING_BOTTOM;
-  }
-
-  getVisiblePulseRange(): { start: number; end: number; rawStart: number; rawEnd: number } {
-    const size = this.getChartSize();
-    const scaleY = this.getScaleY();
-    const trackHeight = this.getTrackHeight();
-    const scrollTop = this.$scroll.get().y;
-    const viewportHeight = this.$viewportSize.get().height;
-    const viewportBottom = scrollTop + viewportHeight;
-
-    const rawPulseStart = Math.max(0, Math.floor((trackHeight - viewportBottom) / scaleY));
-    const rawPulseEnd = Math.min(size, Math.ceil((trackHeight - scrollTop) / scaleY));
-    return {
-      start: Math.max(0, rawPulseStart - 50),
-      end: Math.min(size, rawPulseEnd + 50),
-      rawStart: rawPulseStart,
-      rawEnd: rawPulseEnd,
-    };
+    return this.viewport.getContentHeight();
   }
 
   setScroll(point: Point): void {
-    this.$scroll.set(point);
+    this.viewport.setScroll(point);
     this.recomputeCursorPulse();
     this.updateVisibleRenderObjects();
   }
 
   setViewportSize(width: number, height: number): void {
-    this.$viewportSize.set({ width, height });
+    this.viewport.setViewportSize(width, height);
     this.updateVisibleRenderObjects();
   }
 
@@ -301,8 +294,8 @@ export class EditorController {
     if (viewportY < 0) return;
     const scrollTop = this.$scroll.get().y;
     const contentY = viewportY + scrollTop;
-    const trackHeight = this.getTrackHeight();
-    const scaleY = this.getScaleY();
+    const trackHeight = this.viewport.getTrackHeight();
+    const scaleY = this.viewport.getScaleY();
     const rawPulse = (trackHeight - contentY) / scaleY;
     const snappedPulse = this.snapToGrid(rawPulse);
     this.$cursorPulse.set(snappedPulse);
@@ -361,8 +354,8 @@ export class EditorController {
   private computePulseFromViewportY(viewportY: number): number {
     const scrollTop = this.$scroll.get().y;
     const contentY = viewportY + scrollTop;
-    const trackHeight = this.getTrackHeight();
-    const scaleY = this.getScaleY();
+    const trackHeight = this.viewport.getTrackHeight();
+    const scaleY = this.viewport.getScaleY();
     return (trackHeight - contentY) / scaleY;
   }
 
@@ -584,8 +577,8 @@ export class EditorController {
       targetPulse = prev !== undefined ? prev : currentPulse;
     }
 
-    const scaleY = this.getScaleY();
-    const trackHeight = this.getTrackHeight();
+    const scaleY = this.viewport.getScaleY();
+    const trackHeight = this.viewport.getTrackHeight();
     const currentY = trackHeight - currentPulse * scaleY;
     const targetY = trackHeight - targetPulse * scaleY;
     const deltaY = targetY - currentY;
@@ -596,7 +589,7 @@ export class EditorController {
   }
 
   onConnected(): void {
-    const contentHeight = this.getContentHeight();
+    const contentHeight = this.viewport.getContentHeight();
     const viewportHeight = this.$viewportSize.get().height;
     if (contentHeight > viewportHeight) {
       this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: contentHeight - viewportHeight });
@@ -698,10 +691,10 @@ export class EditorController {
 
   getVisibleRenderSpecs(): TimelineRenderSpec[] {
     const size = this.getChartSize();
-    const scaleY = this.getScaleY();
-    const trackHeight = this.getTrackHeight();
-    const contentHeight = this.getContentHeight();
-    const pulseRange = this.getVisiblePulseRange();
+    const scaleY = this.viewport.getScaleY();
+    const trackHeight = this.viewport.getTrackHeight();
+    const contentHeight = this.viewport.getContentHeight();
+    const pulseRange = this.viewport.getVisiblePulseRange();
     const pulseStart = pulseRange.start;
     const pulseEnd = pulseRange.end;
     const rawPulseStart = pulseRange.rawStart;
