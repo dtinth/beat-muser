@@ -8,8 +8,7 @@
 import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
 import type { Emitter } from "nanoevents";
-import { uuidv7 } from "uuidv7";
-import { EntityManager, type Entity } from "../entity-manager";
+import { EntityManager, type Entity, EntityBuilder } from "../entity-manager";
 import type { TimingEngine } from "../timing-engine";
 import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, LEVEL_REF, NOTE } from "./components";
 import { getGameModeLayout } from "./lane-layouts";
@@ -180,15 +179,11 @@ export class EditorController {
         placementHandler: (pulse) => {
           if (!chartId) return null;
           const ts = this.getTimingEngine().getTimeSignatureAtPulse(pulse);
-          return {
-            id: uuidv7(),
-            version: uuidv7(),
-            components: {
-              [EVENT.key]: { y: pulse },
-              [TIME_SIGNATURE.key]: { numerator: ts.numerator, denominator: ts.denominator },
-              [CHART_REF.key]: { chartId },
-            },
-          };
+          return new EntityBuilder()
+            .with(EVENT, { y: pulse })
+            .with(TIME_SIGNATURE, { numerator: ts.numerator, denominator: ts.denominator })
+            .with(CHART_REF, { chartId })
+            .build();
         },
       },
       {
@@ -199,15 +194,11 @@ export class EditorController {
         placementHandler: (pulse) => {
           if (!chartId) return null;
           const bpm = this.getTimingEngine().getBpmAtPulse(pulse);
-          return {
-            id: uuidv7(),
-            version: uuidv7(),
-            components: {
-              [EVENT.key]: { y: pulse },
-              [BPM_CHANGE.key]: { bpm },
-              [CHART_REF.key]: { chartId },
-            },
-          };
+          return new EntityBuilder()
+            .with(EVENT, { y: pulse })
+            .with(BPM_CHANGE, { bpm })
+            .with(CHART_REF, { chartId })
+            .build();
         },
       },
       { id: "spacer", title: "", width: 8, x: 144 },
@@ -237,16 +228,12 @@ export class EditorController {
             levelId: level.id,
             laneIndex: lane.laneIndex,
             placementHandler: (pulse) => {
-              return {
-                id: uuidv7(),
-                version: uuidv7(),
-                components: {
-                  [EVENT.key]: { y: pulse },
-                  [NOTE.key]: { lane: lane.laneIndex },
-                  [LEVEL_REF.key]: { levelId: level.id },
-                  [CHART_REF.key]: { chartId },
-                },
-              };
+              return new EntityBuilder()
+                .with(EVENT, { y: pulse })
+                .with(NOTE, { lane: lane.laneIndex })
+                .with(LEVEL_REF, { levelId: level.id })
+                .with(CHART_REF, { chartId })
+                .build();
             },
           });
           x += lane.width;
