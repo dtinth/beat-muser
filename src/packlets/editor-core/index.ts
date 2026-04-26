@@ -20,4 +20,5 @@ export * from "./slices/selection-slice";
 export * from "./slices/history-slice";
 export * from "./slices/box-selection-slice";
 export * from "./slices/tool-slice";
+export * from "./slices/timing-slice";
 export * from "./editor-controller";

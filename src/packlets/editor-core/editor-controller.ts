@@ -10,7 +10,6 @@ import { createNanoEvents } from "nanoevents";
 import type { Emitter } from "nanoevents";
 import { uuidv7 } from "uuidv7";
 import { EntityManager, type Entity } from "../entity-manager";
-import { createTimingEngine } from "../timing-engine";
 import type { TimingEngine } from "../timing-engine";
 import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, LEVEL_REF, NOTE } from "./components";
 import { getGameModeLayout } from "./lane-layouts";
@@ -37,6 +36,7 @@ import { SelectionSlice } from "./slices/selection-slice";
 import { HistorySlice } from "./slices/history-slice";
 import { BoxSelectionSlice } from "./slices/box-selection-slice";
 import { ToolSlice } from "./slices/tool-slice";
+import { TimingSlice } from "./slices/timing-slice";
 
 export class EditorController {
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
@@ -105,10 +105,12 @@ export class EditorController {
     return this.ctx.get(BoxSelectionSlice);
   }
 
+  private get timing(): TimingSlice {
+    return this.ctx.get(TimingSlice);
+  }
+
   private columns: TimelineColumn[];
   private timelineWidth: number;
-  private timingEngineCache: TimingEngine | null = null;
-  private timingEngineVersion = 0;
 
   private get entityManager(): EntityManager {
     return this.ctx.get(ProjectSlice).entityManager;
@@ -126,6 +128,7 @@ export class EditorController {
     this.ctx.register(ZoomSlice);
     this.ctx.register(HistorySlice);
     this.ctx.register(ToolSlice);
+    this.ctx.register(TimingSlice);
 
     const { columns, width } = this.computeColumns();
     this.columns = columns;
@@ -568,52 +571,7 @@ export class EditorController {
   }
 
   getTimingEngine(): TimingEngine {
-    const currentVersion = this.entityManager.getMutationVersion();
-    if (this.timingEngineCache && this.timingEngineVersion === currentVersion) {
-      return this.timingEngineCache;
-    }
-
-    const chartId = this.$selectedChartId.get();
-
-    const bpmChanges = this.entityManager
-      .entitiesWithComponent(BPM_CHANGE)
-      .filter((entity) => {
-        if (!chartId) return true;
-        const ref = this.entityManager.getComponent(entity, CHART_REF);
-        return !ref || ref.chartId === chartId;
-      })
-      .map((entity) => {
-        const event = this.entityManager.getComponent(entity, EVENT);
-        const bpm = this.entityManager.getComponent(entity, BPM_CHANGE);
-        return {
-          pulse: event?.y ?? 0,
-          bpm: bpm?.bpm ?? 60,
-        };
-      })
-      .sort((a, b) => a.pulse - b.pulse);
-
-    const timeSignatures = this.entityManager
-      .entitiesWithComponent(TIME_SIGNATURE)
-      .filter((entity) => {
-        if (!chartId) return true;
-        const ref = this.entityManager.getComponent(entity, CHART_REF);
-        return !ref || ref.chartId === chartId;
-      })
-      .map((entity) => {
-        const event = this.entityManager.getComponent(entity, EVENT);
-        const ts = this.entityManager.getComponent(entity, TIME_SIGNATURE);
-        return {
-          pulse: event?.y ?? 0,
-          numerator: ts?.numerator ?? 4,
-          denominator: ts?.denominator ?? 4,
-        };
-      })
-      .sort((a, b) => a.pulse - b.pulse);
-
-    const engine = createTimingEngine(bpmChanges, timeSignatures);
-    this.timingEngineCache = engine;
-    this.timingEngineVersion = currentVersion;
-    return engine;
+    return this.timing.getTimingEngine();
   }
 
   getColumns(): TimelineColumn[] {
