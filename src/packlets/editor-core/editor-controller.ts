@@ -12,16 +12,7 @@ import { uuidv7 } from "uuidv7";
 import { EntityManager, type Entity } from "../entity-manager";
 import { createTimingEngine } from "../timing-engine";
 import type { TimingEngine } from "../timing-engine";
-import {
-  EVENT,
-  CHART,
-  BPM_CHANGE,
-  TIME_SIGNATURE,
-  CHART_REF,
-  LEVEL_REF,
-  LEVEL,
-  NOTE,
-} from "./components";
+import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, LEVEL_REF, LEVEL, NOTE } from "./components";
 import { getGameModeLayout } from "./lane-layouts";
 import { Point, Rect, type Dimension } from "../geometry";
 import {
@@ -31,7 +22,6 @@ import {
   type TimelineRenderSpec,
   type EditorOutboxEvents,
   type UserAction,
-  DEFAULT_CHART_SIZE,
   BASE_SCALE_Y,
   PADDING_BOTTOM,
   HISTORY_LIMIT,
@@ -41,9 +31,9 @@ import { EditorContext } from "./editor-context";
 import { SnapSlice } from "./slices/snap-slice";
 import { ZoomSlice } from "./slices/zoom-slice";
 import { ProjectSlice } from "./slices/project-slice";
+import { ChartSlice } from "./slices/chart-slice";
 
 export class EditorController {
-  $selectedChartId = atom<string | null>(null);
   $cursorPulse = atom<number>(0);
   $visibleLevelIds = atom<Set<string>>(new Set());
   $scroll = atom<Point>({ x: 0, y: 0 });
@@ -66,6 +56,10 @@ export class EditorController {
     return this.ctx.get(ZoomSlice).$zoom;
   }
 
+  get $selectedChartId() {
+    return this.ctx.get(ChartSlice).$selectedChartId;
+  }
+
   private columns: TimelineColumn[];
   private timelineWidth: number;
   private timingEngineCache: TimingEngine | null = null;
@@ -85,12 +79,12 @@ export class EditorController {
 
   constructor(options: EditorControllerOptions) {
     this.ctx.register(ProjectSlice, (ctx) => new ProjectSlice(ctx, options.project));
-
-    const charts = this.entityManager.entitiesWithComponent(CHART);
-    this.$selectedChartId.set(charts[0]!.id);
+    this.ctx.register(ChartSlice);
+    this.ctx.register(SnapSlice);
+    this.ctx.register(ZoomSlice);
 
     // Show all existing levels by default.
-    const chartId = this.$selectedChartId.get();
+    const chartId = this.ctx.get(ChartSlice).$selectedChartId.get();
     if (chartId) {
       const levelIds = this.getLevelsForChart(chartId).map((l) => l.id);
       this.$visibleLevelIds.set(new Set(levelIds));
@@ -100,10 +94,7 @@ export class EditorController {
     this.columns = columns;
     this.timelineWidth = width;
 
-    this.ctx.register(SnapSlice);
-    this.ctx.register(ZoomSlice);
-
-    this.$selectedChartId.subscribe(() => {
+    this.ctx.get(ChartSlice).$selectedChartId.subscribe(() => {
       this.refreshColumns();
       this.updateVisibleRenderObjects();
     });
@@ -667,15 +658,11 @@ export class EditorController {
   }
 
   getSelectedChart(): Entity | undefined {
-    const id = this.$selectedChartId.get();
-    if (!id) return undefined;
-    return this.entityManager.get(id);
+    return this.ctx.get(ChartSlice).getSelectedChart();
   }
 
   getChartSize(): number {
-    const chart = this.getSelectedChart();
-    const chartComponent = chart ? this.entityManager.getComponent(chart, CHART) : undefined;
-    return chartComponent?.size ?? DEFAULT_CHART_SIZE;
+    return this.ctx.get(ChartSlice).getChartSize();
   }
 
   snapToGrid(pulse: number): number {
