@@ -15,4 +15,8 @@ export * from "./slices/project-slice";
 export * from "./slices/chart-slice";
 export * from "./slices/level-slice";
 export * from "./slices/viewport-slice";
+export * from "./slices/cursor-slice";
+export * from "./slices/selection-slice";
+export * from "./slices/history-slice";
+export * from "./slices/box-selection-slice";
 export * from "./editor-controller";

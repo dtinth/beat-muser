@@ -23,7 +23,6 @@ import {
   type EditorOutboxEvents,
   type UserAction,
   BASE_SCALE_Y,
-  HISTORY_LIMIT,
 } from "./types";
 import { DeleteUserAction, EraseUserAction, PlaceEntityUserAction } from "./user-actions";
 import { EditorContext } from "./editor-context";
@@ -33,13 +32,13 @@ import { ProjectSlice } from "./slices/project-slice";
 import { ChartSlice } from "./slices/chart-slice";
 import { LevelSlice } from "./slices/level-slice";
 import { ViewportSlice } from "./slices/viewport-slice";
+import { CursorSlice } from "./slices/cursor-slice";
+import { SelectionSlice } from "./slices/selection-slice";
+import { HistorySlice } from "./slices/history-slice";
+import { BoxSelectionSlice } from "./slices/box-selection-slice";
 
 export class EditorController {
-  $cursorPulse = atom<number>(0);
-  $cursorViewportPos = atom<Point>({ x: 0, y: -1 });
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
-  $selection = atom<Set<string>>(new Set());
-  $history = atom<{ undo: UserAction[]; redo: UserAction[] }>({ undo: [], redo: [] });
   $activeTool = atom<"select" | "pencil" | "erase" | "pan">("select");
   $lastPlacedEntityInfo = atom<{ entityId: string; columnId: string } | null>(null);
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
@@ -70,8 +69,36 @@ export class EditorController {
     return this.ctx.get(ViewportSlice).$viewportSize;
   }
 
+  get $cursorPulse() {
+    return this.ctx.get(CursorSlice).$cursorPulse;
+  }
+
+  get $cursorViewportPos() {
+    return this.ctx.get(CursorSlice).$cursorViewportPos;
+  }
+
+  get $selection() {
+    return this.ctx.get(SelectionSlice).$selection;
+  }
+
+  get $history() {
+    return this.ctx.get(HistorySlice).$history;
+  }
+
   private get viewport(): ViewportSlice {
     return this.ctx.get(ViewportSlice);
+  }
+
+  private get cursor(): CursorSlice {
+    return this.ctx.get(CursorSlice);
+  }
+
+  private get history(): HistorySlice {
+    return this.ctx.get(HistorySlice);
+  }
+
+  private get boxSelection(): BoxSelectionSlice {
+    return this.ctx.get(BoxSelectionSlice);
   }
 
   private columns: TimelineColumn[];
@@ -83,21 +110,17 @@ export class EditorController {
     return this.ctx.get(ProjectSlice).entityManager;
   }
 
-  private boxSelection = {
-    active: false,
-    startCol: 0,
-    endCol: 0,
-    startPulse: 0,
-    endPulse: 0,
-  };
-
   constructor(options: EditorControllerOptions) {
     this.ctx.register(ProjectSlice, (ctx) => new ProjectSlice(ctx, options.project));
     this.ctx.register(ChartSlice);
     this.ctx.register(LevelSlice);
     this.ctx.register(ViewportSlice);
+    this.ctx.register(CursorSlice);
+    this.ctx.register(SelectionSlice);
+    this.ctx.register(BoxSelectionSlice);
     this.ctx.register(SnapSlice);
     this.ctx.register(ZoomSlice);
+    this.ctx.register(HistorySlice);
 
     const { columns, width } = this.computeColumns();
     this.columns = columns;
@@ -113,9 +136,9 @@ export class EditorController {
     });
 
     this.ctx.get(SnapSlice).onSnapChanged(() => {
-      const currentPulse = this.$cursorPulse.get();
+      const currentPulse = this.cursor.$cursorPulse.get();
       const snapped = this.snapToGrid(currentPulse);
-      this.$cursorPulse.set(snapped);
+      this.cursor.$cursorPulse.set(snapped);
       this.updateVisibleRenderObjects();
     });
 
@@ -402,13 +425,7 @@ export class EditorController {
     } else {
       const colIndex = this.getColumnIndexFromViewportX(point.x);
       const pulse = this.computePulseFromViewportY(point.y);
-      this.boxSelection = {
-        active: true,
-        startCol: colIndex,
-        endCol: colIndex,
-        startPulse: pulse,
-        endPulse: pulse,
-      };
+      this.boxSelection.start(colIndex, pulse);
       if (!shiftKey) {
         this.$selection.set(new Set());
       }
@@ -417,19 +434,15 @@ export class EditorController {
   }
 
   private isInBox(pulse: number, colIndex: number): boolean {
-    const box = this.boxSelection;
-    if (!box.active) return false;
-    const minCol = Math.min(box.startCol, box.endCol);
-    const maxCol = Math.max(box.startCol, box.endCol);
-    const minPulse = Math.min(box.startPulse, box.endPulse);
-    const maxPulse = Math.max(box.startPulse, box.endPulse);
-    return pulse >= minPulse && pulse <= maxPulse && colIndex >= minCol && colIndex <= maxCol;
+    return this.boxSelection.isInBox(pulse, colIndex);
   }
 
   handlePointerMove(viewportX: number, viewportY: number): void {
-    if (this.boxSelection.active) {
-      this.boxSelection.endCol = this.getColumnIndexFromViewportX(viewportX);
-      this.boxSelection.endPulse = this.computePulseFromViewportY(viewportY);
+    if (this.boxSelection.isActive()) {
+      this.boxSelection.update(
+        this.getColumnIndexFromViewportX(viewportX),
+        this.computePulseFromViewportY(viewportY),
+      );
     }
     this.$cursorViewportPos.set({ x: viewportX, y: viewportY });
     this.recomputeCursorPulse();
@@ -437,64 +450,8 @@ export class EditorController {
   }
 
   handlePointerUp(): void {
-    const box = this.boxSelection;
-    if (!box.active) return;
-
-    const minCol = Math.min(box.startCol, box.endCol);
-    const maxCol = Math.max(box.startCol, box.endCol);
-    const minPulse = Math.min(box.startPulse, box.endPulse);
-    const maxPulse = Math.max(box.startPulse, box.endPulse);
-    const columns = this.getColumns();
-    const next = new Set(this.$selection.get());
-
-    for (const entity of this.entityManager.entitiesWithComponent(EVENT)) {
-      const event = this.entityManager.getComponent(entity, EVENT);
-      if (!event) continue;
-      const pulse = event.y;
-      if (pulse < minPulse || pulse > maxPulse) continue;
-
-      let colIndex = -1;
-      const note = this.entityManager.getComponent(entity, NOTE);
-      const levelRef = this.entityManager.getComponent(entity, LEVEL_REF);
-      if (note && levelRef) {
-        for (let i = 0; i < columns.length; i++) {
-          const col = columns[i]!;
-          if (col.levelId === levelRef.levelId && col.laneIndex === note.lane) {
-            colIndex = i;
-            break;
-          }
-        }
-      }
-      if (colIndex === -1) {
-        const bpm = this.entityManager.getComponent(entity, BPM_CHANGE);
-        if (bpm) {
-          for (let i = 0; i < columns.length; i++) {
-            if (columns[i]!.id === "bpm") {
-              colIndex = i;
-              break;
-            }
-          }
-        }
-      }
-      if (colIndex === -1) {
-        const ts = this.entityManager.getComponent(entity, TIME_SIGNATURE);
-        if (ts) {
-          for (let i = 0; i < columns.length; i++) {
-            if (columns[i]!.id === "time-sig") {
-              colIndex = i;
-              break;
-            }
-          }
-        }
-      }
-
-      if (colIndex >= minCol && colIndex <= maxCol) {
-        next.add(entity.id);
-      }
-    }
-
-    this.$selection.set(next);
-    this.boxSelection = { active: false, startCol: 0, endCol: 0, startPulse: 0, endPulse: 0 };
+    if (!this.boxSelection.isActive()) return;
+    this.boxSelection.finalize(this.getColumns(), this.entityManager.entitiesWithComponent(EVENT));
     this.updateVisibleRenderObjects();
   }
 
@@ -516,13 +473,8 @@ export class EditorController {
   }
 
   applyAction(action: UserAction): void {
-    action.do();
-    const history = this.$history.get();
-    const undo = [...history.undo, action];
-    if (undo.length > HISTORY_LIMIT) {
-      undo.shift();
-    }
-    this.$history.set({ undo, redo: [] });
+    this.history.applyAction(action);
+    this.updateVisibleRenderObjects();
   }
 
   deleteSelection(): void {
@@ -539,25 +491,13 @@ export class EditorController {
   }
 
   undo(): void {
-    const history = this.$history.get();
-    const action = history.undo.pop();
-    if (!action) return;
-    action.undo();
-    this.$history.set({
-      undo: history.undo,
-      redo: [...history.redo, action],
-    });
+    this.history.undo();
+    this.updateVisibleRenderObjects();
   }
 
   redo(): void {
-    const history = this.$history.get();
-    const action = history.redo.pop();
-    if (!action) return;
-    action.do();
-    this.$history.set({
-      undo: [...history.undo, action],
-      redo: history.redo,
-    });
+    this.history.redo();
+    this.updateVisibleRenderObjects();
   }
 
   navigateSnap(direction: "up" | "down"): void {
@@ -928,22 +868,23 @@ export class EditorController {
     }
 
     // --- Selection box (during drag) ---
-    const box = this.boxSelection;
-    if (box.active) {
-      const minCol = Math.min(box.startCol, box.endCol);
-      const maxCol = Math.max(box.startCol, box.endCol);
-      const minPulse = Math.min(box.startPulse, box.endPulse);
-      const maxPulse = Math.max(box.startPulse, box.endPulse);
-      if (minCol >= 0 && maxCol >= 0 && minCol < columns.length && maxCol < columns.length) {
-        const startCol = columns[minCol]!;
-        const endCol = columns[maxCol]!;
+    const boxRect = this.boxSelection.getBoxRect();
+    if (boxRect) {
+      if (
+        boxRect.minCol >= 0 &&
+        boxRect.maxCol >= 0 &&
+        boxRect.minCol < columns.length &&
+        boxRect.maxCol < columns.length
+      ) {
+        const startCol = columns[boxRect.minCol]!;
+        const endCol = columns[boxRect.maxCol]!;
         specs.push({
           key: "selection-box",
           type: "selection-box",
           x: startCol.x,
-          y: trackHeight - maxPulse * scaleY,
+          y: trackHeight - boxRect.maxPulse * scaleY,
           width: endCol.x + endCol.width - startCol.x,
-          height: (maxPulse - minPulse) * scaleY,
+          height: (boxRect.maxPulse - boxRect.minPulse) * scaleY,
           data: {},
           testId: "selection-box",
         });
