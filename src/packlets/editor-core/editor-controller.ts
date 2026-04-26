@@ -59,12 +59,13 @@ export class EditorController {
   private columns: TimelineColumn[];
   private timelineWidth: number;
 
-  // Box selection state
-  private isBoxSelecting = false;
-  private boxStartColumnIndex = 0;
-  private boxEndColumnIndex = 0;
-  private boxStartPulse = 0;
-  private boxEndPulse = 0;
+  private boxSelection = {
+    active: false,
+    startCol: 0,
+    endCol: 0,
+    startPulse: 0,
+    endPulse: 0,
+  };
 
   constructor(options: EditorControllerOptions) {
     this.entityManager = EntityManager.from(options.project.entities);
@@ -433,13 +434,15 @@ export class EditorController {
         this.$selection.set(new Set([hit]));
       }
     } else {
-      this.isBoxSelecting = true;
       const colIndex = this.getColumnIndexFromViewportX(point.x);
       const pulse = this.computePulseFromViewportY(point.y);
-      this.boxStartColumnIndex = colIndex;
-      this.boxEndColumnIndex = colIndex;
-      this.boxStartPulse = pulse;
-      this.boxEndPulse = pulse;
+      this.boxSelection = {
+        active: true,
+        startCol: colIndex,
+        endCol: colIndex,
+        startPulse: pulse,
+        endPulse: pulse,
+      };
       if (!shiftKey) {
         this.$selection.set(new Set());
       }
@@ -448,18 +451,19 @@ export class EditorController {
   }
 
   private isInBox(pulse: number, colIndex: number): boolean {
-    if (!this.isBoxSelecting) return false;
-    const minCol = Math.min(this.boxStartColumnIndex, this.boxEndColumnIndex);
-    const maxCol = Math.max(this.boxStartColumnIndex, this.boxEndColumnIndex);
-    const minPulse = Math.min(this.boxStartPulse, this.boxEndPulse);
-    const maxPulse = Math.max(this.boxStartPulse, this.boxEndPulse);
+    const box = this.boxSelection;
+    if (!box.active) return false;
+    const minCol = Math.min(box.startCol, box.endCol);
+    const maxCol = Math.max(box.startCol, box.endCol);
+    const minPulse = Math.min(box.startPulse, box.endPulse);
+    const maxPulse = Math.max(box.startPulse, box.endPulse);
     return pulse >= minPulse && pulse <= maxPulse && colIndex >= minCol && colIndex <= maxCol;
   }
 
   handlePointerMove(viewportX: number, viewportY: number): void {
-    if (this.isBoxSelecting) {
-      this.boxEndColumnIndex = this.getColumnIndexFromViewportX(viewportX);
-      this.boxEndPulse = this.computePulseFromViewportY(viewportY);
+    if (this.boxSelection.active) {
+      this.boxSelection.endCol = this.getColumnIndexFromViewportX(viewportX);
+      this.boxSelection.endPulse = this.computePulseFromViewportY(viewportY);
     }
     this.$cursorViewportPos.set({ x: viewportX, y: viewportY });
     this.recomputeCursorPulse();
@@ -467,12 +471,13 @@ export class EditorController {
   }
 
   handlePointerUp(): void {
-    if (!this.isBoxSelecting) return;
+    const box = this.boxSelection;
+    if (!box.active) return;
 
-    const minCol = Math.min(this.boxStartColumnIndex, this.boxEndColumnIndex);
-    const maxCol = Math.max(this.boxStartColumnIndex, this.boxEndColumnIndex);
-    const minPulse = Math.min(this.boxStartPulse, this.boxEndPulse);
-    const maxPulse = Math.max(this.boxStartPulse, this.boxEndPulse);
+    const minCol = Math.min(box.startCol, box.endCol);
+    const maxCol = Math.max(box.startCol, box.endCol);
+    const minPulse = Math.min(box.startPulse, box.endPulse);
+    const maxPulse = Math.max(box.startPulse, box.endPulse);
     const columns = this.getColumns();
     const next = new Set(this.$selection.get());
 
@@ -523,7 +528,7 @@ export class EditorController {
     }
 
     this.$selection.set(next);
-    this.isBoxSelecting = false;
+    this.boxSelection = { active: false, startCol: 0, endCol: 0, startPulse: 0, endPulse: 0 };
     this.updateVisibleRenderObjects();
   }
 
@@ -964,11 +969,12 @@ export class EditorController {
     }
 
     // --- Selection box (during drag) ---
-    if (this.isBoxSelecting) {
-      const minCol = Math.min(this.boxStartColumnIndex, this.boxEndColumnIndex);
-      const maxCol = Math.max(this.boxStartColumnIndex, this.boxEndColumnIndex);
-      const minPulse = Math.min(this.boxStartPulse, this.boxEndPulse);
-      const maxPulse = Math.max(this.boxStartPulse, this.boxEndPulse);
+    const box = this.boxSelection;
+    if (box.active) {
+      const minCol = Math.min(box.startCol, box.endCol);
+      const maxCol = Math.max(box.startCol, box.endCol);
+      const minPulse = Math.min(box.startPulse, box.endPulse);
+      const maxPulse = Math.max(box.startPulse, box.endPulse);
       if (minCol >= 0 && maxCol >= 0 && minCol < columns.length && maxCol < columns.length) {
         const startCol = columns[minCol]!;
         const endCol = columns[maxCol]!;
