@@ -23,7 +23,7 @@ import {
   NOTE,
 } from "./components";
 import { getGameModeLayout } from "./lane-layouts";
-import { Point, Rect } from "../geometry";
+import { Point, Rect, type Dimension } from "../geometry";
 import {
   type EditorControllerOptions,
   type TimelineColumn,
@@ -46,10 +46,8 @@ export class EditorController {
   $zoom = atom<number>(1); // zoom multiplier, 1 = 100%
   $visibleLevelIds = atom<Set<string>>(new Set());
   $scroll = atom<Point>({ x: 0, y: 0 });
-  $viewportWidth = atom<number>(0);
-  $viewportHeight = atom<number>(0);
-  $cursorViewportX = atom<number>(0);
-  $cursorViewportY = atom<number>(-1);
+  $viewportSize = atom<Dimension>({ width: 0, height: 0 });
+  $cursorViewportPos = atom<Point>({ x: 0, y: -1 });
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
   $selection = atom<Set<string>>(new Set());
   $history = atom<{ undo: UserAction[]; redo: UserAction[] }>({ undo: [], redo: [] });
@@ -292,7 +290,7 @@ export class EditorController {
     const scaleY = this.getScaleY();
     const trackHeight = this.getTrackHeight();
     const scrollTop = this.$scroll.get().y;
-    const viewportHeight = this.$viewportHeight.get();
+    const viewportHeight = this.$viewportSize.get().height;
     const viewportBottom = scrollTop + viewportHeight;
 
     const rawPulseStart = Math.max(0, Math.floor((trackHeight - viewportBottom) / scaleY));
@@ -312,8 +310,7 @@ export class EditorController {
   }
 
   setViewportSize(width: number, height: number): void {
-    this.$viewportWidth.set(width);
-    this.$viewportHeight.set(height);
+    this.$viewportSize.set({ width, height });
     this.updateVisibleRenderObjects();
   }
 
@@ -326,7 +323,7 @@ export class EditorController {
   }
 
   recomputeCursorPulse(): void {
-    const viewportY = this.$cursorViewportY.get();
+    const viewportY = this.$cursorViewportPos.get().y;
     if (viewportY < 0) return;
     const scrollTop = this.$scroll.get().y;
     const contentY = viewportY + scrollTop;
@@ -464,8 +461,7 @@ export class EditorController {
       this.boxEndColumnIndex = this.getColumnIndexFromViewportX(viewportX);
       this.boxEndPulse = this.computePulseFromViewportY(viewportY);
     }
-    this.$cursorViewportX.set(viewportX);
-    this.$cursorViewportY.set(viewportY);
+    this.$cursorViewportPos.set({ x: viewportX, y: viewportY });
     this.recomputeCursorPulse();
     this.updateVisibleRenderObjects();
   }
@@ -633,7 +629,7 @@ export class EditorController {
 
   onConnected(): void {
     const contentHeight = this.getContentHeight();
-    const viewportHeight = this.$viewportHeight.get();
+    const viewportHeight = this.$viewportSize.get().height;
     if (contentHeight > viewportHeight) {
       this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: contentHeight - viewportHeight });
     }
