@@ -7,7 +7,7 @@
 import { uuidv7 } from "uuidv7";
 import type { Entity } from "../entity-manager";
 import { LEVEL_REF } from "./components";
-import type { EditorController } from "./index";
+import type { EditorController } from "./editor-controller";
 import type { UserAction } from "./types";
 
 export class DeleteUserAction implements UserAction {
