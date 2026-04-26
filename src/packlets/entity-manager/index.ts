@@ -75,6 +75,7 @@ export class EntityComponentType<T extends TSchema> {
 
 export class EntityManager {
   private entities = new Map<string, Entity>();
+  private mutationVersion = 1;
 
   static from(array: Entity[]): EntityManager {
     const manager = new EntityManager();
@@ -94,10 +95,12 @@ export class EntityManager {
 
   insert(entity: Entity): void {
     this.entities.set(entity.id, entity);
+    this.mutationVersion++;
   }
 
   remove(id: string): void {
     this.entities.delete(id);
+    this.mutationVersion++;
   }
 
   /**
@@ -109,6 +112,7 @@ export class EntityManager {
     if (!entity) return;
     entity.components = {};
     entity.version = uuidv7();
+    this.mutationVersion++;
   }
 
   /**
@@ -116,6 +120,11 @@ export class EntityManager {
    */
   restore(entity: Entity): void {
     this.entities.set(entity.id, entity);
+    this.mutationVersion++;
+  }
+
+  getMutationVersion(): number {
+    return this.mutationVersion;
   }
 
   /**

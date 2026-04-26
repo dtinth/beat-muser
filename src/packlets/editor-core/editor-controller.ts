@@ -58,6 +58,8 @@ export class EditorController {
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
   private timelineWidth: number;
+  private timingEngineCache: TimingEngine | null = null;
+  private timingEngineVersion = 0;
 
   private boxSelection = {
     active: false,
@@ -682,6 +684,11 @@ export class EditorController {
   }
 
   getTimingEngine(): TimingEngine {
+    const currentVersion = this.entityManager.getMutationVersion();
+    if (this.timingEngineCache && this.timingEngineVersion === currentVersion) {
+      return this.timingEngineCache;
+    }
+
     const chartId = this.$selectedChartId.get();
 
     const bpmChanges = this.entityManager
@@ -719,7 +726,10 @@ export class EditorController {
       })
       .sort((a, b) => a.pulse - b.pulse);
 
-    return createTimingEngine(bpmChanges, timeSignatures);
+    const engine = createTimingEngine(bpmChanges, timeSignatures);
+    this.timingEngineCache = engine;
+    this.timingEngineVersion = currentVersion;
+    return engine;
   }
 
   getColumns(): TimelineColumn[] {
