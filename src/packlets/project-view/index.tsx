@@ -310,6 +310,18 @@ export function ProjectViewPage() {
       shortcut: "$mod+Shift+KeyZ",
       execute: () => controller.redo(),
     });
+    commands.add({
+      id: "navigateUp",
+      title: "Navigate Up",
+      shortcut: "ArrowUp",
+      execute: () => controller.navigateSnap("up"),
+    });
+    commands.add({
+      id: "navigateDown",
+      title: "Navigate Down",
+      shortcut: "ArrowDown",
+      execute: () => controller.navigateSnap("down"),
+    });
     const unregister = commands.registerTo(globalCommandRegistry);
     const handler = new KeyboardShortcutHandler({
       registry: globalCommandRegistry,

@@ -196,6 +196,14 @@ export class EditorTester {
     this.instance.redo();
   }
 
+  navigateUp() {
+    this.instance.navigateSnap("up");
+  }
+
+  navigateDown() {
+    this.instance.navigateSnap("down");
+  }
+
   get scrollHeight() {
     return this.instance.getContentHeight();
   }

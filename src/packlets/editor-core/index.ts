@@ -619,6 +619,34 @@ export class EditorController {
     });
   }
 
+  navigateSnap(direction: "up" | "down"): void {
+    const currentPulse = this.$cursorPulse.get();
+    const engine = this.getTimingEngine();
+    const snap = this.$snap.get();
+    const size = this.getChartSize();
+
+    let targetPulse: number;
+    if (direction === "up") {
+      const points = engine.getSnapPoints(snap, { start: currentPulse, end: size });
+      const next = points.find((p) => p > currentPulse);
+      targetPulse = next !== undefined ? next : currentPulse;
+    } else {
+      const points = engine.getSnapPoints(snap, { start: 0, end: currentPulse });
+      const prev = points.length > 0 ? points[points.length - 1] : undefined;
+      targetPulse = prev !== undefined ? prev : currentPulse;
+    }
+
+    const scaleY = this.getScaleY();
+    const trackHeight = this.getTrackHeight();
+    const currentY = trackHeight - currentPulse * scaleY;
+    const targetY = trackHeight - targetPulse * scaleY;
+    const deltaY = targetY - currentY;
+
+    this.$cursorPulse.set(targetPulse);
+    const currentScroll = this.$scroll.get();
+    this.setScroll({ x: currentScroll.x, y: currentScroll.y + deltaY });
+  }
+
   onConnected(): void {
     const contentHeight = this.getContentHeight();
     const viewportHeight = this.$viewportHeight.get();

@@ -770,4 +770,62 @@ describe("EditorController", () => {
       expect(Object.keys(redeleted!.components)).toHaveLength(0);
     });
   });
+
+  describe("keyboard navigation", () => {
+    test("navigateUp moves playhead to next snap point and scrolls up", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 15360);
+          }),
+      });
+
+      expect(editor.instance.$cursorPulse.get()).toBe(0);
+      const initialScrollTop = editor.scrollTop;
+
+      editor.navigateUp();
+
+      // 1/16 snap = 60 pulses, scaleY = 0.2 → delta = 12px
+      expect(editor.instance.$cursorPulse.get()).toBe(60);
+      expect(editor.scrollTop).toBe(initialScrollTop - 12);
+    });
+
+    test("navigateDown moves playhead to previous snap point and scrolls down", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 15360);
+          }),
+      });
+
+      editor.navigateUp();
+      expect(editor.instance.$cursorPulse.get()).toBe(60);
+      const scrollAfterUp = editor.scrollTop;
+
+      editor.navigateDown();
+
+      expect(editor.instance.$cursorPulse.get()).toBe(0);
+      expect(editor.scrollTop).toBe(scrollAfterUp + 12);
+    });
+
+    test("navigation keeps playhead at same viewport position", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 15360);
+          }),
+      });
+
+      const playheadViewportY = (pulse: number) => {
+        const trackHeight = editor.instance.getTrackHeight();
+        const scaleY = editor.instance.getScaleY();
+        return trackHeight - pulse * scaleY - editor.scrollTop;
+      };
+
+      const beforeY = playheadViewportY(0);
+      editor.navigateUp();
+      const afterY = playheadViewportY(60);
+      expect(afterY).toBe(beforeY);
+    });
+  });
 });
