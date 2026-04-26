@@ -1,5 +1,4 @@
-import { EntityManager } from "../../entity-manager";
-import { uuidv7 } from "uuidv7";
+import { EntityManager, EntityBuilder } from "../../entity-manager";
 import { CHART } from "../components";
 import { DEFAULT_CHART_SIZE } from "../types";
 import { Slice } from "../slice";
@@ -18,14 +17,9 @@ export class ProjectSlice extends Slice {
     // Guarantee: at least one chart always exists
     const charts = this.entityManager.entitiesWithComponent(CHART);
     if (charts.length === 0) {
-      const id = uuidv7();
-      this.entityManager.insert({
-        id,
-        version: uuidv7(),
-        components: {
-          chart: { name: "Main Chart", size: DEFAULT_CHART_SIZE },
-        },
-      });
+      this.entityManager.insert(
+        new EntityBuilder().with(CHART, { name: "Main Chart", size: DEFAULT_CHART_SIZE }).build(),
+      );
     }
   }
 }

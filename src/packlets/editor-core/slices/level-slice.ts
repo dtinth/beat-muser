@@ -1,9 +1,9 @@
 import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
-import { uuidv7 } from "uuidv7";
 import { Slice } from "../slice";
 import { ProjectSlice } from "./project-slice";
 import { CHART_REF, LEVEL } from "../components";
+import { EntityBuilder } from "../../entity-manager";
 import type { Entity } from "../../entity-manager";
 import type { LevelInfo } from "../types";
 
@@ -56,18 +56,13 @@ export class LevelSlice extends Slice {
       existing.length > 0
         ? Math.max(...existing.map((e) => em.getComponent(e, LEVEL)?.sortOrder ?? 0))
         : -1;
-    const id = uuidv7();
-    const level: Entity = {
-      id,
-      version: uuidv7(),
-      components: {
-        level: { name, mode, sortOrder: maxOrder + 1 },
-        chartRef: { chartId },
-      },
-    };
+    const level = new EntityBuilder()
+      .with(LEVEL, { name, mode, sortOrder: maxOrder + 1 })
+      .with(CHART_REF, { chartId })
+      .build();
     em.insert(level);
     this.events.emit("levelsChanged");
-    return id;
+    return level.id;
   }
 
   removeLevel(levelId: string): void {
