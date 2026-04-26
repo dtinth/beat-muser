@@ -32,10 +32,10 @@ import { SnapSlice } from "./slices/snap-slice";
 import { ZoomSlice } from "./slices/zoom-slice";
 import { ProjectSlice } from "./slices/project-slice";
 import { ChartSlice } from "./slices/chart-slice";
+import { LevelSlice } from "./slices/level-slice";
 
 export class EditorController {
   $cursorPulse = atom<number>(0);
-  $visibleLevelIds = atom<Set<string>>(new Set());
   $scroll = atom<Point>({ x: 0, y: 0 });
   $viewportSize = atom<Dimension>({ width: 0, height: 0 });
   $cursorViewportPos = atom<Point>({ x: 0, y: -1 });
@@ -60,6 +60,10 @@ export class EditorController {
     return this.ctx.get(ChartSlice).$selectedChartId;
   }
 
+  get $hiddenLevelIds() {
+    return this.ctx.get(LevelSlice).$hiddenLevelIds;
+  }
+
   private columns: TimelineColumn[];
   private timelineWidth: number;
   private timingEngineCache: TimingEngine | null = null;
@@ -80,15 +84,9 @@ export class EditorController {
   constructor(options: EditorControllerOptions) {
     this.ctx.register(ProjectSlice, (ctx) => new ProjectSlice(ctx, options.project));
     this.ctx.register(ChartSlice);
+    this.ctx.register(LevelSlice);
     this.ctx.register(SnapSlice);
     this.ctx.register(ZoomSlice);
-
-    // Show all existing levels by default.
-    const chartId = this.ctx.get(ChartSlice).$selectedChartId.get();
-    if (chartId) {
-      const levelIds = this.getLevelsForChart(chartId).map((l) => l.id);
-      this.$visibleLevelIds.set(new Set(levelIds));
-    }
 
     const { columns, width } = this.computeColumns();
     this.columns = columns;
@@ -98,7 +96,7 @@ export class EditorController {
       this.refreshColumns();
       this.updateVisibleRenderObjects();
     });
-    this.$visibleLevelIds.subscribe(() => {
+    this.ctx.get(LevelSlice).$hiddenLevelIds.subscribe(() => {
       this.refreshColumns();
       this.updateVisibleRenderObjects();
     });
@@ -218,24 +216,17 @@ export class EditorController {
   }
 
   getLevelsForChart(chartId: string): LevelInfo[] {
-    return this.entityManager
-      .entitiesWithComponent(LEVEL)
-      .filter((entity) => {
-        const ref = this.entityManager.getComponent(entity, CHART_REF);
-        return ref?.chartId === chartId;
-      })
-      .map((entity) => {
-        const level = this.entityManager.getComponent(entity, LEVEL);
-        const visible = this.$visibleLevelIds.get().has(entity.id);
-        return {
-          id: entity.id,
-          name: level?.name ?? "Untitled",
-          mode: level?.mode ?? "beat-7k",
-          sortOrder: level?.sortOrder ?? 0,
-          visible,
-        };
-      })
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const levelSlice = this.ctx.get(LevelSlice);
+    return levelSlice.getLevelEntitiesForChart(chartId).map((entity) => {
+      const level = this.entityManager.getComponent(entity, LEVEL);
+      return {
+        id: entity.id,
+        name: level?.name ?? "Untitled",
+        mode: level?.mode ?? "beat-7k",
+        sortOrder: level?.sortOrder ?? 0,
+        visible: !levelSlice.isLevelHidden(entity.id),
+      };
+    });
   }
 
   getVisibleLevels(): LevelInfo[] {
@@ -245,39 +236,18 @@ export class EditorController {
   }
 
   addLevel(chartId: string, name: string, mode: string): string {
-    const existing = this.getLevelsForChart(chartId);
-    const maxOrder = existing.length > 0 ? Math.max(...existing.map((l) => l.sortOrder)) : -1;
-    const id = `level-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const level: Entity = {
-      id,
-      version: id,
-      components: {
-        level: { name, mode, sortOrder: maxOrder + 1 },
-        chartRef: { chartId },
-      },
-    };
-    this.entityManager.insert(level);
-    this.$visibleLevelIds.set(new Set([...this.$visibleLevelIds.get(), id]));
+    const id = this.ctx.get(LevelSlice).addLevel(chartId, name, mode);
     this.refreshColumns();
     return id;
   }
 
   removeLevel(levelId: string): void {
-    this.entityManager.remove(levelId);
-    const visible = new Set(this.$visibleLevelIds.get());
-    visible.delete(levelId);
-    this.$visibleLevelIds.set(visible);
+    this.ctx.get(LevelSlice).removeLevel(levelId);
     this.refreshColumns();
   }
 
   toggleLevelVisibility(levelId: string): void {
-    const visible = new Set(this.$visibleLevelIds.get());
-    if (visible.has(levelId)) {
-      visible.delete(levelId);
-    } else {
-      visible.add(levelId);
-    }
-    this.$visibleLevelIds.set(visible);
+    this.ctx.get(LevelSlice).toggleLevelVisibility(levelId);
     this.refreshColumns();
   }
 

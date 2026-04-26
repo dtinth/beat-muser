@@ -82,11 +82,9 @@ function RightPanels({ controller }: { controller: EditorController }) {
   const [levels, setLevels] = useState(() =>
     controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""),
   );
-  const [visibleIds, setVisibleIds] = useState(() => controller.$visibleLevelIds.get());
 
   useEffect(() => {
-    const unsub = controller.$visibleLevelIds.subscribe((ids) => {
-      setVisibleIds(ids);
+    const unsub = controller.$hiddenLevelIds.subscribe(() => {
       setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
     });
     return unsub;
@@ -125,7 +123,7 @@ function RightPanels({ controller }: { controller: EditorController }) {
                           style={{ cursor: "pointer" }}
                           onClick={() => controller.toggleLevelVisibility(level.id)}
                         >
-                          {visibleIds.has(level.id) ? <Eye size={14} /> : <EyeOff size={14} />}
+                          {level.visible ? <Eye size={14} /> : <EyeOff size={14} />}
                         </div>
                         <div
                           style={{ cursor: "pointer" }}

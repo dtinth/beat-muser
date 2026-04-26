@@ -13,4 +13,5 @@ export * from "./slices/snap-slice";
 export * from "./slices/zoom-slice";
 export * from "./slices/project-slice";
 export * from "./slices/chart-slice";
+export * from "./slices/level-slice";
 export * from "./editor-controller";
