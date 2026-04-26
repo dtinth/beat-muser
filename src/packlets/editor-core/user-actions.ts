@@ -28,7 +28,7 @@ export class DeleteUserAction implements UserAction {
       em.delete(id);
     }
     this.controller.$selection.set(new Set());
-    this.controller.updateVisibleRenderObjects();
+    this.controller.refreshRender();
   }
 
   undo(): void {
@@ -44,7 +44,7 @@ export class DeleteUserAction implements UserAction {
       selection.add(entity.id);
     }
     this.controller.$selection.set(selection);
-    this.controller.updateVisibleRenderObjects();
+    this.controller.refreshRender();
   }
 }
 
@@ -63,12 +63,12 @@ export class EraseUserAction implements UserAction {
   do(): void {
     this.controller.getEntityManager().delete(this.entityId);
     this.controller.$selection.set(new Set());
-    this.controller.updateVisibleRenderObjects();
+    this.controller.refreshRender();
   }
 
   undo(): void {
     this.controller.getEntityManager().restore(this.entitySnapshot);
-    this.controller.updateVisibleRenderObjects();
+    this.controller.refreshRender();
   }
 }
 
@@ -98,14 +98,14 @@ export class PlaceEntityUserAction implements UserAction {
       entityId: this.entity.id,
       columnId: this.columnId,
     });
-    this.controller.updateVisibleRenderObjects();
+    this.controller.refreshRender();
   }
 
   undo(): void {
     this.controller.getEntityManager().delete(this.entity.id);
     this.controller.$selection.set(new Set(this.previousSelection));
     this.controller.$lastPlacedEntityInfo.set(null);
-    this.controller.updateVisibleRenderObjects();
+    this.controller.refreshRender();
   }
 }
 
@@ -137,7 +137,7 @@ export class EditEntityUserAction implements UserAction {
       components: structuredClone(this.newComponents),
       version: uuidv7(),
     });
-    this.controller.updateVisibleRenderObjects();
+    this.controller.refreshRender();
   }
 
   undo(): void {
@@ -149,6 +149,6 @@ export class EditEntityUserAction implements UserAction {
       components: structuredClone(this.oldComponents),
       version: uuidv7(),
     });
-    this.controller.updateVisibleRenderObjects();
+    this.controller.refreshRender();
   }
 }

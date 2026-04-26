@@ -10,13 +10,12 @@ import { createNanoEvents } from "nanoevents";
 import type { Emitter } from "nanoevents";
 import { EntityManager, type Entity } from "../entity-manager";
 import type { TimingEngine } from "../timing-engine";
-import { EVENT, NOTE, LEVEL_REF, BPM_CHANGE, TIME_SIGNATURE } from "./components";
+import { EVENT } from "./components";
 import { Point, Rect } from "../geometry";
 import {
   type EditorControllerOptions,
   type TimelineColumn,
   type LevelInfo,
-  type TimelineRenderSpec,
   type EditorOutboxEvents,
   type UserAction,
   BASE_SCALE_Y,
@@ -38,9 +37,9 @@ import { TimingSlice } from "./slices/timing-slice";
 import { ColumnsSlice } from "./slices/columns-slice";
 import { TimingColumnsSlice } from "./slices/timing-columns-slice";
 import { LevelColumnsSlice } from "./slices/level-columns-slice";
+import { RenderSlice } from "./slices/render-slice";
 
 export class EditorController {
-  $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
   $lastPlacedEntityInfo = atom<{ entityId: string; columnId: string } | null>(null);
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
@@ -90,6 +89,10 @@ export class EditorController {
     return this.ctx.get(ToolSlice).$activeTool;
   }
 
+  get $visibleRenderObjects() {
+    return this.ctx.get(RenderSlice).$visibleRenderObjects;
+  }
+
   private get viewport(): ViewportSlice {
     return this.ctx.get(ViewportSlice);
   }
@@ -114,6 +117,10 @@ export class EditorController {
     return this.ctx.get(ColumnsSlice);
   }
 
+  private get render(): RenderSlice {
+    return this.ctx.get(RenderSlice);
+  }
+
   private get entityManager(): EntityManager {
     return this.ctx.get(ProjectSlice).entityManager;
   }
@@ -134,21 +141,22 @@ export class EditorController {
     this.ctx.register(ColumnsSlice);
     this.ctx.register(TimingColumnsSlice);
     this.ctx.register(LevelColumnsSlice);
+    this.ctx.register(RenderSlice);
 
     this.ctx.get(ViewportSlice).onViewportChanged(() => {
       this.recomputeCursorPulse();
-      this.updateVisibleRenderObjects();
+      this.render.refresh();
     });
 
     this.ctx.get(ToolSlice).onToolChanged(() => {
-      this.updateVisibleRenderObjects();
+      this.render.refresh();
     });
 
     this.ctx.get(SnapSlice).onSnapChanged(() => {
       const currentPulse = this.cursor.$cursorPulse.get();
       const snapped = this.snapToGrid(currentPulse);
       this.cursor.$cursorPulse.set(snapped);
-      this.updateVisibleRenderObjects();
+      this.render.refresh();
     });
 
     this.ctx.get(ZoomSlice).onZoomChanged(({ oldZoom, newZoom }) => {
@@ -158,7 +166,7 @@ export class EditorController {
     });
 
     this.ctx.get(ColumnsSlice).$columns.subscribe(() => {
-      this.updateVisibleRenderObjects();
+      this.render.refresh();
     });
 
     this.ctx.get(ColumnsSlice).refreshColumns();
@@ -222,16 +230,12 @@ export class EditorController {
     this.cursor.$cursorPulse.set(snappedPulse);
   }
 
-  updateVisibleRenderObjects(): void {
-    this.$visibleRenderObjects.set(this.getVisibleRenderSpecs());
-  }
-
   hitTest(point: Point): string | null {
     const scroll = this.$scroll.get();
     const contentX = point.x + scroll.x;
     const contentY = point.y + scroll.y;
 
-    const specs = this.getVisibleRenderSpecs();
+    const specs = this.render.$visibleRenderObjects.get();
     const HIT_TOLERANCE = 4;
 
     let bestId: string | null = null;
@@ -328,11 +332,7 @@ export class EditorController {
         this.$selection.set(new Set());
       }
     }
-    this.updateVisibleRenderObjects();
-  }
-
-  private isInBox(pulse: number, colIndex: number): boolean {
-    return this.boxSelection.isInBox(pulse, colIndex);
+    this.render.refresh();
   }
 
   handlePointerMove(viewportX: number, viewportY: number): void {
@@ -344,13 +344,13 @@ export class EditorController {
     }
     this.cursor.$cursorViewportPos.set({ x: viewportX, y: viewportY });
     this.recomputeCursorPulse();
-    this.updateVisibleRenderObjects();
+    this.render.refresh();
   }
 
   handlePointerUp(): void {
     if (!this.boxSelection.isActive()) return;
     this.boxSelection.finalize(this.entityManager.entitiesWithComponent(EVENT));
-    this.updateVisibleRenderObjects();
+    this.render.refresh();
   }
 
   setTool(tool: "select" | "pencil" | "erase" | "pan"): void {
@@ -371,7 +371,7 @@ export class EditorController {
 
   applyAction(action: UserAction): void {
     this.history.applyAction(action);
-    this.updateVisibleRenderObjects();
+    this.render.refresh();
   }
 
   deleteSelection(): void {
@@ -389,12 +389,12 @@ export class EditorController {
 
   undo(): void {
     this.history.undo();
-    this.updateVisibleRenderObjects();
+    this.render.refresh();
   }
 
   redo(): void {
     this.history.redo();
-    this.updateVisibleRenderObjects();
+    this.render.refresh();
   }
 
   navigateSnap(direction: "up" | "down"): void {
@@ -481,268 +481,7 @@ export class EditorController {
     return this.columnsSlice.$timelineWidth.get();
   }
 
-  getVisibleRenderSpecs(): TimelineRenderSpec[] {
-    const size = this.getChartSize();
-    const scaleY = this.viewport.getScaleY();
-    const trackHeight = this.viewport.getTrackHeight();
-    const contentHeight = this.viewport.getContentHeight();
-    const pulseRange = this.viewport.getVisiblePulseRange();
-    const pulseStart = pulseRange.start;
-    const pulseEnd = pulseRange.end;
-    const rawPulseStart = pulseRange.rawStart;
-    const rawPulseEnd = pulseRange.rawEnd;
-    const timelineWidth = this.getTimelineWidth();
-    const columns = this.getColumns();
-
-    const specs: TimelineRenderSpec[] = [];
-
-    // --- Column backgrounds (scroll layer) ---
-    for (let i = 0; i < columns.length; i++) {
-      const col = columns[i]!;
-      specs.push({
-        key: `column-bg-${col.id}`,
-        type: "column-bg",
-        x: col.x,
-        y: 0,
-        width: col.width,
-        height: contentHeight,
-        data: { backgroundColor: col.backgroundColor, showBorder: i > 0 },
-        testId: "timeline-column-bg",
-      });
-    }
-
-    // --- Column titles (sticky layer) ---
-    for (const col of columns) {
-      specs.push({
-        key: `column-title-${col.id}`,
-        type: "column-title",
-        x: col.x,
-        y: 4,
-        width: col.width,
-        height: 16,
-        layer: "sticky",
-        data: { title: col.title },
-        testId: "timeline-column-title",
-      });
-    }
-
-    // --- Trailing border after last column ---
-    specs.push({
-      key: "trailing-border",
-      type: "trailing-border",
-      x: timelineWidth - 1,
-      y: 0,
-      width: 1,
-      height: contentHeight,
-      data: {},
-      testId: "trailing-border",
-    });
-
-    // --- Gameplay notes ---
-    const entityManager = this.getEntityManager();
-
-    for (const entity of entityManager.entitiesWithComponent(NOTE)) {
-      const event = entityManager.getComponent(entity, EVENT);
-      const note = entityManager.getComponent(entity, NOTE);
-      const levelRef = entityManager.getComponent(entity, LEVEL_REF);
-      if (!event || !note || !levelRef) continue;
-
-      const pulse = event.y;
-      if (pulse < pulseStart || pulse >= pulseEnd) continue;
-
-      const laneCol = columns.find(
-        (c) => c.levelId === levelRef.levelId && c.laneIndex === note.lane,
-      );
-      if (!laneCol) continue;
-
-      const colIndex = columns.indexOf(laneCol);
-      specs.push({
-        key: `note-${entity.id}`,
-        type: "event-marker",
-        x: laneCol.x,
-        y: trackHeight - pulse * scaleY - 14,
-        width: laneCol.width,
-        height: 14,
-        data: {
-          text: "",
-          backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
-          textColor: "#fff",
-          selected: this.$selection.get().has(entity.id) || this.isInBox(pulse, colIndex),
-        },
-        testId: "note",
-        entityId: entity.id,
-      });
-    }
-
-    // --- Timing event markers ---
-    const bpmColumn = columns.find((c) => c.id === "bpm");
-    const tsColumn = columns.find((c) => c.id === "time-sig");
-    const bpmColIndex = bpmColumn ? columns.indexOf(bpmColumn) : -1;
-    const tsColIndex = tsColumn ? columns.indexOf(tsColumn) : -1;
-
-    if (bpmColumn) {
-      for (const entity of entityManager.entitiesWithComponent(BPM_CHANGE)) {
-        const event = entityManager.getComponent(entity, EVENT);
-        const bpm = entityManager.getComponent(entity, BPM_CHANGE);
-        if (!event || !bpm) continue;
-        const pulse = event.y;
-        if (pulse < pulseStart || pulse >= pulseEnd) continue;
-
-        specs.push({
-          key: `bpm-${entity.id}`,
-          type: "event-marker",
-          x: bpmColumn.x,
-          y: trackHeight - pulse * scaleY - 14,
-          width: bpmColumn.width,
-          height: 14,
-          data: {
-            text: String(bpm.bpm),
-            backgroundColor: "var(--yellow-6)",
-            textColor: "#fff",
-            selected: this.$selection.get().has(entity.id) || this.isInBox(pulse, bpmColIndex),
-          },
-          testId: "bpm-change-marker",
-          entityId: entity.id,
-        });
-      }
-    }
-
-    if (tsColumn) {
-      for (const entity of entityManager.entitiesWithComponent(TIME_SIGNATURE)) {
-        const event = entityManager.getComponent(entity, EVENT);
-        const ts = entityManager.getComponent(entity, TIME_SIGNATURE);
-        if (!event || !ts) continue;
-        const pulse = event.y;
-        if (pulse < pulseStart || pulse >= pulseEnd) continue;
-
-        specs.push({
-          key: `ts-${entity.id}`,
-          type: "event-marker",
-          x: tsColumn.x,
-          y: trackHeight - pulse * scaleY - 14,
-          width: tsColumn.width,
-          height: 14,
-          data: {
-            text: `${ts.numerator}/${ts.denominator}`,
-            backgroundColor: "var(--tomato-6)",
-            textColor: "#fff",
-            selected: this.$selection.get().has(entity.id) || this.isInBox(pulse, tsColIndex),
-          },
-          testId: "time-sig-marker",
-          entityId: entity.id,
-        });
-      }
-    }
-
-    // --- Playhead ---
-    const cursorPulse = this.cursor.$cursorPulse.get();
-    if (cursorPulse >= 0 && cursorPulse <= size) {
-      specs.push({
-        key: "playhead",
-        type: "playhead",
-        x: 0,
-        y: trackHeight - cursorPulse * scaleY - 1,
-        width: timelineWidth,
-        height: 1,
-        data: {},
-        testId: "playhead",
-      });
-    }
-
-    if (rawPulseStart >= rawPulseEnd) return specs;
-
-    // --- Measure lines ---
-    const engine = this.getTimingEngine();
-    const measureBoundaries = engine.getMeasureBoundaries({
-      start: rawPulseStart,
-      end: rawPulseEnd,
-    });
-    const measureSet = new Set(measureBoundaries);
-
-    const allBoundaries = engine.getMeasureBoundaries({
-      start: 0,
-      end: rawPulseEnd,
-    });
-
-    for (const pulse of measureBoundaries) {
-      const measureIndex = allBoundaries.indexOf(pulse);
-      specs.push({
-        key: `measure-${pulse}`,
-        type: "grid-line",
-        x: 0,
-        y: trackHeight - pulse * scaleY - 1,
-        width: timelineWidth,
-        height: 1,
-        data: {
-          color: "var(--gray-8)",
-          label: measureIndex >= 0 ? String(measureIndex + 1) : undefined,
-        },
-        testId: "measure-line",
-      });
-    }
-
-    // --- Beat lines (1/4, exclude measure boundaries) ---
-    const beatPoints = engine
-      .getSnapPoints("1/4", { start: rawPulseStart, end: rawPulseEnd })
-      .filter((p) => !measureSet.has(p));
-    const beatSet = new Set(beatPoints);
-
-    for (const pulse of beatPoints) {
-      specs.push({
-        key: `beat-${pulse}`,
-        type: "grid-line",
-        x: 0,
-        y: trackHeight - pulse * scaleY - 1,
-        width: timelineWidth,
-        height: 1,
-        data: { color: "var(--gray-7)" },
-        testId: "beat-line",
-      });
-    }
-
-    // --- Snap lines at current snap resolution (exclude measures and beats) ---
-    const snap = this.$snap.get();
-    const gridPoints = engine
-      .getSnapPoints(snap, { start: rawPulseStart, end: rawPulseEnd })
-      .filter((p) => !measureSet.has(p) && !beatSet.has(p));
-
-    for (const pulse of gridPoints) {
-      specs.push({
-        key: `grid-${pulse}`,
-        type: "grid-line",
-        x: 0,
-        y: trackHeight - pulse * scaleY - 1,
-        width: timelineWidth,
-        height: 1,
-        data: { color: "var(--gray-6)" },
-        testId: "snap-line",
-      });
-    }
-
-    // --- Selection box (during drag) ---
-    const boxRect = this.boxSelection.getBoxRect();
-    if (boxRect) {
-      if (
-        boxRect.minCol >= 0 &&
-        boxRect.maxCol >= 0 &&
-        boxRect.minCol < columns.length &&
-        boxRect.maxCol < columns.length
-      ) {
-        const startCol = columns[boxRect.minCol]!;
-        const endCol = columns[boxRect.maxCol]!;
-        specs.push({
-          key: "selection-box",
-          type: "selection-box",
-          x: startCol.x,
-          y: trackHeight - boxRect.maxPulse * scaleY,
-          width: endCol.x + endCol.width - startCol.x,
-          height: (boxRect.maxPulse - boxRect.minPulse) * scaleY,
-          data: {},
-          testId: "selection-box",
-        });
-      }
-    }
-
-    return specs;
+  refreshRender(): void {
+    this.render.refresh();
   }
 }
