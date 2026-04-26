@@ -9,7 +9,6 @@ import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
 import type { Emitter } from "nanoevents";
 import { uuidv7 } from "uuidv7";
-import type { ProjectFile } from "../project-format";
 import { EntityManager, type Entity } from "../entity-manager";
 import { createTimingEngine } from "../timing-engine";
 import type { TimingEngine } from "../timing-engine";
@@ -30,48 +29,33 @@ import {
 import { getGameModeLayout } from "./lane-layouts";
 import { Point, Rect } from "../geometry";
 
-export interface EditorControllerOptions {
-  project: ProjectFile;
-}
+import {
+  type EditorControllerOptions,
+  type TimelineColumn,
+  type LevelInfo,
+  type TimelineRenderSpec,
+  type EditorOutboxEvents,
+  type UserAction,
+  DEFAULT_CHART_SIZE,
+  ZOOM_PRESETS,
+  BASE_SCALE_Y,
+  PADDING_BOTTOM,
+  HISTORY_LIMIT,
+} from "./types";
 
-export interface TimelineColumn {
-  id: string;
-  title: string;
-  width: number;
-  x: number;
-  backgroundColor?: string;
-  levelId?: string;
-  laneIndex?: number;
-  noteColor?: string;
-  placementHandler?: (pulse: number) => Entity | null;
-}
-
-export interface LevelInfo {
-  id: string;
-  name: string;
-  mode: string;
-  sortOrder: number;
-  visible: boolean;
-}
-
-export interface TimelineRenderSpec {
-  key: string;
-  type: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  data: Record<string, unknown>;
-  testId?: string;
-  layer?: "scroll" | "sticky";
-  entityId?: string;
-}
-
-export interface EditorOutboxEvents {
-  setScroll: (point: Point) => void;
-}
-
-const DEFAULT_CHART_SIZE = 15360;
+export {
+  type EditorControllerOptions,
+  type TimelineColumn,
+  type LevelInfo,
+  type TimelineRenderSpec,
+  type EditorOutboxEvents,
+  type UserAction,
+  DEFAULT_CHART_SIZE,
+  ZOOM_PRESETS,
+  BASE_SCALE_Y,
+  PADDING_BOTTOM,
+  HISTORY_LIMIT,
+} from "./types";
 
 export {
   EVENT,
@@ -87,19 +71,6 @@ export {
   SOUND_CHANNEL,
   SOUND_EVENT,
 };
-
-const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4];
-const BASE_SCALE_Y = 0.2;
-
-const PADDING_BOTTOM = 40;
-
-const HISTORY_LIMIT = 100;
-
-export interface UserAction {
-  title: string;
-  do(): void;
-  undo(): void;
-}
 
 class DeleteUserAction implements UserAction {
   title = "Delete selection";
