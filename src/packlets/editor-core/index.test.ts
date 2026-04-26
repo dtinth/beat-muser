@@ -11,6 +11,8 @@ import { CHART, NOTE, BPM_CHANGE, TIME_SIGNATURE, EVENT, CHART_REF, LEVEL_REF } 
 import { Rect } from "../geometry";
 import type { Entity } from "../entity-manager";
 
+const UUID_V7_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // ---------------------------------------------------------------------------
 // Acceptance tests
 // ---------------------------------------------------------------------------
@@ -18,9 +20,13 @@ import type { Entity } from "../entity-manager";
 describe("EditorController", () => {
   test("given an empty project, creates a default chart", () => {
     const editor = new EditorTester({ getProjectToLoad: () => makeProject() });
+    const chart = editor.instance.getSelectedChart()!;
 
     editor.chart.shouldHaveName("Main Chart");
     editor.chart.shouldHaveSize(15360);
+    expect(chart.id).toMatch(UUID_V7_PATTERN);
+    expect(chart.version).toMatch(UUID_V7_PATTERN);
+    expect(chart.version).not.toBe(chart.id);
   });
 
   test("given a project with charts, selects the first chart", () => {
@@ -92,6 +98,11 @@ describe("EditorController", () => {
     const before = editor.columns.count;
     const chartId = editor.instance.$selectedChartId.get()!;
     const levelId = editor.instance.addLevel(chartId, "Easy", "beat-7k");
+    const level = editor.instance.getEntityManager().get(levelId)!;
+
+    expect(level.id).toMatch(UUID_V7_PATTERN);
+    expect(level.version).toMatch(UUID_V7_PATTERN);
+    expect(level.version).not.toBe(level.id);
     expect(editor.columns.count).toBeGreaterThan(before);
 
     editor.instance.removeLevel(levelId);
