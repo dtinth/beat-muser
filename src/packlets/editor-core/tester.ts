@@ -115,7 +115,6 @@ export class ProjectBuilder {
       version: "test-version",
       metadata: { title: "Test", artist: "Test", genre: "Test" },
       entities: this.entities,
-      deletedEntities: [],
     };
   }
 }
@@ -129,7 +128,6 @@ export function makeProject(
       version: "test-version",
       metadata: { title: "Test", artist: "Test", genre: "Test" },
       entities: entitiesOrCallback,
-      deletedEntities: [],
     };
   }
   const builder = new ProjectBuilder();

@@ -43,7 +43,6 @@ function makeProject(overrides: Record<string, unknown> = {}): string {
         },
       },
     ],
-    deletedEntities: [],
     ...overrides,
   });
 }
@@ -212,7 +211,6 @@ describe("schema generates valid JSON Schema", () => {
     expect(schema.properties as any).toHaveProperty("schemaVersion");
     expect(schema.properties as any).toHaveProperty("metadata");
     expect(schema.properties as any).toHaveProperty("entities");
-    expect(schema.properties as any).toHaveProperty("deletedEntities");
   });
 
   it("includes descriptions in generated schema", () => {

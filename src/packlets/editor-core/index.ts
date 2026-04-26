@@ -28,7 +28,6 @@ import {
 } from "./components";
 import { getGameModeLayout } from "./lane-layouts";
 import { Point, Rect } from "../geometry";
-import { uuidv7 } from "uuidv7";
 
 export interface EditorControllerOptions {
   project: ProjectFile;
@@ -115,13 +114,7 @@ class DeleteUserAction implements UserAction {
   do(): void {
     const em = this.controller.getEntityManager();
     for (const id of this.entityIds) {
-      em.remove(id);
-    }
-    for (const entity of this.entities) {
-      this.controller.project.deletedEntities.push({
-        id: entity.id,
-        version: uuidv7(),
-      });
+      em.delete(id);
     }
     this.controller.$selection.set(new Set());
     this.controller.updateVisibleRenderObjects();
@@ -130,12 +123,8 @@ class DeleteUserAction implements UserAction {
   undo(): void {
     const em = this.controller.getEntityManager();
     for (const entity of this.entities) {
-      em.insert(entity);
+      em.restore(entity);
     }
-    const deletedIds = new Set(this.entityIds);
-    this.controller.project.deletedEntities = this.controller.project.deletedEntities.filter(
-      (de) => !deletedIds.has(de.id),
-    );
     const visibleLevels = new Set(this.controller.getVisibleLevels().map((l) => l.id));
     const selection = new Set<string>();
     for (const entity of this.entities) {
@@ -165,7 +154,6 @@ export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
   private entityManager: EntityManager;
-  project: ProjectFile;
   private columns: TimelineColumn[];
   private timelineWidth: number;
 
@@ -177,7 +165,6 @@ export class EditorController {
   private boxEndPulse = 0;
 
   constructor(options: EditorControllerOptions) {
-    this.project = options.project;
     this.entityManager = EntityManager.from(options.project.entities);
 
     const charts = this.entityManager.entitiesWithComponent(CHART);
@@ -604,7 +591,8 @@ export class EditorController {
     const entityIds = Array.from(selection);
     const entities = entityIds
       .map((id) => this.entityManager.get(id))
-      .filter((e): e is Entity => e !== undefined);
+      .filter((e): e is Entity => e !== undefined)
+      .map((e) => structuredClone(e));
 
     this.applyAction(new DeleteUserAction(this, entityIds, entities));
   }

@@ -16,8 +16,8 @@
  *   Charts, notes, BPM changes, sound channel definitions — everything is an
  *   entity. Relationships are expressed through reference components.
  * - **CRDT-ready**: Every entity has a UUIDv7 `id` and `version`.
- *   Merge is simple: union by `id`, higher `version` wins. Tombstones live
- *   in `deletedEntities`.
+ *   Merge is simple: union by `id`, higher `version` wins. Deletion strips
+ *   all components and bumps the version.
  * - **Open schema**: Component objects allow `additionalProperties: true` so
  *   plugins and game modes can attach arbitrary attributes.
  * - **Versioned**: `schemaVersion` is a number for migration support.
@@ -79,32 +79,11 @@
  *
  * Entities are merged by `id`. If the same `id` exists in two versions,
  * the entity with the lexicographically higher `version` wins.
- * Deletion is represented by moving the entity to `deletedEntities` with a
- * new `version`.
+ * Deletion strips all components and bumps the `version`.
  */
 
 import { Type } from "typebox";
 import { EntitySchema } from "../entity-manager";
-
-const UUIDv7Desc = "UUIDv7 identifier. Time-ordered, sortable, globally unique.";
-
-/**
- * A tombstone reference for a deleted entity.
- * Only stores `id` and `version` — the entity data is stripped.
- */
-export const DeletedEntitySchema = Type.Object(
-  {
-    id: Type.String({
-      description: UUIDv7Desc,
-    }),
-    version: Type.String({
-      description: "UUIDv7 revision timestamp at time of deletion.",
-    }),
-  },
-  {
-    additionalProperties: false,
-  },
-);
 
 // ---------------------------------------------------------------------------
 // Project Metadata & Root Schema
@@ -153,8 +132,7 @@ export const ProjectMetadataSchema = Type.Object(
  *         "chart": { "name": "Hard" }
  *       }
  *     }
- *   ],
- *   "deletedEntities": []
+ *   ]
  * }
  * ```
  *
@@ -162,16 +140,17 @@ export const ProjectMetadataSchema = Type.Object(
  * - `schemaVersion`: Number for schema migration support. Current version: 2.
  * - `version`: UUIDv7 project-level revision timestamp.
  * - `metadata`: Song-level metadata (title, artist, genre).
- * - `entities`: Flat array of all active project entities.
- * - `deletedEntities`: Array of tombstone references for deleted entities.
+ * - `entities`: Flat array of all project entities. Deleted entities remain
+ *   in this array with empty `components` and a bumped `version`.
  * - All objects allow additional properties for plugin extensibility.
  * - Asset paths use `/` as separator and are relative to the project directory.
  * - Default BPM is 60. PPQN is 240 (bmson standard).
  *
  * ## Merge Rule
  * Merge two project versions by unioning `id`s:
- * - Entities: higher `version` wins. Deleted entities go to `deletedEntities`.
- * - No special cases — deletion is just another write with a tombstone.
+ * - Entities: higher `version` wins.
+ * - An entity with empty `components` represents a deletion.
+ * - No special cases — deletion is just another write.
  */
 export const ProjectFileSchema = Type.Object(
   {
@@ -189,10 +168,7 @@ export const ProjectFileSchema = Type.Object(
     }),
     metadata: ProjectMetadataSchema,
     entities: Type.Array(EntitySchema, {
-      description: "Flat array of all active entities in the project.",
-    }),
-    deletedEntities: Type.Array(DeletedEntitySchema, {
-      description: "Array of tombstone references for deleted entities.",
+      description: "Flat array of all project entities.",
     }),
   },
   {

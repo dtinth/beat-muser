@@ -119,6 +119,5 @@ export function createDemoProjectFile(): ProjectFile {
       genre: "Demo",
     },
     entities,
-    deletedEntities: [],
   };
 }

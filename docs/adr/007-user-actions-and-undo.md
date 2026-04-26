@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 008: Component-Stripping Deletion](008-component-stripping-deletion.md)
 
 ## Context
 

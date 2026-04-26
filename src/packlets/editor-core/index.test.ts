@@ -702,8 +702,12 @@ describe("EditorController", () => {
       editor.deleteSelection();
 
       editor.selection.shouldBeEmpty();
-      expect(editor.instance.getEntityManager().get(noteA!.id)).toBeUndefined();
-      expect(editor.instance.getEntityManager().get(noteB!.id)).toBeUndefined();
+      const deletedA = editor.instance.getEntityManager().get(noteA!.id);
+      const deletedB = editor.instance.getEntityManager().get(noteB!.id);
+      expect(deletedA).toBeDefined();
+      expect(deletedB).toBeDefined();
+      expect(Object.keys(deletedA!.components)).toHaveLength(0);
+      expect(Object.keys(deletedB!.components)).toHaveLength(0);
     });
   });
 
@@ -761,7 +765,9 @@ describe("EditorController", () => {
       editor.redo();
 
       editor.selection.shouldBeEmpty();
-      expect(editor.instance.getEntityManager().get(noteA!.id)).toBeUndefined();
+      const redeleted = editor.instance.getEntityManager().get(noteA!.id);
+      expect(redeleted).toBeDefined();
+      expect(Object.keys(redeleted!.components)).toHaveLength(0);
     });
   });
 });

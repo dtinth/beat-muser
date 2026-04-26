@@ -6,7 +6,7 @@
  * core components, and project metadata structure.
  */
 
-export { DeletedEntitySchema, ProjectMetadataSchema, ProjectFileSchema } from "./schema";
+export { ProjectMetadataSchema, ProjectFileSchema } from "./schema";
 
 export type { ProjectMetadata, ProjectFile } from "./types";
 

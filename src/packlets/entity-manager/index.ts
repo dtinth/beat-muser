@@ -24,6 +24,7 @@
  */
 
 import { Type, type Static, type TSchema } from "typebox";
+import { uuidv7 } from "uuidv7";
 
 // ---------------------------------------------------------------------------
 // Entity
@@ -97,6 +98,24 @@ export class EntityManager {
 
   remove(id: string): void {
     this.entities.delete(id);
+  }
+
+  /**
+   * Deletes an entity by stripping all its components and bumping its version.
+   * The entity remains in the manager but is invisible to component queries.
+   */
+  delete(id: string): void {
+    const entity = this.entities.get(id);
+    if (!entity) return;
+    entity.components = {};
+    entity.version = uuidv7();
+  }
+
+  /**
+   * Restores a previously deleted entity by re-inserting its full snapshot.
+   */
+  restore(entity: Entity): void {
+    this.entities.set(entity.id, entity);
   }
 
   /**
