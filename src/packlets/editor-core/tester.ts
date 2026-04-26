@@ -7,37 +7,14 @@
  */
 
 import { expect } from "vite-plus/test";
-import { uuidv7 } from "uuidv7";
 import { EditorController, CHART } from "./index";
 import type { ProjectFile } from "../project-format";
-import { EntityComponentType, type Entity } from "../entity-manager";
+import { type Entity, EntityBuilder, entity } from "../entity-manager";
 import { createDemoProjectFile } from "../project-store";
-import type { Static, TSchema } from "typebox";
+
+export { entity };
 import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, NOTE, LEVEL_REF, LEVEL } from "./components";
 import { Rect, type Point as PointType } from "../geometry";
-
-export class EntityBuilder {
-  private components: Record<string, unknown> = {};
-
-  with<T extends TSchema>(component: EntityComponentType<T>, data: Static<T>): this {
-    this.components[component.key] = data;
-    return this;
-  }
-
-  build(): Entity {
-    return {
-      id: uuidv7(),
-      version: uuidv7(),
-      components: { ...this.components },
-    };
-  }
-}
-
-export function entity(callback: (e: EntityBuilder) => void): Entity {
-  const builder = new EntityBuilder();
-  callback(builder);
-  return builder.build();
-}
 
 export class ChartBuilder {
   private chartId: string;
