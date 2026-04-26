@@ -336,3 +336,69 @@ describe("getMeasureAtPulse", () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// getBpmAtPulse
+// ---------------------------------------------------------------------------
+
+describe("getBpmAtPulse", () => {
+  it("returns default 60 BPM when no changes are given", () => {
+    const engine = createTimingEngine([], []);
+    expect(engine.getBpmAtPulse(0)).toBe(60);
+    expect(engine.getBpmAtPulse(1000)).toBe(60);
+  });
+
+  it("returns the BPM of the active segment", () => {
+    const engine = createTimingEngine(
+      [
+        { pulse: 0, bpm: 120 },
+        { pulse: 960, bpm: 150 },
+      ],
+      [],
+    );
+    expect(engine.getBpmAtPulse(0)).toBe(120);
+    expect(engine.getBpmAtPulse(959)).toBe(120);
+    expect(engine.getBpmAtPulse(960)).toBe(150);
+    expect(engine.getBpmAtPulse(2000)).toBe(150);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getTimeSignatureAtPulse
+// ---------------------------------------------------------------------------
+
+describe("getTimeSignatureAtPulse", () => {
+  it("returns default 4/4 when no signatures are given", () => {
+    const engine = createTimingEngine([], []);
+    expect(engine.getTimeSignatureAtPulse(0)).toEqual({
+      pulse: 0,
+      numerator: 4,
+      denominator: 4,
+    });
+  });
+
+  it("returns the active time signature", () => {
+    const engine = createTimingEngine(
+      [],
+      [
+        { pulse: 0, numerator: 4, denominator: 4 },
+        { pulse: 960, numerator: 3, denominator: 4 },
+      ],
+    );
+    expect(engine.getTimeSignatureAtPulse(0)).toEqual({
+      pulse: 0,
+      numerator: 4,
+      denominator: 4,
+    });
+    expect(engine.getTimeSignatureAtPulse(959)).toEqual({
+      pulse: 0,
+      numerator: 4,
+      denominator: 4,
+    });
+    expect(engine.getTimeSignatureAtPulse(960)).toEqual({
+      pulse: 960,
+      numerator: 3,
+      denominator: 4,
+    });
+  });
+});

@@ -24,7 +24,7 @@ import {
   EyeOff,
   Trash2,
 } from "lucide-react";
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex, Text, Dialog, Button, TextField } from "@radix-ui/themes";
 import { useToast } from "../toast";
 import { ProjectLayout } from "../project-layout";
 import {
@@ -37,7 +37,7 @@ import {
 } from "../toolbar";
 import { SidebarPanel } from "../sidebar-panel";
 import { ScrollableCanvas } from "../scrollable-canvas";
-import { EditorController } from "../editor-core";
+import { EditorController, BPM_CHANGE, TIME_SIGNATURE, EditEntityUserAction } from "../editor-core";
 import type { ProjectFile } from "../project-format";
 import { createTimelineBehaviorFactory } from "./timeline-behavior";
 import {
@@ -322,6 +322,30 @@ export function ProjectViewPage() {
       shortcut: "ArrowDown",
       execute: () => controller.navigateSnap("down"),
     });
+    commands.add({
+      id: "toolSelect",
+      title: "Select Tool",
+      shortcut: "KeyQ",
+      execute: () => controller.setTool("select"),
+    });
+    commands.add({
+      id: "toolPencil",
+      title: "Pencil Tool",
+      shortcut: "KeyW",
+      execute: () => controller.setTool("pencil"),
+    });
+    commands.add({
+      id: "toolErase",
+      title: "Erase Tool",
+      shortcut: "KeyE",
+      execute: () => controller.setTool("erase"),
+    });
+    commands.add({
+      id: "toolPan",
+      title: "Pan Tool",
+      shortcut: "KeyR",
+      execute: () => controller.setTool("pan"),
+    });
     const unregister = commands.registerTo(globalCommandRegistry);
     const handler = new KeyboardShortcutHandler({
       registry: globalCommandRegistry,
@@ -360,6 +384,84 @@ export function ProjectViewPage() {
     return unsub;
   }, [controller]);
 
+  const [activeTool, setActiveTool] = useState(controller.$activeTool.get());
+  useEffect(() => {
+    const unsub = controller.$activeTool.subscribe(setActiveTool);
+    return unsub;
+  }, [controller]);
+
+  const [bpmEditOpen, setBpmEditOpen] = useState(false);
+  const [bpmEditEntityId, setBpmEditEntityId] = useState<string | null>(null);
+  const [bpmValue, setBpmValue] = useState("");
+
+  const [timeSigEditOpen, setTimeSigEditOpen] = useState(false);
+  const [timeSigEditEntityId, setTimeSigEditEntityId] = useState<string | null>(null);
+  const [timeSigNumerator, setTimeSigNumerator] = useState("");
+  const [timeSigDenominator, setTimeSigDenominator] = useState("");
+
+  useEffect(() => {
+    const unsub = controller.$lastPlacedEntityInfo.subscribe((info) => {
+      if (!info) return;
+      if (info.columnId === "bpm") {
+        const entity = controller.getEntityManager().get(info.entityId);
+        const bpm = entity
+          ? (controller.getEntityManager().getComponent(entity, BPM_CHANGE)?.bpm ?? 120)
+          : 120;
+        setBpmEditEntityId(info.entityId);
+        setBpmValue(String(bpm));
+        setBpmEditOpen(true);
+      } else if (info.columnId === "time-sig") {
+        const entity = controller.getEntityManager().get(info.entityId);
+        const ts = entity
+          ? controller.getEntityManager().getComponent(entity, TIME_SIGNATURE)
+          : undefined;
+        setTimeSigEditEntityId(info.entityId);
+        setTimeSigNumerator(String(ts?.numerator ?? 4));
+        setTimeSigDenominator(String(ts?.denominator ?? 4));
+        setTimeSigEditOpen(true);
+      }
+      controller.$lastPlacedEntityInfo.set(null);
+    });
+    return unsub;
+  }, [controller]);
+
+  const handleBpmConfirm = () => {
+    if (!bpmEditEntityId) return;
+    const entity = controller.getEntityManager().get(bpmEditEntityId);
+    if (!entity) return;
+    const newBpm = parseFloat(bpmValue);
+    if (Number.isNaN(newBpm) || newBpm <= 0) return;
+    const oldComponents = structuredClone(entity.components);
+    const newComponents = {
+      ...oldComponents,
+      [BPM_CHANGE.key]: { bpm: newBpm },
+    };
+    controller.applyAction(
+      new EditEntityUserAction(controller, bpmEditEntityId, oldComponents, newComponents),
+    );
+    setBpmEditOpen(false);
+    setBpmEditEntityId(null);
+  };
+
+  const handleTimeSigConfirm = () => {
+    if (!timeSigEditEntityId) return;
+    const entity = controller.getEntityManager().get(timeSigEditEntityId);
+    if (!entity) return;
+    const num = parseInt(timeSigNumerator, 10);
+    const den = parseInt(timeSigDenominator, 10);
+    if (Number.isNaN(num) || num <= 0 || Number.isNaN(den) || den <= 0) return;
+    const oldComponents = structuredClone(entity.components);
+    const newComponents = {
+      ...oldComponents,
+      [TIME_SIGNATURE.key]: { numerator: num, denominator: den },
+    };
+    controller.applyAction(
+      new EditEntityUserAction(controller, timeSigEditEntityId, oldComponents, newComponents),
+    );
+    setTimeSigEditOpen(false);
+    setTimeSigEditEntityId(null);
+  };
+
   const zoomPercent = `${Math.round(zoom * 100)}%`;
 
   const engine = controller.getTimingEngine();
@@ -387,10 +489,30 @@ export function ProjectViewPage() {
         toolbar={
           <Toolbar>
             <ToolbarGroup label="Mode">
-              <ToolbarButton icon={<MousePointer2 size={16} />} label="Select" active />
-              <ToolbarButton icon={<Pencil size={16} />} label="Pencil" />
-              <ToolbarButton icon={<Eraser size={16} />} label="Erase" />
-              <ToolbarButton icon={<Hand size={16} />} label="Pan" />
+              <ToolbarButton
+                icon={<MousePointer2 size={16} />}
+                label="Select"
+                active={activeTool === "select"}
+                onClick={() => controller.setTool("select")}
+              />
+              <ToolbarButton
+                icon={<Pencil size={16} />}
+                label="Pencil"
+                active={activeTool === "pencil"}
+                onClick={() => controller.setTool("pencil")}
+              />
+              <ToolbarButton
+                icon={<Eraser size={16} />}
+                label="Erase"
+                active={activeTool === "erase"}
+                onClick={() => controller.setTool("erase")}
+              />
+              <ToolbarButton
+                icon={<Hand size={16} />}
+                label="Pan"
+                active={activeTool === "pan"}
+                onClick={() => controller.setTool("pan")}
+              />
             </ToolbarGroup>
 
             <ToolbarDivider />
@@ -451,6 +573,55 @@ export function ProjectViewPage() {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
       />
+      <Dialog.Root open={bpmEditOpen} onOpenChange={setBpmEditOpen}>
+        <Dialog.Content maxWidth="300px">
+          <Dialog.Title>Edit BPM</Dialog.Title>
+          <TextField.Root
+            type="number"
+            value={bpmValue}
+            onChange={(e) => setBpmValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleBpmConfirm();
+            }}
+          />
+          <Flex gap="2" mt="3" justify="end">
+            <Button variant="soft" onClick={() => setBpmEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBpmConfirm}>OK</Button>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
+      <Dialog.Root open={timeSigEditOpen} onOpenChange={setTimeSigEditOpen}>
+        <Dialog.Content maxWidth="300px">
+          <Dialog.Title>Edit Time Signature</Dialog.Title>
+          <Flex gap="2" align="center">
+            <TextField.Root
+              type="number"
+              value={timeSigNumerator}
+              onChange={(e) => setTimeSigNumerator(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleTimeSigConfirm();
+              }}
+            />
+            <Text size="2">/</Text>
+            <TextField.Root
+              type="number"
+              value={timeSigDenominator}
+              onChange={(e) => setTimeSigDenominator(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleTimeSigConfirm();
+              }}
+            />
+          </Flex>
+          <Flex gap="2" mt="3" justify="end">
+            <Button variant="soft" onClick={() => setTimeSigEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleTimeSigConfirm}>OK</Button>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
     </>
   );
 }

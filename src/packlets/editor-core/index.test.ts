@@ -6,8 +6,8 @@
  */
 
 import { describe, expect, test } from "vite-plus/test";
-import { EditorTester, makeProject } from "./tester";
-import { CHART } from "./index";
+import { EditorTester, makeProject, entity } from "./tester";
+import { CHART, NOTE, BPM_CHANGE, TIME_SIGNATURE, EVENT, CHART_REF, LEVEL_REF } from "./index";
 import { Rect } from "../geometry";
 import type { Entity } from "../entity-manager";
 
@@ -826,6 +826,154 @@ describe("EditorController", () => {
       editor.navigateUp();
       const afterY = playheadViewportY(60);
       expect(afterY).toBe(beforeY);
+    });
+  });
+
+  describe("pencil tool placement", () => {
+    test("placing a note on a lane creates a note entity", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 15360);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.add(
+              entity((e) =>
+                e
+                  .with(EVENT, { y: 0 })
+                  .with(NOTE, { lane: 8 })
+                  .with(LEVEL_REF, { levelId: level.id })
+                  .with(CHART_REF, { chartId: chart.id }),
+              ),
+            );
+          }),
+      });
+
+      editor.setTool("pencil");
+      expect(editor.instance.$activeTool.get()).toBe("pencil");
+      editor.pointerMove({ y: 392 }); // pulse 240
+      expect(editor.instance.$cursorPulse.get()).toBe(240);
+      const laneCol = editor.instance.getColumns().find((c) => c.laneIndex === 8);
+      expect(laneCol).toBeDefined();
+      expect(laneCol!.placementHandler).toBeDefined();
+      editor.pointerDown({ x: 180, y: 392 }); // lane 8 (SC)
+
+      const notes = editor.instance
+        .getEntityManager()
+        .entitiesWithComponent(NOTE)
+        .filter((e) => (e.components.event as { y: number })?.y === 240);
+      expect(notes).toHaveLength(1);
+      expect((notes[0]!.components.note as { lane: number })?.lane).toBe(8);
+    });
+
+    test("placing a BPM change creates a BPM change entity with current BPM", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                c.bpmChange(0, 128);
+              },
+              15360,
+            );
+          }),
+      });
+
+      editor.setTool("pencil");
+      editor.pointerMove({ y: 392 }); // pulse 240
+      editor.pointerDown({ x: 116, y: 392 }); // BPM column
+
+      const bpms = editor.instance
+        .getEntityManager()
+        .entitiesWithComponent(BPM_CHANGE)
+        .filter((e) => (e.components.event as { y: number })?.y === 240);
+      expect(bpms).toHaveLength(1);
+      expect((bpms[0]!.components.bpmChange as { bpm: number })?.bpm).toBe(128);
+    });
+
+    test("placing a time signature creates a time signature entity with current sig", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                c.timeSignature(0, 4, 4);
+              },
+              15360,
+            );
+          }),
+      });
+
+      editor.setTool("pencil");
+      editor.pointerMove({ y: 392 }); // pulse 240
+      editor.pointerDown({ x: 64, y: 392 }); // time-sig column
+
+      const tss = editor.instance
+        .getEntityManager()
+        .entitiesWithComponent(TIME_SIGNATURE)
+        .filter((e) => (e.components.event as { y: number })?.y === 240);
+      expect(tss).toHaveLength(1);
+      expect((tss[0]!.components.timeSignature as { numerator: number })?.numerator).toBe(4);
+      expect((tss[0]!.components.timeSignature as { denominator: number })?.denominator).toBe(4);
+    });
+
+    test("undo removes a placed note", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 15360);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.add(
+              entity((e) =>
+                e
+                  .with(EVENT, { y: 0 })
+                  .with(NOTE, { lane: 8 })
+                  .with(LEVEL_REF, { levelId: level.id })
+                  .with(CHART_REF, { chartId: chart.id }),
+              ),
+            );
+          }),
+      });
+
+      editor.setTool("pencil");
+      editor.pointerMove({ y: 392 });
+      editor.pointerDown({ x: 180, y: 392 });
+
+      const beforeUndo = editor.instance
+        .getEntityManager()
+        .entitiesWithComponent(NOTE)
+        .filter((e) => (e.components.event as { y: number })?.y === 240);
+      expect(beforeUndo).toHaveLength(1);
+
+      editor.undo();
+
+      const afterUndo = editor.instance
+        .getEntityManager()
+        .entitiesWithComponent(NOTE)
+        .filter((e) => (e.components.event as { y: number })?.y === 240);
+      expect(afterUndo).toHaveLength(0);
+    });
+
+    test("select tool returns to normal hit testing", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                c.note(0, 8, "level-1");
+              },
+              15360,
+            );
+          }),
+      });
+
+      editor.setTool("pencil");
+      expect(editor.instance.$activeTool.get()).toBe("pencil");
+
+      editor.setTool("select");
+      expect(editor.instance.$activeTool.get()).toBe("select");
     });
   });
 });

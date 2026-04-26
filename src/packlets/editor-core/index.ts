@@ -8,6 +8,7 @@
 import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
 import type { Emitter } from "nanoevents";
+import { uuidv7 } from "uuidv7";
 import type { ProjectFile } from "../project-format";
 import { EntityManager, type Entity } from "../entity-manager";
 import { createTimingEngine } from "../timing-engine";
@@ -42,6 +43,7 @@ export interface TimelineColumn {
   levelId?: string;
   laneIndex?: number;
   noteColor?: string;
+  placementHandler?: (pulse: number) => Entity | null;
 }
 
 export interface LevelInfo {
@@ -137,6 +139,87 @@ class DeleteUserAction implements UserAction {
   }
 }
 
+class PlaceEntityUserAction implements UserAction {
+  title = "Place entity";
+  private controller: EditorController;
+  private entity: Entity;
+  private columnId: string;
+  private previousSelection: Set<string>;
+
+  constructor(
+    controller: EditorController,
+    entity: Entity,
+    columnId: string,
+    previousSelection: Set<string>,
+  ) {
+    this.controller = controller;
+    this.entity = entity;
+    this.columnId = columnId;
+    this.previousSelection = previousSelection;
+  }
+
+  do(): void {
+    this.controller.getEntityManager().insert(this.entity);
+    this.controller.$selection.set(new Set([this.entity.id]));
+    this.controller.$lastPlacedEntityInfo.set({
+      entityId: this.entity.id,
+      columnId: this.columnId,
+    });
+    this.controller.updateVisibleRenderObjects();
+  }
+
+  undo(): void {
+    this.controller.getEntityManager().delete(this.entity.id);
+    this.controller.$selection.set(new Set(this.previousSelection));
+    this.controller.$lastPlacedEntityInfo.set(null);
+    this.controller.updateVisibleRenderObjects();
+  }
+}
+
+export class EditEntityUserAction implements UserAction {
+  title = "Edit entity";
+  private controller: EditorController;
+  private entityId: string;
+  private oldComponents: Record<string, unknown>;
+  private newComponents: Record<string, unknown>;
+
+  constructor(
+    controller: EditorController,
+    entityId: string,
+    oldComponents: Record<string, unknown>,
+    newComponents: Record<string, unknown>,
+  ) {
+    this.controller = controller;
+    this.entityId = entityId;
+    this.oldComponents = oldComponents;
+    this.newComponents = newComponents;
+  }
+
+  do(): void {
+    const em = this.controller.getEntityManager();
+    const entity = em.get(this.entityId);
+    if (!entity) return;
+    em.insert({
+      ...entity,
+      components: structuredClone(this.newComponents),
+      version: uuidv7(),
+    });
+    this.controller.updateVisibleRenderObjects();
+  }
+
+  undo(): void {
+    const em = this.controller.getEntityManager();
+    const entity = em.get(this.entityId);
+    if (!entity) return;
+    em.insert({
+      ...entity,
+      components: structuredClone(this.oldComponents),
+      version: uuidv7(),
+    });
+    this.controller.updateVisibleRenderObjects();
+  }
+}
+
 export class EditorController {
   $selectedChartId = atom<string | null>(null);
   $cursorPulse = atom<number>(0);
@@ -151,6 +234,8 @@ export class EditorController {
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
   $selection = atom<Set<string>>(new Set());
   $history = atom<{ undo: UserAction[]; redo: UserAction[] }>({ undo: [], redo: [] });
+  $activeTool = atom<"select" | "pencil" | "erase" | "pan">("select");
+  $lastPlacedEntityInfo = atom<{ entityId: string; columnId: string } | null>(null);
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
   private entityManager: EntityManager;
@@ -197,11 +282,49 @@ export class EditorController {
   }
 
   private computeColumns(): { columns: TimelineColumn[]; width: number } {
-    const defs = [
-      { id: "measure", title: "", width: 40 },
-      { id: "time-sig", title: "Time", width: 48 },
-      { id: "bpm", title: "BPM", width: 56 },
-      { id: "spacer", title: "", width: 8 },
+    const chartId = this.$selectedChartId.get();
+
+    const defs: TimelineColumn[] = [
+      { id: "measure", title: "", width: 40, x: 0 },
+      {
+        id: "time-sig",
+        title: "Time",
+        width: 48,
+        x: 40,
+        placementHandler: (pulse) => {
+          if (!chartId) return null;
+          const ts = this.getTimingEngine().getTimeSignatureAtPulse(pulse);
+          return {
+            id: uuidv7(),
+            version: uuidv7(),
+            components: {
+              [EVENT.key]: { y: pulse },
+              [TIME_SIGNATURE.key]: { numerator: ts.numerator, denominator: ts.denominator },
+              [CHART_REF.key]: { chartId },
+            },
+          };
+        },
+      },
+      {
+        id: "bpm",
+        title: "BPM",
+        width: 56,
+        x: 88,
+        placementHandler: (pulse) => {
+          if (!chartId) return null;
+          const bpm = this.getTimingEngine().getBpmAtPulse(pulse);
+          return {
+            id: uuidv7(),
+            version: uuidv7(),
+            components: {
+              [EVENT.key]: { y: pulse },
+              [BPM_CHANGE.key]: { bpm },
+              [CHART_REF.key]: { chartId },
+            },
+          };
+        },
+      },
+      { id: "spacer", title: "", width: 8, x: 144 },
     ];
 
     let x = 0;
@@ -212,7 +335,6 @@ export class EditorController {
     }
 
     // Add gameplay lanes for visible levels.
-    const chartId = this.$selectedChartId.get();
     if (chartId) {
       const visibleLevels = this.getVisibleLevels();
       for (const level of visibleLevels) {
@@ -228,6 +350,18 @@ export class EditorController {
             noteColor: lane.noteColor,
             levelId: level.id,
             laneIndex: lane.laneIndex,
+            placementHandler: (pulse) => {
+              return {
+                id: uuidv7(),
+                version: uuidv7(),
+                components: {
+                  [EVENT.key]: { y: pulse },
+                  [NOTE.key]: { lane: lane.laneIndex },
+                  [LEVEL_REF.key]: { levelId: level.id },
+                  [CHART_REF.key]: { chartId },
+                },
+              };
+            },
           });
           x += lane.width;
         }
@@ -443,6 +577,21 @@ export class EditorController {
   }
 
   handlePointerDown(point: Point, shiftKey: boolean = false): void {
+    if (this.$activeTool.get() === "pencil") {
+      const contentX = point.x + this.$scroll.get().x;
+      const columns = this.getColumns();
+      const column = columns.find((c) => contentX >= c.x && contentX < c.x + c.width);
+      if (!column?.placementHandler) return;
+
+      const pulse = this.snapToGrid(this.computePulseFromViewportY(point.y));
+      const entity = column.placementHandler(pulse);
+      if (!entity) return;
+
+      const previousSelection = new Set(this.$selection.get());
+      this.applyAction(new PlaceEntityUserAction(this, entity, column.id, previousSelection));
+      return;
+    }
+
     const hit = this.hitTest(point);
     if (hit) {
       if (shiftKey) {
@@ -549,6 +698,11 @@ export class EditorController {
 
     this.$selection.set(next);
     this.isBoxSelecting = false;
+    this.updateVisibleRenderObjects();
+  }
+
+  setTool(tool: "select" | "pencil" | "erase" | "pan"): void {
+    this.$activeTool.set(tool);
     this.updateVisibleRenderObjects();
   }
 

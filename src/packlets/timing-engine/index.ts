@@ -60,6 +60,12 @@ export interface TimingEngine {
     measureEnd: number;
   };
 
+  /** Returns the BPM active at the given pulse. */
+  getBpmAtPulse(pulse: number): number;
+
+  /** Returns the time signature active at the given pulse. */
+  getTimeSignatureAtPulse(pulse: number): TimeSignature;
+
   /** Formats seconds as `MM:SS.mmm`. */
   formatTime(seconds: number): string;
 }
@@ -267,6 +273,16 @@ export function createTimingEngine(
           ? boundaries[measureIdx + 1]
           : computeNextBoundary(measureStart, findSigIndex(measureStart))[0];
       return { measureIndex: measureIdx, measureStart, measureEnd };
+    },
+
+    getBpmAtPulse(pulse) {
+      const idx = Math.max(0, bisectRightBy(bpmSegments, pulse, (s) => s.startPulse) - 1);
+      return bpmSegments[idx]?.bpm ?? 60;
+    },
+
+    getTimeSignatureAtPulse(pulse) {
+      const idx = Math.max(0, bisectRightBy(effectiveSigs, pulse, (s) => s.pulse) - 1);
+      return effectiveSigs[idx] ?? { pulse: 0, numerator: 4, denominator: 4 };
     },
 
     formatTime(seconds) {

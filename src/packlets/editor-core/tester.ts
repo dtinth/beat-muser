@@ -161,6 +161,10 @@ export class EditorTester {
     this.instance.handlePointerMove(x ?? 0, y);
   }
 
+  setTool(tool: "select" | "pencil" | "erase" | "pan") {
+    this.instance.setTool(tool);
+  }
+
   pointerDown(point: PointType, options?: { shiftKey?: boolean }) {
     this.instance.handlePointerDown(point, options?.shiftKey ?? false);
   }
