@@ -1,4 +1,5 @@
 import { atom } from "nanostores";
+import { createNanoEvents } from "nanoevents";
 import { Slice } from "../slice";
 import { ZoomSlice } from "./zoom-slice";
 import { ChartSlice } from "./chart-slice";
@@ -10,13 +11,20 @@ export class ViewportSlice extends Slice {
 
   $scroll = atom<Point>({ x: 0, y: 0 });
   $viewportSize = atom<Dimension>({ width: 0, height: 0 });
+  private events = createNanoEvents<{ viewportChanged: () => void }>();
 
   setScroll(point: Point): void {
     this.$scroll.set(point);
+    this.events.emit("viewportChanged");
   }
 
   setViewportSize(width: number, height: number): void {
     this.$viewportSize.set({ width, height });
+    this.events.emit("viewportChanged");
+  }
+
+  onViewportChanged(cb: () => void): () => void {
+    return this.events.on("viewportChanged", cb);
   }
 
   getScaleY(): number {

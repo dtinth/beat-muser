@@ -12,7 +12,7 @@ import { uuidv7 } from "uuidv7";
 import { EntityManager, type Entity } from "../entity-manager";
 import { createTimingEngine } from "../timing-engine";
 import type { TimingEngine } from "../timing-engine";
-import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, LEVEL_REF, LEVEL, NOTE } from "./components";
+import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, LEVEL_REF, NOTE } from "./components";
 import { getGameModeLayout } from "./lane-layouts";
 import { Point, Rect } from "../geometry";
 import {
@@ -36,10 +36,10 @@ import { CursorSlice } from "./slices/cursor-slice";
 import { SelectionSlice } from "./slices/selection-slice";
 import { HistorySlice } from "./slices/history-slice";
 import { BoxSelectionSlice } from "./slices/box-selection-slice";
+import { ToolSlice } from "./slices/tool-slice";
 
 export class EditorController {
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
-  $activeTool = atom<"select" | "pencil" | "erase" | "pan">("select");
   $lastPlacedEntityInfo = atom<{ entityId: string; columnId: string } | null>(null);
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
@@ -85,6 +85,10 @@ export class EditorController {
     return this.ctx.get(HistorySlice).$history;
   }
 
+  get $activeTool() {
+    return this.ctx.get(ToolSlice).$activeTool;
+  }
+
   private get viewport(): ViewportSlice {
     return this.ctx.get(ViewportSlice);
   }
@@ -121,6 +125,7 @@ export class EditorController {
     this.ctx.register(SnapSlice);
     this.ctx.register(ZoomSlice);
     this.ctx.register(HistorySlice);
+    this.ctx.register(ToolSlice);
 
     const { columns, width } = this.computeColumns();
     this.columns = columns;
@@ -130,8 +135,18 @@ export class EditorController {
       this.refreshColumns();
       this.updateVisibleRenderObjects();
     });
-    this.ctx.get(LevelSlice).$hiddenLevelIds.subscribe(() => {
+
+    this.ctx.get(LevelSlice).onLevelsChanged(() => {
       this.refreshColumns();
+      this.updateVisibleRenderObjects();
+    });
+
+    this.ctx.get(ViewportSlice).onViewportChanged(() => {
+      this.recomputeCursorPulse();
+      this.updateVisibleRenderObjects();
+    });
+
+    this.ctx.get(ToolSlice).onToolChanged(() => {
       this.updateVisibleRenderObjects();
     });
 
@@ -145,8 +160,6 @@ export class EditorController {
     this.ctx.get(ZoomSlice).onZoomChanged(({ oldZoom, newZoom }) => {
       const newScrollTop = this.computeZoomScrollOffset(oldZoom, newZoom);
       this.viewport.setScroll({ x: this.$scroll.get().x, y: newScrollTop });
-      this.recomputeCursorPulse();
-      this.updateVisibleRenderObjects();
       this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: newScrollTop });
     });
   }
@@ -206,7 +219,7 @@ export class EditorController {
 
     // Add gameplay lanes for visible levels.
     if (chartId) {
-      const visibleLevels = this.getVisibleLevels();
+      const visibleLevels = this.ctx.get(LevelSlice).getVisibleLevels(chartId);
       for (const level of visibleLevels) {
         const layout = getGameModeLayout(level.mode);
         if (!layout) continue;
@@ -250,39 +263,25 @@ export class EditorController {
   }
 
   getLevelsForChart(chartId: string): LevelInfo[] {
-    const levelSlice = this.ctx.get(LevelSlice);
-    return levelSlice.getLevelEntitiesForChart(chartId).map((entity) => {
-      const level = this.entityManager.getComponent(entity, LEVEL);
-      return {
-        id: entity.id,
-        name: level?.name ?? "Untitled",
-        mode: level?.mode ?? "beat-7k",
-        sortOrder: level?.sortOrder ?? 0,
-        visible: !levelSlice.isLevelHidden(entity.id),
-      };
-    });
+    return this.ctx.get(LevelSlice).getLevelsForChart(chartId);
   }
 
   getVisibleLevels(): LevelInfo[] {
     const chartId = this.$selectedChartId.get();
     if (!chartId) return [];
-    return this.getLevelsForChart(chartId).filter((l) => l.visible);
+    return this.ctx.get(LevelSlice).getVisibleLevels(chartId);
   }
 
   addLevel(chartId: string, name: string, mode: string): string {
-    const id = this.ctx.get(LevelSlice).addLevel(chartId, name, mode);
-    this.refreshColumns();
-    return id;
+    return this.ctx.get(LevelSlice).addLevel(chartId, name, mode);
   }
 
   removeLevel(levelId: string): void {
     this.ctx.get(LevelSlice).removeLevel(levelId);
-    this.refreshColumns();
   }
 
   toggleLevelVisibility(levelId: string): void {
     this.ctx.get(LevelSlice).toggleLevelVisibility(levelId);
-    this.refreshColumns();
   }
 
   getScaleY(): number {
@@ -299,13 +298,10 @@ export class EditorController {
 
   setScroll(point: Point): void {
     this.viewport.setScroll(point);
-    this.recomputeCursorPulse();
-    this.updateVisibleRenderObjects();
   }
 
   setViewportSize(width: number, height: number): void {
     this.viewport.setViewportSize(width, height);
-    this.updateVisibleRenderObjects();
   }
 
   setSnap(snap: string): void {
@@ -321,7 +317,7 @@ export class EditorController {
     const scaleY = this.viewport.getScaleY();
     const rawPulse = (trackHeight - contentY) / scaleY;
     const snappedPulse = this.snapToGrid(rawPulse);
-    this.$cursorPulse.set(snappedPulse);
+    this.cursor.$cursorPulse.set(snappedPulse);
   }
 
   updateVisibleRenderObjects(): void {
@@ -444,7 +440,7 @@ export class EditorController {
         this.computePulseFromViewportY(viewportY),
       );
     }
-    this.$cursorViewportPos.set({ x: viewportX, y: viewportY });
+    this.cursor.$cursorViewportPos.set({ x: viewportX, y: viewportY });
     this.recomputeCursorPulse();
     this.updateVisibleRenderObjects();
   }
@@ -456,8 +452,7 @@ export class EditorController {
   }
 
   setTool(tool: "select" | "pencil" | "erase" | "pan"): void {
-    this.$activeTool.set(tool);
-    this.updateVisibleRenderObjects();
+    this.ctx.get(ToolSlice).setTool(tool);
   }
 
   setZoom(zoom: number): void {
@@ -501,7 +496,7 @@ export class EditorController {
   }
 
   navigateSnap(direction: "up" | "down"): void {
-    const currentPulse = this.$cursorPulse.get();
+    const currentPulse = this.cursor.$cursorPulse.get();
     const engine = this.getTimingEngine();
     const snap = this.$snap.get();
     const size = this.getChartSize();
@@ -523,7 +518,7 @@ export class EditorController {
     const targetY = trackHeight - targetPulse * scaleY;
     const deltaY = targetY - currentY;
 
-    this.$cursorPulse.set(targetPulse);
+    this.cursor.$cursorPulse.set(targetPulse);
     const currentScroll = this.$scroll.get();
     this.setScroll({ x: currentScroll.x, y: currentScroll.y + deltaY });
   }
@@ -547,7 +542,7 @@ export class EditorController {
     const size = this.getChartSize();
     const oldScaleY = BASE_SCALE_Y * oldZoom;
     const newScaleY = BASE_SCALE_Y * newZoom;
-    const cursorPulse = this.$cursorPulse.get();
+    const cursorPulse = this.cursor.$cursorPulse.get();
     const oldScrollTop = this.$scroll.get().y;
     const oldTrackHeight = size * oldScaleY;
     const newTrackHeight = size * newScaleY;
@@ -783,7 +778,7 @@ export class EditorController {
     }
 
     // --- Playhead ---
-    const cursorPulse = this.$cursorPulse.get();
+    const cursorPulse = this.cursor.$cursorPulse.get();
     if (cursorPulse >= 0 && cursorPulse <= size) {
       specs.push({
         key: "playhead",
