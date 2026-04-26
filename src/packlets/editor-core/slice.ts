@@ -9,8 +9,3 @@ export class Slice {
     this.ctx = ctx;
   }
 }
-
-export interface SliceConstructor<T extends Slice = Slice> {
-  sliceKey: string;
-  new (ctx: EditorContext): T;
-}

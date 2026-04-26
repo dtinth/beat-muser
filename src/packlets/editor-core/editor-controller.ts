@@ -40,6 +40,7 @@ import { DeleteUserAction, EraseUserAction, PlaceEntityUserAction } from "./user
 import { EditorContext } from "./editor-context";
 import { SnapSlice } from "./slices/snap-slice";
 import { ZoomSlice } from "./slices/zoom-slice";
+import { ProjectSlice } from "./slices/project-slice";
 
 export class EditorController {
   $selectedChartId = atom<string | null>(null);
@@ -65,11 +66,14 @@ export class EditorController {
     return this.ctx.get(ZoomSlice).$zoom;
   }
 
-  private entityManager: EntityManager;
   private columns: TimelineColumn[];
   private timelineWidth: number;
   private timingEngineCache: TimingEngine | null = null;
   private timingEngineVersion = 0;
+
+  private get entityManager(): EntityManager {
+    return this.ctx.get(ProjectSlice).entityManager;
+  }
 
   private boxSelection = {
     active: false,
@@ -80,15 +84,10 @@ export class EditorController {
   };
 
   constructor(options: EditorControllerOptions) {
-    this.entityManager = EntityManager.from(options.project.entities);
+    this.ctx.register(ProjectSlice, (ctx) => new ProjectSlice(ctx, options.project));
 
     const charts = this.entityManager.entitiesWithComponent(CHART);
-    if (charts.length > 0) {
-      this.$selectedChartId.set(charts[0]!.id);
-    } else {
-      const chartId = this.createDefaultChart();
-      this.$selectedChartId.set(chartId);
-    }
+    this.$selectedChartId.set(charts[0]!.id);
 
     // Show all existing levels by default.
     const chartId = this.$selectedChartId.get();
@@ -225,19 +224,6 @@ export class EditorController {
     const { columns, width } = this.computeColumns();
     this.columns = columns;
     this.timelineWidth = width;
-  }
-
-  private createDefaultChart(): string {
-    const id = `chart-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const chart: Entity = {
-      id,
-      version: id,
-      components: {
-        chart: { name: "Main Chart", size: DEFAULT_CHART_SIZE },
-      },
-    };
-    this.entityManager.insert(chart);
-    return id;
   }
 
   getLevelsForChart(chartId: string): LevelInfo[] {

@@ -1,9 +1,17 @@
-import type { Slice, SliceConstructor } from "./slice";
+import type { Slice } from "./slice";
 
 export class EditorContext {
   private slices = new Map<string, Slice>();
 
-  register<T extends Slice>(SliceClass: SliceConstructor<T>): T {
+  register<T extends Slice>(SliceClass: { sliceKey: string; new (ctx: EditorContext): T }): T;
+  register<T extends Slice>(
+    SliceClass: { sliceKey: string },
+    factory: (ctx: EditorContext) => T,
+  ): T;
+  register<T extends Slice>(
+    SliceClass: { sliceKey: string; new (ctx: EditorContext): T },
+    factory?: (ctx: EditorContext) => T,
+  ): T {
     const key = SliceClass.sliceKey;
     if (key === "unknown") {
       throw new Error(
@@ -17,12 +25,12 @@ export class EditorContext {
           `Available slices: ${[...this.slices.keys()].join(", ")}`,
       );
     }
-    const slice = new SliceClass(this);
+    const slice = factory ? factory(this) : new SliceClass(this);
     this.slices.set(key, slice);
     return slice;
   }
 
-  get<T extends Slice>(SliceClass: SliceConstructor<T>): T {
+  get<T extends Slice>(SliceClass: { sliceKey: string; new (...args: never[]): T }): T {
     const key = SliceClass.sliceKey;
     const slice = this.slices.get(key);
     if (!slice) {

@@ -11,4 +11,5 @@ export * from "./editor-context";
 export * from "./slice";
 export * from "./slices/snap-slice";
 export * from "./slices/zoom-slice";
+export * from "./slices/project-slice";
 export * from "./editor-controller";
