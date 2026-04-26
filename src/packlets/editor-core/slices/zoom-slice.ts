@@ -6,7 +6,6 @@ import { ZOOM_PRESETS } from "../types";
 
 export class ZoomSlice extends Slice {
   static readonly sliceKey = "zoom";
-  static readonly layer = 0;
 
   $zoom = atom<number>(1);
   private events = createNanoEvents<{

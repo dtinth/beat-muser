@@ -5,7 +5,6 @@ import type { EditorContext } from "../editor-context";
 
 export class SnapSlice extends Slice {
   static readonly sliceKey = "snap";
-  static readonly layer = 0;
 
   $snap = atom<string>("1/16");
   private events = createNanoEvents<{ snapChanged: (snap: string) => void }>();
