@@ -32,18 +32,18 @@ import {
   type EditorOutboxEvents,
   type UserAction,
   DEFAULT_CHART_SIZE,
-  ZOOM_PRESETS,
   BASE_SCALE_Y,
   PADDING_BOTTOM,
   HISTORY_LIMIT,
 } from "./types";
 import { DeleteUserAction, EraseUserAction, PlaceEntityUserAction } from "./user-actions";
+import { EditorContext } from "./editor-context";
+import { SnapSlice } from "./slices/snap-slice";
+import { ZoomSlice } from "./slices/zoom-slice";
 
 export class EditorController {
   $selectedChartId = atom<string | null>(null);
   $cursorPulse = atom<number>(0);
-  $snap = atom<string>("1/16");
-  $zoom = atom<number>(1); // zoom multiplier, 1 = 100%
   $visibleLevelIds = atom<Set<string>>(new Set());
   $scroll = atom<Point>({ x: 0, y: 0 });
   $viewportSize = atom<Dimension>({ width: 0, height: 0 });
@@ -54,6 +54,16 @@ export class EditorController {
   $activeTool = atom<"select" | "pencil" | "erase" | "pan">("select");
   $lastPlacedEntityInfo = atom<{ entityId: string; columnId: string } | null>(null);
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
+
+  ctx = new EditorContext();
+
+  get $snap() {
+    return this.ctx.get(SnapSlice).$snap;
+  }
+
+  get $zoom() {
+    return this.ctx.get(ZoomSlice).$zoom;
+  }
 
   private entityManager: EntityManager;
   private columns: TimelineColumn[];
@@ -91,6 +101,9 @@ export class EditorController {
     this.columns = columns;
     this.timelineWidth = width;
 
+    this.ctx.register(SnapSlice);
+    this.ctx.register(ZoomSlice);
+
     this.$selectedChartId.subscribe(() => {
       this.refreshColumns();
       this.updateVisibleRenderObjects();
@@ -98,6 +111,21 @@ export class EditorController {
     this.$visibleLevelIds.subscribe(() => {
       this.refreshColumns();
       this.updateVisibleRenderObjects();
+    });
+
+    this.ctx.get(SnapSlice).onSnapChanged(() => {
+      const currentPulse = this.$cursorPulse.get();
+      const snapped = this.snapToGrid(currentPulse);
+      this.$cursorPulse.set(snapped);
+      this.updateVisibleRenderObjects();
+    });
+
+    this.ctx.get(ZoomSlice).onZoomChanged(({ oldZoom, newZoom }) => {
+      const newScrollTop = this.computeZoomScrollOffset(oldZoom, newZoom);
+      this.$scroll.set({ x: this.$scroll.get().x, y: newScrollTop });
+      this.recomputeCursorPulse();
+      this.updateVisibleRenderObjects();
+      this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: newScrollTop });
     });
   }
 
@@ -318,11 +346,7 @@ export class EditorController {
   }
 
   setSnap(snap: string): void {
-    this.$snap.set(snap);
-    const currentPulse = this.$cursorPulse.get();
-    const snapped = this.snapToGrid(currentPulse);
-    this.$cursorPulse.set(snapped);
-    this.updateVisibleRenderObjects();
+    this.ctx.get(SnapSlice).setSnap(snap);
   }
 
   recomputeCursorPulse(): void {
@@ -540,25 +564,15 @@ export class EditorController {
   }
 
   setZoom(zoom: number): void {
-    const prevZoom = this.$zoom.get();
-    this.$zoom.set(zoom);
-    const newScrollTop = this.computeZoomScrollOffset(prevZoom);
-    this.$scroll.set({ x: this.$scroll.get().x, y: newScrollTop });
-    this.recomputeCursorPulse();
-    this.updateVisibleRenderObjects();
-    this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: newScrollTop });
+    this.ctx.get(ZoomSlice).setZoom(zoom);
   }
 
   zoomIn(): void {
-    const current = this.$zoom.get();
-    const next = ZOOM_PRESETS.find((z) => z > current);
-    if (next) this.setZoom(next);
+    this.ctx.get(ZoomSlice).zoomIn();
   }
 
   zoomOut(): void {
-    const current = this.$zoom.get();
-    const prev = [...ZOOM_PRESETS].reverse().find((z) => z < current);
-    if (prev) this.setZoom(prev);
+    this.ctx.get(ZoomSlice).zoomOut();
   }
 
   applyAction(action: UserAction): void {
@@ -649,8 +663,7 @@ export class EditorController {
    * @param oldZoom The zoom level before the change.
    * @returns The new scroll top to apply.
    */
-  computeZoomScrollOffset(oldZoom: number): number {
-    const newZoom = this.$zoom.get();
+  computeZoomScrollOffset(oldZoom: number, newZoom: number): number {
     const size = this.getChartSize();
     const oldScaleY = BASE_SCALE_Y * oldZoom;
     const newScaleY = BASE_SCALE_Y * newZoom;
