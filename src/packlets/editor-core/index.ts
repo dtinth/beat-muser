@@ -139,6 +139,30 @@ class DeleteUserAction implements UserAction {
   }
 }
 
+class EraseUserAction implements UserAction {
+  title = "Erase entity";
+  private controller: EditorController;
+  private entityId: string;
+  private entitySnapshot: Entity;
+
+  constructor(controller: EditorController, entityId: string, entitySnapshot: Entity) {
+    this.controller = controller;
+    this.entityId = entityId;
+    this.entitySnapshot = entitySnapshot;
+  }
+
+  do(): void {
+    this.controller.getEntityManager().delete(this.entityId);
+    this.controller.$selection.set(new Set());
+    this.controller.updateVisibleRenderObjects();
+  }
+
+  undo(): void {
+    this.controller.getEntityManager().restore(this.entitySnapshot);
+    this.controller.updateVisibleRenderObjects();
+  }
+}
+
 class PlaceEntityUserAction implements UserAction {
   title = "Place entity";
   private controller: EditorController;
@@ -589,6 +613,17 @@ export class EditorController {
 
       const previousSelection = new Set(this.$selection.get());
       this.applyAction(new PlaceEntityUserAction(this, entity, column.id, previousSelection));
+      return;
+    }
+
+    if (this.$activeTool.get() === "erase") {
+      const hit = this.hitTest(point);
+      if (hit) {
+        const entity = this.entityManager.get(hit);
+        if (entity) {
+          this.applyAction(new EraseUserAction(this, hit, structuredClone(entity)));
+        }
+      }
       return;
     }
 

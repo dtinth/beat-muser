@@ -976,4 +976,94 @@ describe("EditorController", () => {
       expect(editor.instance.$activeTool.get()).toBe("select");
     });
   });
+
+  describe("erase tool", () => {
+    test("clicking on a note in erase mode deletes it", () => {
+      let noteEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.setTool("erase");
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+
+      expect(editor.instance.getEntityManager().get(noteEntity!.id)?.components).toEqual({});
+      editor.selection.shouldBeEmpty();
+    });
+
+    test("clicking on a BPM change in erase mode deletes it", () => {
+      let bpmEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmEntity = c.bpmChange(500, 128);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.setTool("erase");
+      editor.pointerDown(Rect.center(editor.eventRect(bpmEntity!.id)));
+
+      expect(editor.instance.getEntityManager().get(bpmEntity!.id)?.components).toEqual({});
+      editor.selection.shouldBeEmpty();
+    });
+
+    test("undo restores an erased note", () => {
+      let noteEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.setTool("erase");
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+      expect(editor.instance.getEntityManager().get(noteEntity!.id)?.components).toEqual({});
+
+      editor.undo();
+
+      const restored = editor.instance.getEntityManager().get(noteEntity!.id);
+      expect(restored?.components.note).toBeDefined();
+      expect((restored?.components.note as { lane: number }).lane).toBe(1);
+    });
+
+    test("clicking empty space in erase mode does nothing", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 15360);
+          }),
+      });
+
+      editor.setTool("erase");
+      editor.pointerDown({ x: 180, y: 392 });
+
+      editor.selection.shouldBeEmpty();
+    });
+  });
 });
