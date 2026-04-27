@@ -5,13 +5,11 @@
  * this packlet owns all editor-relevant state, model data, and interaction logic.
  */
 
-import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
 import type { Emitter } from "nanoevents";
 import { EntityManager, type Entity } from "../entity-manager";
 import type { TimingEngine } from "../timing-engine";
-import { EVENT } from "./components";
-import { Point, Rect } from "../geometry";
+import { Point } from "../geometry";
 import {
   type EditorControllerOptions,
   type TimelineColumn,
@@ -20,7 +18,7 @@ import {
   type UserAction,
   BASE_SCALE_Y,
 } from "./types";
-import { DeleteUserAction, EraseUserAction, PlaceEntityUserAction } from "./user-actions";
+import { DeleteUserAction } from "./user-actions";
 import { EditorContext } from "./editor-context";
 import { SnapSlice } from "./slices/snap-slice";
 import { ZoomSlice } from "./slices/zoom-slice";
@@ -38,9 +36,9 @@ import { ColumnsSlice } from "./slices/columns-slice";
 import { TimingColumnsSlice } from "./slices/timing-columns-slice";
 import { LevelColumnsSlice } from "./slices/level-columns-slice";
 import { RenderSlice } from "./slices/render-slice";
+import { PointerInteractionSlice } from "./slices/pointer-interaction-slice";
 
 export class EditorController {
-  $lastPlacedEntityInfo = atom<{ entityId: string; columnId: string } | null>(null);
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
   ctx = new EditorContext();
@@ -105,10 +103,6 @@ export class EditorController {
     return this.ctx.get(HistorySlice);
   }
 
-  private get boxSelection(): BoxSelectionSlice {
-    return this.ctx.get(BoxSelectionSlice);
-  }
-
   private get timing(): TimingSlice {
     return this.ctx.get(TimingSlice);
   }
@@ -117,8 +111,16 @@ export class EditorController {
     return this.ctx.get(ColumnsSlice);
   }
 
+  get $lastPlacedEntityInfo() {
+    return this.ctx.get(PointerInteractionSlice).$lastPlacedEntityInfo;
+  }
+
   private get render(): RenderSlice {
     return this.ctx.get(RenderSlice);
+  }
+
+  private get pointer(): PointerInteractionSlice {
+    return this.ctx.get(PointerInteractionSlice);
   }
 
   private get entityManager(): EntityManager {
@@ -142,9 +144,10 @@ export class EditorController {
     this.ctx.register(TimingColumnsSlice);
     this.ctx.register(LevelColumnsSlice);
     this.ctx.register(RenderSlice);
+    this.ctx.register(PointerInteractionSlice);
 
     this.ctx.get(ViewportSlice).onViewportChanged(() => {
-      this.recomputeCursorPulse();
+      this.pointer.recomputeCursorPulse();
       this.render.refresh();
     });
 
@@ -218,139 +221,20 @@ export class EditorController {
     this.ctx.get(SnapSlice).setSnap(snap);
   }
 
-  recomputeCursorPulse(): void {
-    const viewportY = this.$cursorViewportPos.get().y;
-    if (viewportY < 0) return;
-    const scrollTop = this.$scroll.get().y;
-    const contentY = viewportY + scrollTop;
-    const trackHeight = this.viewport.getTrackHeight();
-    const scaleY = this.viewport.getScaleY();
-    const rawPulse = (trackHeight - contentY) / scaleY;
-    const snappedPulse = this.snapToGrid(rawPulse);
-    this.cursor.$cursorPulse.set(snappedPulse);
-  }
-
   hitTest(point: Point): string | null {
-    const scroll = this.$scroll.get();
-    const contentX = point.x + scroll.x;
-    const contentY = point.y + scroll.y;
-
-    const specs = this.render.$visibleRenderObjects.get();
-    const HIT_TOLERANCE = 4;
-
-    let bestId: string | null = null;
-    let bestDistance = Infinity;
-
-    for (const spec of specs) {
-      if (!spec.entityId) continue;
-
-      const hitRect = Rect.expand(
-        { x: spec.x, y: spec.y, width: spec.width, height: spec.height },
-        HIT_TOLERANCE,
-      );
-      if (!Rect.contains(hitRect, { x: contentX, y: contentY })) continue;
-
-      const center = Rect.center({ x: spec.x, y: spec.y, width: spec.width, height: spec.height });
-      const distance = Point.distance({ x: contentX, y: contentY }, center);
-
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestId = spec.entityId;
-      }
-    }
-
-    return bestId;
-  }
-
-  private getColumnIndexFromViewportX(viewportX: number): number {
-    const contentX = viewportX + this.$scroll.get().x;
-    const columns = this.getColumns();
-    if (columns.length === 0) return 0;
-    if (contentX < columns[0]!.x) return 0;
-    for (let i = 0; i < columns.length; i++) {
-      const col = columns[i]!;
-      if (contentX >= col.x && contentX < col.x + col.width) {
-        return i;
-      }
-    }
-    return columns.length - 1;
-  }
-
-  private computePulseFromViewportY(viewportY: number): number {
-    const scrollTop = this.$scroll.get().y;
-    const contentY = viewportY + scrollTop;
-    const trackHeight = this.viewport.getTrackHeight();
-    const scaleY = this.viewport.getScaleY();
-    return (trackHeight - contentY) / scaleY;
+    return this.pointer.hitTest(point);
   }
 
   handlePointerDown(point: Point, shiftKey: boolean = false): void {
-    if (this.$activeTool.get() === "pencil") {
-      const contentX = point.x + this.$scroll.get().x;
-      const columns = this.getColumns();
-      const column = columns.find((c) => contentX >= c.x && contentX < c.x + c.width);
-      if (!column?.placementHandler) return;
-
-      const pulse = this.snapToGrid(this.computePulseFromViewportY(point.y));
-      const entity = column.placementHandler(pulse);
-      if (!entity) return;
-
-      const previousSelection = new Set(this.$selection.get());
-      this.applyAction(new PlaceEntityUserAction(this, entity, column.id, previousSelection));
-      return;
-    }
-
-    if (this.$activeTool.get() === "erase") {
-      const hit = this.hitTest(point);
-      if (hit) {
-        const entity = this.entityManager.get(hit);
-        if (entity) {
-          this.applyAction(new EraseUserAction(this, hit, structuredClone(entity)));
-        }
-      }
-      return;
-    }
-
-    const hit = this.hitTest(point);
-    if (hit) {
-      if (shiftKey) {
-        const next = new Set(this.$selection.get());
-        if (next.has(hit)) {
-          next.delete(hit);
-        } else {
-          next.add(hit);
-        }
-        this.$selection.set(next);
-      } else {
-        this.$selection.set(new Set([hit]));
-      }
-    } else {
-      const colIndex = this.getColumnIndexFromViewportX(point.x);
-      const pulse = this.computePulseFromViewportY(point.y);
-      this.boxSelection.start(colIndex, pulse);
-      if (!shiftKey) {
-        this.$selection.set(new Set());
-      }
-    }
-    this.render.refresh();
+    this.pointer.handlePointerDown(point, shiftKey);
   }
 
   handlePointerMove(viewportX: number, viewportY: number): void {
-    if (this.boxSelection.isActive()) {
-      this.boxSelection.update(
-        this.getColumnIndexFromViewportX(viewportX),
-        this.computePulseFromViewportY(viewportY),
-      );
-    }
-    this.cursor.$cursorViewportPos.set({ x: viewportX, y: viewportY });
-    this.recomputeCursorPulse();
-    this.render.refresh();
+    this.pointer.handlePointerMove(viewportX, viewportY);
   }
 
   handlePointerUp(): void {
-    if (!this.boxSelection.isActive()) return;
-    this.boxSelection.finalize(this.entityManager.entitiesWithComponent(EVENT));
-    this.render.refresh();
+    this.pointer.handlePointerUp();
   }
 
   setTool(tool: "select" | "pencil" | "erase" | "pan"): void {
@@ -384,7 +268,7 @@ export class EditorController {
       .filter((e): e is Entity => e !== undefined)
       .map((e) => structuredClone(e));
 
-    this.applyAction(new DeleteUserAction(this, entityIds, entities));
+    this.applyAction(new DeleteUserAction(this.ctx, entityIds, entities));
   }
 
   undo(): void {

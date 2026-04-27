@@ -4,132 +4,144 @@
  * User action classes for undoable editor operations.
  */
 
+import type { WritableAtom } from "nanostores";
 import { uuidv7 } from "uuidv7";
 import type { Entity } from "../entity-manager";
 import { LEVEL_REF } from "./components";
-import type { EditorController } from "./editor-controller";
+import type { EditorContext } from "./editor-context";
+import { ProjectSlice } from "./slices/project-slice";
+import { SelectionSlice } from "./slices/selection-slice";
+import { RenderSlice } from "./slices/render-slice";
+import { LevelSlice } from "./slices/level-slice";
+import { ChartSlice } from "./slices/chart-slice";
 import type { UserAction } from "./types";
 
 export class DeleteUserAction implements UserAction {
   title = "Delete selection";
-  private controller: EditorController;
+  private ctx: EditorContext;
   private entityIds: string[];
   private entities: Entity[];
 
-  constructor(controller: EditorController, entityIds: string[], entities: Entity[]) {
-    this.controller = controller;
+  constructor(ctx: EditorContext, entityIds: string[], entities: Entity[]) {
+    this.ctx = ctx;
     this.entityIds = entityIds;
     this.entities = entities;
   }
 
   do(): void {
-    const em = this.controller.getEntityManager();
+    const em = this.ctx.get(ProjectSlice).entityManager;
     for (const id of this.entityIds) {
       em.delete(id);
     }
-    this.controller.$selection.set(new Set());
-    this.controller.refreshRender();
+    this.ctx.get(SelectionSlice).$selection.set(new Set());
+    this.ctx.get(RenderSlice).refresh();
   }
 
   undo(): void {
-    const em = this.controller.getEntityManager();
+    const em = this.ctx.get(ProjectSlice).entityManager;
     for (const entity of this.entities) {
       em.restore(entity);
     }
-    const visibleLevels = new Set(this.controller.getVisibleLevels().map((l) => l.id));
+    const chartId = this.ctx.get(ChartSlice).$selectedChartId.get();
+    const visibleLevels = new Set(
+      (chartId ? this.ctx.get(LevelSlice).getVisibleLevels(chartId) : []).map((l) => l.id),
+    );
     const selection = new Set<string>();
     for (const entity of this.entities) {
       const levelRef = em.getComponent(entity, LEVEL_REF);
       if (levelRef && !visibleLevels.has(levelRef.levelId)) continue;
       selection.add(entity.id);
     }
-    this.controller.$selection.set(selection);
-    this.controller.refreshRender();
+    this.ctx.get(SelectionSlice).$selection.set(selection);
+    this.ctx.get(RenderSlice).refresh();
   }
 }
 
 export class EraseUserAction implements UserAction {
   title = "Erase entity";
-  private controller: EditorController;
+  private ctx: EditorContext;
   private entityId: string;
   private entitySnapshot: Entity;
 
-  constructor(controller: EditorController, entityId: string, entitySnapshot: Entity) {
-    this.controller = controller;
+  constructor(ctx: EditorContext, entityId: string, entitySnapshot: Entity) {
+    this.ctx = ctx;
     this.entityId = entityId;
     this.entitySnapshot = entitySnapshot;
   }
 
   do(): void {
-    this.controller.getEntityManager().delete(this.entityId);
-    this.controller.$selection.set(new Set());
-    this.controller.refreshRender();
+    this.ctx.get(ProjectSlice).entityManager.delete(this.entityId);
+    this.ctx.get(SelectionSlice).$selection.set(new Set());
+    this.ctx.get(RenderSlice).refresh();
   }
 
   undo(): void {
-    this.controller.getEntityManager().restore(this.entitySnapshot);
-    this.controller.refreshRender();
+    this.ctx.get(ProjectSlice).entityManager.restore(this.entitySnapshot);
+    this.ctx.get(RenderSlice).refresh();
   }
 }
 
 export class PlaceEntityUserAction implements UserAction {
   title = "Place entity";
-  private controller: EditorController;
+  private ctx: EditorContext;
   private entity: Entity;
   private columnId: string;
   private previousSelection: Set<string>;
+  private lastPlacedAtom: WritableAtom<{ entityId: string; columnId: string } | null>;
 
   constructor(
-    controller: EditorController,
+    ctx: EditorContext,
     entity: Entity,
     columnId: string,
     previousSelection: Set<string>,
+    lastPlacedAtom: WritableAtom<{ entityId: string; columnId: string } | null>,
   ) {
-    this.controller = controller;
+    this.ctx = ctx;
     this.entity = entity;
     this.columnId = columnId;
     this.previousSelection = previousSelection;
+    this.lastPlacedAtom = lastPlacedAtom;
   }
 
   do(): void {
-    this.controller.getEntityManager().insert(this.entity);
-    this.controller.$selection.set(new Set([this.entity.id]));
-    this.controller.$lastPlacedEntityInfo.set({
+    this.ctx.get(ProjectSlice).entityManager.insert(this.entity);
+    this.ctx.get(SelectionSlice).$selection.set(new Set([this.entity.id]));
+    this.lastPlacedAtom.set({
       entityId: this.entity.id,
       columnId: this.columnId,
     });
-    this.controller.refreshRender();
+    this.ctx.get(RenderSlice).refresh();
   }
 
   undo(): void {
-    this.controller.getEntityManager().delete(this.entity.id);
-    this.controller.$selection.set(new Set(this.previousSelection));
-    this.controller.$lastPlacedEntityInfo.set(null);
-    this.controller.refreshRender();
+    this.ctx.get(ProjectSlice).entityManager.delete(this.entity.id);
+    this.ctx.get(SelectionSlice).$selection.set(new Set(this.previousSelection));
+    this.lastPlacedAtom.set(null);
+    this.ctx.get(RenderSlice).refresh();
   }
 }
 
 export class EditEntityUserAction implements UserAction {
   title = "Edit entity";
-  private controller: EditorController;
+  private ctx: EditorContext;
   private entityId: string;
   private oldComponents: Record<string, unknown>;
   private newComponents: Record<string, unknown>;
 
   constructor(
-    controller: EditorController,
+    ctx: EditorContext,
     entityId: string,
     oldComponents: Record<string, unknown>,
     newComponents: Record<string, unknown>,
   ) {
-    this.controller = controller;
+    this.ctx = ctx;
     this.entityId = entityId;
     this.oldComponents = oldComponents;
     this.newComponents = newComponents;
   }
 
   do(): void {
-    const em = this.controller.getEntityManager();
+    const em = this.ctx.get(ProjectSlice).entityManager;
     const entity = em.get(this.entityId);
     if (!entity) return;
     em.insert({
@@ -137,11 +149,11 @@ export class EditEntityUserAction implements UserAction {
       components: structuredClone(this.newComponents),
       version: uuidv7(),
     });
-    this.controller.refreshRender();
+    this.ctx.get(RenderSlice).refresh();
   }
 
   undo(): void {
-    const em = this.controller.getEntityManager();
+    const em = this.ctx.get(ProjectSlice).entityManager;
     const entity = em.get(this.entityId);
     if (!entity) return;
     em.insert({
@@ -149,6 +161,6 @@ export class EditEntityUserAction implements UserAction {
       components: structuredClone(this.oldComponents),
       version: uuidv7(),
     });
-    this.controller.refreshRender();
+    this.ctx.get(RenderSlice).refresh();
   }
 }

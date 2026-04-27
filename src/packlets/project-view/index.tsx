@@ -435,7 +435,7 @@ export function ProjectViewPage() {
       [BPM_CHANGE.key]: { bpm: newBpm },
     };
     controller.applyAction(
-      new EditEntityUserAction(controller, bpmEditEntityId, oldComponents, newComponents),
+      new EditEntityUserAction(controller.ctx, bpmEditEntityId, oldComponents, newComponents),
     );
     setBpmEditOpen(false);
     setBpmEditEntityId(null);
@@ -454,7 +454,7 @@ export function ProjectViewPage() {
       [TIME_SIGNATURE.key]: { numerator: num, denominator: den },
     };
     controller.applyAction(
-      new EditEntityUserAction(controller, timeSigEditEntityId, oldComponents, newComponents),
+      new EditEntityUserAction(controller.ctx, timeSigEditEntityId, oldComponents, newComponents),
     );
     setTimeSigEditOpen(false);
     setTimeSigEditEntityId(null);
