@@ -123,7 +123,6 @@ export class PointerInteractionSlice extends Slice {
             this.$lastPlacedEntityInfo,
           ),
         );
-      this.ctx.get(RenderSlice).refresh();
       return;
     }
 
@@ -135,7 +134,6 @@ export class PointerInteractionSlice extends Slice {
           this.ctx
             .get(HistorySlice)
             .applyAction(new EraseUserAction(this.ctx, hit, structuredClone(entity)));
-          this.ctx.get(RenderSlice).refresh();
         }
       }
       return;
@@ -162,7 +160,6 @@ export class PointerInteractionSlice extends Slice {
         this.ctx.get(SelectionSlice).$selection.set(new Set());
       }
     }
-    this.ctx.get(RenderSlice).refresh();
   }
 
   handlePointerMove(viewportX: number, viewportY: number): void {
@@ -176,7 +173,6 @@ export class PointerInteractionSlice extends Slice {
     }
     this.ctx.get(CursorSlice).$cursorViewportPos.set({ x: viewportX, y: viewportY });
     this.recomputeCursorPulse();
-    this.ctx.get(RenderSlice).refresh();
   }
 
   handlePointerUp(): void {
@@ -184,6 +180,5 @@ export class PointerInteractionSlice extends Slice {
     this.ctx
       .get(BoxSelectionSlice)
       .finalize(this.ctx.get(ProjectSlice).entityManager.entitiesWithComponent(EVENT));
-    this.ctx.get(RenderSlice).refresh();
   }
 }

@@ -25,6 +25,7 @@
 
 import { Type, type Static, type TSchema } from "typebox";
 import { uuidv7 } from "uuidv7";
+import { atom } from "nanostores";
 
 // ---------------------------------------------------------------------------
 // Entity
@@ -77,7 +78,8 @@ export class EntityComponentType<T extends TSchema> {
 
 export class EntityManager {
   private entities = new Map<string, Entity>();
-  private mutationVersion = 1;
+  private _mutationVersion = 1;
+  $mutationVersion = atom<number>(1);
 
   static from(array: Entity[]): EntityManager {
     const manager = new EntityManager();
@@ -97,12 +99,14 @@ export class EntityManager {
 
   insert(entity: Entity): void {
     this.entities.set(entity.id, entity);
-    this.mutationVersion++;
+    this._mutationVersion++;
+    this.$mutationVersion.set(this._mutationVersion);
   }
 
   remove(id: string): void {
     this.entities.delete(id);
-    this.mutationVersion++;
+    this._mutationVersion++;
+    this.$mutationVersion.set(this._mutationVersion);
   }
 
   /**
@@ -114,7 +118,8 @@ export class EntityManager {
     if (!entity) return;
     entity.components = {};
     entity.version = uuidv7();
-    this.mutationVersion++;
+    this._mutationVersion++;
+    this.$mutationVersion.set(this._mutationVersion);
   }
 
   /**
@@ -122,11 +127,12 @@ export class EntityManager {
    */
   restore(entity: Entity): void {
     this.entities.set(entity.id, entity);
-    this.mutationVersion++;
+    this._mutationVersion++;
+    this.$mutationVersion.set(this._mutationVersion);
   }
 
   getMutationVersion(): number {
-    return this.mutationVersion;
+    return this._mutationVersion;
   }
 
   /**

@@ -159,7 +159,6 @@ export class EditorController {
       const currentPulse = this.cursor.$cursorPulse.get();
       const snapped = this.snapToGrid(currentPulse);
       this.cursor.$cursorPulse.set(snapped);
-      this.render.refresh();
     });
 
     this.ctx.get(ZoomSlice).onZoomChanged(({ oldZoom, newZoom }) => {
@@ -255,7 +254,6 @@ export class EditorController {
 
   applyAction(action: UserAction): void {
     this.history.applyAction(action);
-    this.render.refresh();
   }
 
   deleteSelection(): void {
@@ -273,12 +271,10 @@ export class EditorController {
 
   undo(): void {
     this.history.undo();
-    this.render.refresh();
   }
 
   redo(): void {
     this.history.redo();
-    this.render.refresh();
   }
 
   navigateSnap(direction: "up" | "down"): void {

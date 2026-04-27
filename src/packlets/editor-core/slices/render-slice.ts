@@ -20,6 +20,15 @@ export class RenderSlice extends Slice {
 
   constructor(ctx: EditorContext) {
     super(ctx);
+    ctx.get(ProjectSlice).entityManager.$mutationVersion.subscribe(() => {
+      this.refresh();
+    });
+    ctx.get(SelectionSlice).$selection.subscribe(() => {
+      this.refresh();
+    });
+    ctx.get(CursorSlice).$cursorPulse.subscribe(() => {
+      this.refresh();
+    });
   }
 
   refresh(): void {

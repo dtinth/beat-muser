@@ -11,7 +11,6 @@ import { LEVEL_REF } from "./components";
 import type { EditorContext } from "./editor-context";
 import { ProjectSlice } from "./slices/project-slice";
 import { SelectionSlice } from "./slices/selection-slice";
-import { RenderSlice } from "./slices/render-slice";
 import { LevelSlice } from "./slices/level-slice";
 import { ChartSlice } from "./slices/chart-slice";
 import type { UserAction } from "./types";
@@ -34,7 +33,6 @@ export class DeleteUserAction implements UserAction {
       em.delete(id);
     }
     this.ctx.get(SelectionSlice).$selection.set(new Set());
-    this.ctx.get(RenderSlice).refresh();
   }
 
   undo(): void {
@@ -53,7 +51,6 @@ export class DeleteUserAction implements UserAction {
       selection.add(entity.id);
     }
     this.ctx.get(SelectionSlice).$selection.set(selection);
-    this.ctx.get(RenderSlice).refresh();
   }
 }
 
@@ -72,12 +69,10 @@ export class EraseUserAction implements UserAction {
   do(): void {
     this.ctx.get(ProjectSlice).entityManager.delete(this.entityId);
     this.ctx.get(SelectionSlice).$selection.set(new Set());
-    this.ctx.get(RenderSlice).refresh();
   }
 
   undo(): void {
     this.ctx.get(ProjectSlice).entityManager.restore(this.entitySnapshot);
-    this.ctx.get(RenderSlice).refresh();
   }
 }
 
@@ -110,14 +105,12 @@ export class PlaceEntityUserAction implements UserAction {
       entityId: this.entity.id,
       columnId: this.columnId,
     });
-    this.ctx.get(RenderSlice).refresh();
   }
 
   undo(): void {
     this.ctx.get(ProjectSlice).entityManager.delete(this.entity.id);
     this.ctx.get(SelectionSlice).$selection.set(new Set(this.previousSelection));
     this.lastPlacedAtom.set(null);
-    this.ctx.get(RenderSlice).refresh();
   }
 }
 
@@ -149,7 +142,6 @@ export class EditEntityUserAction implements UserAction {
       components: structuredClone(this.newComponents),
       version: uuidv7(),
     });
-    this.ctx.get(RenderSlice).refresh();
   }
 
   undo(): void {
@@ -161,6 +153,5 @@ export class EditEntityUserAction implements UserAction {
       components: structuredClone(this.oldComponents),
       version: uuidv7(),
     });
-    this.ctx.get(RenderSlice).refresh();
   }
 }
