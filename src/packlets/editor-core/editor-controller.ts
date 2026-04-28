@@ -17,7 +17,6 @@ import {
   type EditorOutboxEvents,
   type UserAction,
 } from "./types";
-import { DeleteUserAction } from "./user-actions";
 import { EditorContext } from "./editor-context";
 import { SnapSlice } from "./slices/snap-slice";
 import { ZoomSlice } from "./slices/zoom-slice";
@@ -37,6 +36,7 @@ import { LevelColumnsSlice } from "./slices/level-columns-slice";
 import { RenderSlice } from "./slices/render-slice";
 import { PointerInteractionSlice } from "./slices/pointer-interaction-slice";
 import { ViewCommandSlice } from "./slices/view-command-slice";
+import { EditorCommandSlice } from "./slices/editor-command-slice";
 
 export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
@@ -146,6 +146,7 @@ export class EditorController {
     this.ctx.register(RenderSlice);
     this.ctx.register(PointerInteractionSlice);
     this.ctx.register(ViewCommandSlice);
+    this.ctx.register(EditorCommandSlice);
 
     this.ctx.get(ViewportSlice).onViewportChanged(() => {
       this.pointer.recomputeCursorPulse();
@@ -256,16 +257,7 @@ export class EditorController {
   }
 
   deleteSelection(): void {
-    const selection = this.$selection.get();
-    if (selection.size === 0) return;
-
-    const entityIds = Array.from(selection);
-    const entities = entityIds
-      .map((id) => this.entityManager.get(id))
-      .filter((e): e is Entity => e !== undefined)
-      .map((e) => structuredClone(e));
-
-    this.applyAction(new DeleteUserAction(this.ctx, entityIds, entities));
+    this.ctx.get(EditorCommandSlice).deleteSelection();
   }
 
   undo(): void {
