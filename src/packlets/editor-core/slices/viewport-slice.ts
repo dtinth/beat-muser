@@ -11,7 +11,10 @@ export class ViewportSlice extends Slice {
 
   $scroll = atom<Point>({ x: 0, y: 0 });
   $viewportSize = atom<Dimension>({ width: 0, height: 0 });
-  private events = createNanoEvents<{ viewportChanged: () => void }>();
+  private events = createNanoEvents<{
+    viewportChanged: () => void;
+    scrollRequest: (point: Point) => void;
+  }>();
 
   setScroll(point: Point): void {
     this.$scroll.set(point);
@@ -23,8 +26,16 @@ export class ViewportSlice extends Slice {
     this.events.emit("viewportChanged");
   }
 
+  requestScroll(point: Point): void {
+    this.events.emit("scrollRequest", point);
+  }
+
   onViewportChanged(cb: () => void): () => void {
     return this.events.on("viewportChanged", cb);
+  }
+
+  onScrollRequest(cb: (point: Point) => void): () => void {
+    return this.events.on("scrollRequest", cb);
   }
 
   getScaleY(): number {

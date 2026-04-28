@@ -16,7 +16,6 @@ import {
   type LevelInfo,
   type EditorOutboxEvents,
   type UserAction,
-  BASE_SCALE_Y,
 } from "./types";
 import { DeleteUserAction } from "./user-actions";
 import { EditorContext } from "./editor-context";
@@ -37,6 +36,7 @@ import { TimingColumnsSlice } from "./slices/timing-columns-slice";
 import { LevelColumnsSlice } from "./slices/level-columns-slice";
 import { RenderSlice } from "./slices/render-slice";
 import { PointerInteractionSlice } from "./slices/pointer-interaction-slice";
+import { ViewCommandSlice } from "./slices/view-command-slice";
 
 export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
@@ -145,10 +145,15 @@ export class EditorController {
     this.ctx.register(LevelColumnsSlice);
     this.ctx.register(RenderSlice);
     this.ctx.register(PointerInteractionSlice);
+    this.ctx.register(ViewCommandSlice);
 
     this.ctx.get(ViewportSlice).onViewportChanged(() => {
       this.pointer.recomputeCursorPulse();
       this.render.refresh();
+    });
+
+    this.ctx.get(ViewportSlice).onScrollRequest((point) => {
+      this.outbox.emit("setScroll", point);
     });
 
     this.ctx.get(ToolSlice).onToolChanged(() => {
@@ -159,12 +164,6 @@ export class EditorController {
       const currentPulse = this.cursor.$cursorPulse.get();
       const snapped = this.snapToGrid(currentPulse);
       this.cursor.$cursorPulse.set(snapped);
-    });
-
-    this.ctx.get(ZoomSlice).onZoomChanged(({ oldZoom, newZoom }) => {
-      const newScrollTop = this.computeZoomScrollOffset(oldZoom, newZoom);
-      this.viewport.setScroll({ x: this.$scroll.get().x, y: newScrollTop });
-      this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: newScrollTop });
     });
 
     this.ctx.get(ColumnsSlice).$columns.subscribe(() => {
@@ -241,15 +240,15 @@ export class EditorController {
   }
 
   setZoom(zoom: number): void {
-    this.ctx.get(ZoomSlice).setZoom(zoom);
+    this.ctx.get(ViewCommandSlice).setZoom(zoom);
   }
 
   zoomIn(): void {
-    this.ctx.get(ZoomSlice).zoomIn();
+    this.ctx.get(ViewCommandSlice).zoomIn();
   }
 
   zoomOut(): void {
-    this.ctx.get(ZoomSlice).zoomOut();
+    this.ctx.get(ViewCommandSlice).zoomOut();
   }
 
   applyAction(action: UserAction): void {
@@ -278,31 +277,7 @@ export class EditorController {
   }
 
   navigateSnap(direction: "up" | "down"): void {
-    const currentPulse = this.cursor.$cursorPulse.get();
-    const engine = this.getTimingEngine();
-    const snap = this.$snap.get();
-    const size = this.getChartSize();
-
-    let targetPulse: number;
-    if (direction === "up") {
-      const points = engine.getSnapPoints(snap, { start: currentPulse, end: size });
-      const next = points.find((p) => p > currentPulse);
-      targetPulse = next !== undefined ? next : currentPulse;
-    } else {
-      const points = engine.getSnapPoints(snap, { start: 0, end: currentPulse });
-      const prev = points.length > 0 ? points[points.length - 1] : undefined;
-      targetPulse = prev !== undefined ? prev : currentPulse;
-    }
-
-    const scaleY = this.viewport.getScaleY();
-    const trackHeight = this.viewport.getTrackHeight();
-    const currentY = trackHeight - currentPulse * scaleY;
-    const targetY = trackHeight - targetPulse * scaleY;
-    const deltaY = targetY - currentY;
-
-    this.cursor.$cursorPulse.set(targetPulse);
-    const currentScroll = this.$scroll.get();
-    this.setScroll({ x: currentScroll.x, y: currentScroll.y + deltaY });
+    this.ctx.get(ViewCommandSlice).navigateSnap(direction);
   }
 
   onConnected(): void {
@@ -311,26 +286,6 @@ export class EditorController {
     if (contentHeight > viewportHeight) {
       this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: contentHeight - viewportHeight });
     }
-  }
-
-  /**
-   * Computes the new scroll top after a zoom change so that the playhead
-   * stays at the same viewport Y position.
-   *
-   * @param oldZoom The zoom level before the change.
-   * @returns The new scroll top to apply.
-   */
-  computeZoomScrollOffset(oldZoom: number, newZoom: number): number {
-    const size = this.getChartSize();
-    const oldScaleY = BASE_SCALE_Y * oldZoom;
-    const newScaleY = BASE_SCALE_Y * newZoom;
-    const cursorPulse = this.cursor.$cursorPulse.get();
-    const oldScrollTop = this.$scroll.get().y;
-    const oldTrackHeight = size * oldScaleY;
-    const newTrackHeight = size * newScaleY;
-    const oldPlayheadY = oldTrackHeight - cursorPulse * oldScaleY - 1;
-    const newPlayheadY = newTrackHeight - cursorPulse * newScaleY - 1;
-    return oldScrollTop + newPlayheadY - oldPlayheadY;
   }
 
   getEntityManager(): EntityManager {
