@@ -237,7 +237,7 @@ export class EditorController {
     const contentHeight = this.viewport.getContentHeight();
     const viewportHeight = this.viewport.$viewportSize.get().height;
     if (contentHeight > viewportHeight) {
-      this.outbox.emit("setScroll", {
+      this.viewport.requestScroll({
         x: this.viewport.$scroll.get().x,
         y: contentHeight - viewportHeight,
       });
