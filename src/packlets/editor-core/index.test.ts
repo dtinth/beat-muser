@@ -7,7 +7,19 @@
 
 import { describe, expect, test } from "vite-plus/test";
 import { EditorTester, makeProject, entity } from "./tester";
-import { CHART, NOTE, BPM_CHANGE, TIME_SIGNATURE, EVENT, CHART_REF, LEVEL_REF } from "./index";
+import {
+  CHART,
+  NOTE,
+  BPM_CHANGE,
+  TIME_SIGNATURE,
+  EVENT,
+  CHART_REF,
+  LEVEL_REF,
+  ChartSlice,
+  SelectionSlice,
+  ViewportSlice,
+  ColumnsSlice,
+} from "./index";
 import { Rect } from "../geometry";
 import type { Entity } from "../entity-manager";
 
@@ -20,7 +32,7 @@ const UUID_V7_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}
 describe("EditorController", () => {
   test("given an empty project, creates a default chart", () => {
     const editor = new EditorTester({ getProjectToLoad: () => makeProject() });
-    const chart = editor.instance.getSelectedChart()!;
+    const chart = editor.instance.ctx.get(ChartSlice).getSelectedChart()!;
 
     editor.chart.shouldHaveName("Main Chart");
     editor.chart.shouldHaveSize(15360);
@@ -529,7 +541,7 @@ describe("EditorController", () => {
       editor.pointerMove({ x: rectA.x + rectA.width / 2, y: bottom });
 
       // $selection should still be empty before pointerup.
-      expect(editor.instance.$selection.get().size).toBe(0);
+      expect(editor.instance.ctx.get(SelectionSlice).$selection.get().size).toBe(0);
 
       // But render specs should show preview as selected.
       const specs = editor.instance.$visibleRenderObjects.get();
@@ -635,7 +647,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmB!.id);
 
       editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)), { shiftKey: true });
-      expect(editor.instance.$selection.get().has(bpmA!.id)).toBe(false);
+      expect(editor.instance.ctx.get(SelectionSlice).$selection.get().has(bpmA!.id)).toBe(false);
       editor.selection.shouldContain(bpmB!.id);
     });
 
@@ -680,10 +692,10 @@ describe("EditorController", () => {
 
       editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)));
       editor.pointerDown(Rect.center(editor.eventRect(bpmB!.id)), { shiftKey: true });
-      expect(editor.instance.$selection.get().size).toBe(2);
+      expect(editor.instance.ctx.get(SelectionSlice).$selection.get().size).toBe(2);
 
       editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)));
-      expect(editor.instance.$selection.get().size).toBe(1);
+      expect(editor.instance.ctx.get(SelectionSlice).$selection.get().size).toBe(1);
       editor.selection.shouldContain(bpmA!.id);
     });
   });
@@ -828,8 +840,8 @@ describe("EditorController", () => {
       });
 
       const playheadViewportY = (pulse: number) => {
-        const trackHeight = editor.instance.getTrackHeight();
-        const scaleY = editor.instance.getScaleY();
+        const trackHeight = editor.instance.ctx.get(ViewportSlice).getTrackHeight();
+        const scaleY = editor.instance.ctx.get(ViewportSlice).getScaleY();
         return trackHeight - pulse * scaleY - editor.scrollTop;
       };
 
@@ -863,7 +875,10 @@ describe("EditorController", () => {
       expect(editor.instance.$activeTool.get()).toBe("pencil");
       editor.pointerMove({ y: 392 }); // pulse 240
       expect(editor.instance.$cursorPulse.get()).toBe(240);
-      const laneCol = editor.instance.getColumns().find((c) => c.laneIndex === 8);
+      const laneCol = editor.instance.ctx
+        .get(ColumnsSlice)
+        .$columns.get()
+        .find((c) => c.laneIndex === 8);
       expect(laneCol).toBeDefined();
       expect(laneCol!.placementHandler).toBeDefined();
       editor.pointerDown({ x: 180, y: 392 }); // lane 8 (SC)

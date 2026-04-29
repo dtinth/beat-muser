@@ -7,12 +7,11 @@
 
 import { createNanoEvents } from "nanoevents";
 import type { Emitter } from "nanoevents";
-import { EntityManager, type Entity } from "../entity-manager";
+import { EntityManager } from "../entity-manager";
 import type { TimingEngine } from "../timing-engine";
 import { Point } from "../geometry";
 import {
   type EditorControllerOptions,
-  type TimelineColumn,
   type LevelInfo,
   type EditorOutboxEvents,
   type UserAction,
@@ -59,28 +58,8 @@ export class EditorController {
     return this.ctx.get(LevelSlice).$hiddenLevelIds;
   }
 
-  get $scroll() {
-    return this.ctx.get(ViewportSlice).$scroll;
-  }
-
-  get $viewportSize() {
-    return this.ctx.get(ViewportSlice).$viewportSize;
-  }
-
   get $cursorPulse() {
     return this.ctx.get(CursorSlice).$cursorPulse;
-  }
-
-  get $cursorViewportPos() {
-    return this.ctx.get(CursorSlice).$cursorViewportPos;
-  }
-
-  get $selection() {
-    return this.ctx.get(SelectionSlice).$selection;
-  }
-
-  get $history() {
-    return this.ctx.get(HistorySlice).$history;
   }
 
   get $activeTool() {
@@ -178,12 +157,6 @@ export class EditorController {
     return this.ctx.get(LevelSlice).getLevelsForChart(chartId);
   }
 
-  getVisibleLevels(): LevelInfo[] {
-    const chartId = this.$selectedChartId.get();
-    if (!chartId) return [];
-    return this.ctx.get(LevelSlice).getVisibleLevels(chartId);
-  }
-
   addLevel(chartId: string, name: string, mode: string): string {
     return this.ctx.get(LevelSlice).addLevel(chartId, name, mode);
   }
@@ -194,14 +167,6 @@ export class EditorController {
 
   toggleLevelVisibility(levelId: string): void {
     this.ctx.get(LevelSlice).toggleLevelVisibility(levelId);
-  }
-
-  getScaleY(): number {
-    return this.viewport.getScaleY();
-  }
-
-  getTrackHeight(): number {
-    return this.viewport.getTrackHeight();
   }
 
   getContentHeight(): number {
@@ -218,10 +183,6 @@ export class EditorController {
 
   setSnap(snap: string): void {
     this.ctx.get(SnapSlice).setSnap(snap);
-  }
-
-  hitTest(point: Point): string | null {
-    return this.pointer.hitTest(point);
   }
 
   handlePointerDown(point: Point, shiftKey: boolean = false): void {
@@ -274,22 +235,17 @@ export class EditorController {
 
   onConnected(): void {
     const contentHeight = this.viewport.getContentHeight();
-    const viewportHeight = this.$viewportSize.get().height;
+    const viewportHeight = this.viewport.$viewportSize.get().height;
     if (contentHeight > viewportHeight) {
-      this.outbox.emit("setScroll", { x: this.$scroll.get().x, y: contentHeight - viewportHeight });
+      this.outbox.emit("setScroll", {
+        x: this.viewport.$scroll.get().x,
+        y: contentHeight - viewportHeight,
+      });
     }
   }
 
   getEntityManager(): EntityManager {
     return this.entityManager;
-  }
-
-  getSelectedChart(): Entity | undefined {
-    return this.ctx.get(ChartSlice).getSelectedChart();
-  }
-
-  getChartSize(): number {
-    return this.ctx.get(ChartSlice).getChartSize();
   }
 
   snapToGrid(pulse: number): number {
@@ -300,15 +256,7 @@ export class EditorController {
     return this.timing.getTimingEngine();
   }
 
-  getColumns(): TimelineColumn[] {
-    return this.columnsSlice.$columns.get();
-  }
-
   getTimelineWidth(): number {
     return this.columnsSlice.$timelineWidth.get();
-  }
-
-  refreshRender(): void {
-    this.render.refresh();
   }
 }

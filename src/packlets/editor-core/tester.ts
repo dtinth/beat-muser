@@ -7,7 +7,14 @@
  */
 
 import { expect } from "vite-plus/test";
-import { EditorController, CHART } from "./index";
+import {
+  EditorController,
+  CHART,
+  ViewportSlice,
+  SelectionSlice,
+  ChartSlice,
+  ColumnsSlice,
+} from "./index";
 import type { ProjectFile } from "../project-format";
 import { type Entity, EntityBuilder, entity } from "../entity-manager";
 import { createDemoProjectFile } from "../project-store";
@@ -190,15 +197,15 @@ export class EditorTester {
   }
 
   get scrollTop() {
-    return this.instance.$scroll.get().y;
+    return this.instance.ctx.get(ViewportSlice).$scroll.get().y;
   }
 
   selection = {
     shouldContain: (id: string) => {
-      expect(this.instance.$selection.get().has(id)).toBe(true);
+      expect(this.instance.ctx.get(SelectionSlice).$selection.get().has(id)).toBe(true);
     },
     shouldBeEmpty: () => {
-      expect(this.instance.$selection.get().size).toBe(0);
+      expect(this.instance.ctx.get(SelectionSlice).$selection.get().size).toBe(0);
     },
   };
 
@@ -215,20 +222,20 @@ export class EditorTester {
       const specs = this.instance.$visibleRenderObjects.get();
       const playhead = specs.find((s) => s.type === "playhead");
       expect(playhead).toBeDefined();
-      const playheadViewportY = playhead!.y - this.instance.$scroll.get().y;
+      const playheadViewportY = playhead!.y - this.instance.ctx.get(ViewportSlice).$scroll.get().y;
       expect(playheadViewportY).toBe(expectedY);
     },
   };
 
   chart = {
     shouldHaveName: (expected: string) => {
-      const chart = this.instance.getSelectedChart();
+      const chart = this.instance.ctx.get(ChartSlice).getSelectedChart();
       expect(chart).toBeDefined();
       const component = this.instance.getEntityManager().getComponent(chart!, CHART);
       expect(component?.name).toBe(expected);
     },
     shouldHaveSize: (expected: number) => {
-      expect(this.instance.getChartSize()).toBe(expected);
+      expect(this.instance.ctx.get(ChartSlice).getChartSize()).toBe(expected);
     },
   };
 
@@ -251,17 +258,17 @@ export class EditorTester {
     const instance = this.instance;
     return {
       get count() {
-        return instance.getColumns().length;
+        return instance.ctx.get(ColumnsSlice).$columns.get().length;
       },
       shouldHaveCount: (expected: number) => {
-        expect(instance.getColumns().length).toBe(expected);
+        expect(instance.ctx.get(ColumnsSlice).$columns.get().length).toBe(expected);
       },
       shouldHaveTotalWidth: (expected: number) => {
         expect(instance.getTimelineWidth()).toBe(expected);
       },
       at: (index: number) => ({
         shouldMatch: (expected: Partial<{ id: string; x: number; width: number }>) => {
-          const col = instance.getColumns()[index];
+          const col = instance.ctx.get(ColumnsSlice).$columns.get()[index];
           expect(col).toBeDefined();
           expect(col).toMatchObject(expected);
         },
