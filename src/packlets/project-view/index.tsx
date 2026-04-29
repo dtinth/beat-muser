@@ -516,8 +516,16 @@ export function ProjectViewPage() {
             <ToolbarDivider />
 
             <ToolbarGroup label="History">
-              <ToolbarButton icon={<Undo2 size={16} />} label="Undo" />
-              <ToolbarButton icon={<Redo2 size={16} />} label="Redo" />
+              <ToolbarButton
+                icon={<Undo2 size={16} />}
+                label="Undo"
+                onClick={() => controller.undo()}
+              />
+              <ToolbarButton
+                icon={<Redo2 size={16} />}
+                label="Redo"
+                onClick={() => controller.redo()}
+              />
               <ToolbarButton icon={<Save size={16} />} label="Save" />
             </ToolbarGroup>
 
