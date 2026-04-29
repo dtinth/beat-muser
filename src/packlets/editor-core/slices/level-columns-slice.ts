@@ -34,6 +34,7 @@ export class LevelColumnsSlice extends Slice {
     const defs: ColumnDefinition[] = [];
 
     for (const level of visibleLevels) {
+      defs.push({ id: `spacer-level-${level.id}`, title: "", width: 8 });
       const layout = getGameModeLayout(level.mode);
       if (!layout) continue;
       for (const lane of layout.lanes) {

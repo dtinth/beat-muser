@@ -26,6 +26,9 @@ export class SoundColumnsSlice extends Slice {
     const soundLaneCount = chartComponent?.soundLanes ?? 1;
 
     const defs: ColumnDefinition[] = [];
+    if (soundLaneCount > 0) {
+      defs.push({ id: "spacer-sound", title: "", width: 8 });
+    }
     for (let i = 0; i < soundLaneCount; i++) {
       defs.push({
         id: `sound-lane-${i}`,

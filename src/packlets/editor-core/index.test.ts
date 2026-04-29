@@ -96,7 +96,7 @@ describe("EditorController", () => {
     editor.columns.at(0).shouldMatch({ id: "measure", x: 0, width: 40 });
     editor.columns.at(1).shouldMatch({ id: "time-sig", x: 40, width: 48 });
     editor.columns.at(2).shouldMatch({ id: "bpm", x: 88, width: 56 });
-    editor.columns.at(3).shouldMatch({ id: "spacer", x: 144, width: 8 });
+    editor.columns.at(3).shouldMatch({ id: "spacer-sound", x: 144, width: 8 });
     editor.columns.at(4).shouldMatch({ id: "sound-lane-0", x: 152, width: 100 });
   });
 

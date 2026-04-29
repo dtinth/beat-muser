@@ -48,7 +48,6 @@ export class TimingColumnsSlice extends Slice {
             .build();
         },
       },
-      { id: "spacer", title: "", width: 8 },
     ];
   }
 }
