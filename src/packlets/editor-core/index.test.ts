@@ -86,8 +86,8 @@ describe("EditorController", () => {
   test("provides default columns", () => {
     const editor = new EditorTester({ getProjectToLoad: () => makeProject() });
 
-    editor.columns.shouldHaveCount(4);
-    editor.columns.shouldHaveTotalWidth(40 + 48 + 56 + 8 + 1);
+    editor.columns.shouldHaveCount(5);
+    editor.columns.shouldHaveTotalWidth(40 + 48 + 56 + 8 + 100 + 1);
   });
 
   test("columns have cumulative x positions", () => {
@@ -97,6 +97,7 @@ describe("EditorController", () => {
     editor.columns.at(1).shouldMatch({ id: "time-sig", x: 40, width: 48 });
     editor.columns.at(2).shouldMatch({ id: "bpm", x: 88, width: 56 });
     editor.columns.at(3).shouldMatch({ id: "spacer", x: 144, width: 8 });
+    editor.columns.at(4).shouldMatch({ id: "sound-lane-0", x: 152, width: 100 });
   });
 
   test("adding a level increases columns; removing it restores count", () => {

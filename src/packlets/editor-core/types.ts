@@ -18,6 +18,7 @@ export interface ColumnDefinition {
   backgroundColor?: string;
   levelId?: string;
   laneIndex?: number;
+  soundLane?: number;
   noteColor?: string;
   placementHandler?: (pulse: number) => Entity | null;
 }

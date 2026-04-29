@@ -32,6 +32,7 @@ import { TimingSlice } from "./slices/timing-slice";
 import { ColumnsSlice } from "./slices/columns-slice";
 import { TimingColumnsSlice } from "./slices/timing-columns-slice";
 import { LevelColumnsSlice } from "./slices/level-columns-slice";
+import { SoundColumnsSlice } from "./slices/sound-columns-slice";
 import { RenderSlice } from "./slices/render-slice";
 import { PointerInteractionSlice } from "./slices/pointer-interaction-slice";
 import { ViewCommandSlice } from "./slices/view-command-slice";
@@ -122,6 +123,7 @@ export class EditorController {
     this.ctx.register(ColumnsSlice);
     this.ctx.register(TimingColumnsSlice);
     this.ctx.register(LevelColumnsSlice);
+    this.ctx.register(SoundColumnsSlice);
     this.ctx.register(RenderSlice);
     this.ctx.register(PointerInteractionSlice);
     this.ctx.register(ViewCommandSlice);

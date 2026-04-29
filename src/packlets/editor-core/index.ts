@@ -24,6 +24,7 @@ export * from "./slices/timing-slice";
 export * from "./slices/columns-slice";
 export * from "./slices/timing-columns-slice";
 export * from "./slices/level-columns-slice";
+export * from "./slices/sound-columns-slice";
 export * from "./slices/render-slice";
 export * from "./slices/pointer-interaction-slice";
 export * from "./slices/view-command-slice";

@@ -10,7 +10,16 @@ import { BoxSelectionSlice } from "./box-selection-slice";
 import { CursorSlice } from "./cursor-slice";
 import { SnapSlice } from "./snap-slice";
 import { TimingSlice } from "./timing-slice";
-import { EVENT, NOTE, LEVEL_REF, BPM_CHANGE, TIME_SIGNATURE } from "../components";
+import {
+  EVENT,
+  NOTE,
+  LEVEL_REF,
+  BPM_CHANGE,
+  TIME_SIGNATURE,
+  CHART_REF,
+  SOUND_EVENT,
+  SOUND_CHANNEL,
+} from "../components";
 import type { TimelineRenderSpec } from "../types";
 
 export class RenderSlice extends Slice {
@@ -197,6 +206,45 @@ export class RenderSlice extends Slice {
           entityId: entity.id,
         });
       }
+    }
+
+    // --- Sound events ---
+    const selectedChartId = chartSlice.$selectedChartId.get();
+    for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
+      const event = entityManager.getComponent(entity, EVENT);
+      const soundEvent = entityManager.getComponent(entity, SOUND_EVENT);
+      const chartRef = entityManager.getComponent(entity, CHART_REF);
+      if (!event || !soundEvent || !chartRef || chartRef.chartId !== selectedChartId) continue;
+
+      const pulse = event.y;
+      if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+      const soundLaneCol = columns.find((c) => c.soundLane === soundEvent.soundLane);
+      if (!soundLaneCol) continue;
+
+      const colIndex = columns.indexOf(soundLaneCol);
+      const soundChannel = entityManager.get(soundEvent.soundChannelId);
+      const soundChannelName = soundChannel
+        ? (entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.name ?? "?")
+        : "?";
+
+      specs.push({
+        key: `sound-${entity.id}`,
+        type: "event-marker",
+        x: soundLaneCol.x,
+        y: trackHeight - pulse * scaleY - 14,
+        width: soundLaneCol.width,
+        height: 14,
+        data: {
+          text: `${soundChannelName} [${soundEvent.command}]`,
+          backgroundColor: "var(--blue-6)",
+          textColor: "#fff",
+          selected:
+            selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex),
+        },
+        testId: "sound-event-marker",
+        entityId: entity.id,
+      });
     }
 
     // --- Playhead ---

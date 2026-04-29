@@ -1,7 +1,7 @@
 import { Slice } from "../slice";
 import { SelectionSlice } from "./selection-slice";
 import { ColumnsSlice } from "./columns-slice";
-import { EVENT, BPM_CHANGE, TIME_SIGNATURE, NOTE, LEVEL_REF } from "../components";
+import { EVENT, BPM_CHANGE, TIME_SIGNATURE, NOTE, LEVEL_REF, SOUND_EVENT } from "../components";
 import type { Entity } from "../../entity-manager";
 
 export class BoxSelectionSlice extends Slice {
@@ -101,6 +101,17 @@ export class BoxSelectionSlice extends Slice {
         if (ts) {
           for (let i = 0; i < columns.length; i++) {
             if (columns[i]!.id === "time-sig") {
+              colIndex = i;
+              break;
+            }
+          }
+        }
+      }
+      if (colIndex === -1) {
+        const soundEvent = entity.components[SOUND_EVENT.key];
+        if (soundEvent) {
+          for (let i = 0; i < columns.length; i++) {
+            if (columns[i]!.soundLane === soundEvent.soundLane) {
               colIndex = i;
               break;
             }
