@@ -63,7 +63,7 @@ export class ViewCommandSlice extends Slice {
 
     cursor.$cursorPulse.set(targetPulse);
     const currentScroll = viewport.$scroll.get();
-    viewport.setScroll({ x: currentScroll.x, y: currentScroll.y + deltaY });
+    viewport.requestScroll({ x: currentScroll.x, y: currentScroll.y + deltaY });
   }
 
   computeZoomScrollOffset(oldZoom: number, newZoom: number): number {
