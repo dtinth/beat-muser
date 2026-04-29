@@ -113,8 +113,8 @@ export class BoxSelectionSlice extends Slice {
       }
     }
 
-    this.ctx.get(SelectionSlice).$selection.set(next);
     this.boxSelection = { active: false, startCol: 0, endCol: 0, startPulse: 0, endPulse: 0 };
+    this.ctx.get(SelectionSlice).$selection.set(next);
     return next;
   }
 }
