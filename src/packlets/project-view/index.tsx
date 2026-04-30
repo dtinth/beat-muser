@@ -38,7 +38,13 @@ import {
 } from "../toolbar";
 import { SidebarPanel } from "../sidebar-panel";
 import { ScrollableCanvas } from "../scrollable-canvas";
-import { EditorController, BPM_CHANGE, TIME_SIGNATURE, EditEntityUserAction } from "../editor-core";
+import {
+  EditorController,
+  BPM_CHANGE,
+  TIME_SIGNATURE,
+  CHART,
+  EditEntityUserAction,
+} from "../editor-core";
 import type { ProjectFile } from "../project-format";
 import { createTimelineBehaviorFactory } from "./timeline-behavior";
 import {
@@ -97,26 +103,6 @@ function EditableField({
     </Flex>
   );
 }
-
-const mockCharts = [
-  { name: "ANOTHER", level: "12" },
-  { name: "HYPER", level: "10" },
-  { name: "NORMAL", level: "7" },
-];
-
-const mockChartInfo = {
-  difficulty: "ANOTHER",
-  level: "12",
-  charter: "@vexcalibur",
-};
-
-const mockChartStats = {
-  totalNotes: "2,418",
-  longNotes: "142",
-  peakNPS: "18.4",
-  measures: "082",
-  bpmRange: "96 — 384",
-};
 
 function RightPanels({ controller }: { controller: EditorController }) {
   const [levels, setLevels] = useState(() =>
@@ -207,10 +193,12 @@ function LeftPanels({
   project,
   onProjectChange,
   modalManager,
+  controller,
 }: {
   project: ProjectFile;
   onProjectChange: (project: ProjectFile) => void;
   modalManager: ModalManager;
+  controller: EditorController;
 }) {
   const updateMetadata = (field: "title" | "artist" | "genre", value: string) => {
     onProjectChange({
@@ -218,6 +206,22 @@ function LeftPanels({
       metadata: { ...project.metadata, [field]: value },
     });
   };
+
+  const [charts, setCharts] = useState(() => controller.getCharts());
+  const [selectedChartId, setSelectedChartId] = useState(() => controller.$selectedChartId.get());
+
+  useEffect(() => {
+    const unsubCharts = controller.getEntityManager().$mutationVersion.subscribe(() => {
+      setCharts(controller.getCharts());
+    });
+    const unsubSelected = controller.$selectedChartId.subscribe((id) => {
+      setSelectedChartId(id);
+    });
+    return () => {
+      unsubCharts();
+      unsubSelected();
+    };
+  }, [controller]);
 
   return (
     <Flex direction="column">
@@ -260,27 +264,26 @@ function LeftPanels({
             content: (
               <>
                 <Flex direction="column" style={{ gap: 4 }}>
-                  {mockCharts.map((chart) => (
-                    <Flex
-                      key={chart.name}
-                      justify="between"
-                      align="center"
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                        backgroundColor:
-                          chart.name === mockChartInfo.difficulty
-                            ? "var(--accent-3)"
-                            : "transparent",
-                      }}
-                    >
-                      <Text size="2">{chart.name}</Text>
-                      <Text size="1" color="gray">
-                        Lv. {chart.level}
-                      </Text>
-                    </Flex>
-                  ))}
+                  {charts.map((chart) => {
+                    const chartComponent = controller.getEntityManager().getComponent(chart, CHART);
+                    const isSelected = chart.id === selectedChartId;
+                    return (
+                      <Flex
+                        key={chart.id}
+                        justify="between"
+                        align="center"
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                          backgroundColor: isSelected ? "var(--accent-3)" : "transparent",
+                        }}
+                        onClick={() => controller.setSelectedChartId(chart.id)}
+                      >
+                        <Text size="2">{chartComponent?.name ?? "Untitled"}</Text>
+                      </Flex>
+                    );
+                  })}
                 </Flex>
                 <Flex
                   justify="center"
@@ -309,9 +312,9 @@ function LeftPanels({
             label: "Chart Info",
             content: (
               <>
-                <Field label="Difficulty" value={mockChartInfo.difficulty} />
-                <Field label="Level" value={mockChartInfo.level} />
-                <Field label="Charter" value={mockChartInfo.charter} />
+                <Field label="Difficulty" value="" />
+                <Field label="Level" value="" />
+                <Field label="Charter" value="" />
               </>
             ),
           },
@@ -319,11 +322,11 @@ function LeftPanels({
             label: "Stats",
             content: (
               <>
-                <Field label="Total notes" value={mockChartStats.totalNotes} />
-                <Field label="Long notes" value={mockChartStats.longNotes} />
-                <Field label="Peak NPS" value={mockChartStats.peakNPS} />
-                <Field label="Measures" value={mockChartStats.measures} />
-                <Field label="BPM range" value={mockChartStats.bpmRange} />
+                <Field label="Total notes" value="" />
+                <Field label="Long notes" value="" />
+                <Field label="Peak NPS" value="" />
+                <Field label="Measures" value="" />
+                <Field label="BPM range" value="" />
               </>
             ),
           },
@@ -557,7 +560,12 @@ export function ProjectViewPage() {
     <>
       <ProjectLayout
         leftPanels={
-          <LeftPanels project={project} onProjectChange={setProject} modalManager={modalManager} />
+          <LeftPanels
+            project={project}
+            onProjectChange={setProject}
+            modalManager={modalManager}
+            controller={controller}
+          />
         }
         rightPanels={<RightPanels controller={controller} />}
         toolbar={

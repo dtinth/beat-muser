@@ -261,4 +261,12 @@ export class EditorController {
   getTimelineWidth(): number {
     return this.columnsSlice.$timelineWidth.get();
   }
+
+  setSelectedChartId(id: string | null): void {
+    this.ctx.get(ChartSlice).setSelectedChartId(id);
+  }
+
+  getCharts(): import("../entity-manager").Entity[] {
+    return this.ctx.get(ChartSlice).getCharts();
+  }
 }
