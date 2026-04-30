@@ -322,7 +322,28 @@ function LeftPanels({
             label: "Chart Info",
             content: (
               <>
-                <Field label="Name" value={chartComponent?.name ?? ""} />
+                <EditableField
+                  label="Name"
+                  value={chartComponent?.name ?? ""}
+                  modalManager={modalManager}
+                  onEdit={(v) => {
+                    if (!selectedChart || v.trim() === "") return;
+                    const oldComponents = structuredClone(selectedChart.components);
+                    const newComponents = {
+                      ...oldComponents,
+                      chart: { ...(oldComponents.chart as object), name: v.trim() },
+                    };
+                    controller.applyAction(
+                      new EditEntityUserAction(
+                        controller.ctx,
+                        selectedChart.id,
+                        oldComponents,
+                        newComponents,
+                      ),
+                    );
+                  }}
+                  validate={(v) => (v.trim() === "" ? "Name is required" : undefined)}
+                />
                 <EditableField
                   label="Sound Lanes"
                   value={String(soundLanes)}
