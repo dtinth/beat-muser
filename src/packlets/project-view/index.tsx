@@ -209,19 +209,29 @@ function LeftPanels({
 
   const [charts, setCharts] = useState(() => controller.getCharts());
   const [selectedChartId, setSelectedChartId] = useState(() => controller.$selectedChartId.get());
+  const [selectedChart, setSelectedChart] = useState(() =>
+    controller.getEntityManager().get(selectedChartId ?? ""),
+  );
 
   useEffect(() => {
     const unsubCharts = controller.getEntityManager().$mutationVersion.subscribe(() => {
       setCharts(controller.getCharts());
+      setSelectedChart(controller.getEntityManager().get(controller.$selectedChartId.get() ?? ""));
     });
     const unsubSelected = controller.$selectedChartId.subscribe((id) => {
       setSelectedChartId(id);
+      setSelectedChart(controller.getEntityManager().get(id ?? ""));
     });
     return () => {
       unsubCharts();
       unsubSelected();
     };
   }, [controller]);
+
+  const chartComponent = selectedChart
+    ? controller.getEntityManager().getComponent(selectedChart, CHART)
+    : undefined;
+  const soundLanes = chartComponent?.soundLanes ?? 1;
 
   return (
     <Flex direction="column">
@@ -312,9 +322,34 @@ function LeftPanels({
             label: "Chart Info",
             content: (
               <>
-                <Field label="Difficulty" value="" />
-                <Field label="Level" value="" />
-                <Field label="Charter" value="" />
+                <Field label="Name" value={chartComponent?.name ?? ""} />
+                <EditableField
+                  label="Sound Lanes"
+                  value={String(soundLanes)}
+                  modalManager={modalManager}
+                  onEdit={(v) => {
+                    const num = parseInt(v, 10);
+                    if (Number.isNaN(num) || num < 1 || !selectedChart) return;
+                    const oldComponents = structuredClone(selectedChart.components);
+                    const newComponents = {
+                      ...oldComponents,
+                      chart: { ...(oldComponents.chart as object), soundLanes: num },
+                    };
+                    controller.applyAction(
+                      new EditEntityUserAction(
+                        controller.ctx,
+                        selectedChart.id,
+                        oldComponents,
+                        newComponents,
+                      ),
+                    );
+                  }}
+                  validate={(v) => {
+                    const num = parseInt(v, 10);
+                    if (Number.isNaN(num) || num < 1) return "Must be a positive integer";
+                    return undefined;
+                  }}
+                />
               </>
             ),
           },
