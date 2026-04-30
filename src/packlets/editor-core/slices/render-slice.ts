@@ -38,6 +38,9 @@ export class RenderSlice extends Slice {
     ctx.get(CursorSlice).$cursorPulse.subscribe(() => {
       this.refresh();
     });
+    ctx.get(CursorSlice).$cursorViewportPos.subscribe(() => {
+      this.refresh();
+    });
   }
 
   refresh(): void {
