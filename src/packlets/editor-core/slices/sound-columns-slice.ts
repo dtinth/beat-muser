@@ -16,6 +16,10 @@ export class SoundColumnsSlice extends Slice {
     ctx.get(ChartSlice).$selectedChartId.subscribe(() => {
       ctx.get(ColumnsSlice).refreshColumns();
     });
+
+    ctx.get(ProjectSlice).entityManager.$mutationVersion.subscribe(() => {
+      ctx.get(ColumnsSlice).refreshColumns();
+    });
   }
 
   getColumns(): ColumnDefinition[] {
