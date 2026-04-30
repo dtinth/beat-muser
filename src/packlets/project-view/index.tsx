@@ -27,6 +27,7 @@ import {
 import { Flex, Text, Dialog, Button, TextField } from "@radix-ui/themes";
 import { useToast } from "../toast";
 import { ProjectLayout } from "../project-layout";
+import { ModalManager, ModalHost } from "../modal-manager";
 import {
   Toolbar,
   ToolbarGroup,
@@ -53,6 +54,45 @@ function Field({ label, value }: { label: string; value: string }) {
       <Text size="1" color="gray">
         {label}
       </Text>
+      <Text size="2">{value}</Text>
+    </Flex>
+  );
+}
+
+function EditableField({
+  label,
+  value,
+  onEdit,
+  modalManager,
+  validate,
+}: {
+  label: string;
+  value: string;
+  onEdit: (value: string) => void;
+  modalManager: ModalManager;
+  validate?: (value: string) => string | undefined;
+}) {
+  return (
+    <Flex
+      direction="column"
+      style={{ gap: 2, cursor: "pointer" }}
+      onClick={async () => {
+        const result = await modalManager.input({
+          title: `Edit ${label}`,
+          value,
+          validate,
+        });
+        if (result !== undefined) {
+          onEdit(result);
+        }
+      }}
+    >
+      <Flex justify="between" align="center">
+        <Text size="1" color="gray">
+          {label}
+        </Text>
+        <Pencil size={12} />
+      </Flex>
       <Text size="2">{value}</Text>
     </Flex>
   );
@@ -163,7 +203,22 @@ function RightPanels({ controller }: { controller: EditorController }) {
   );
 }
 
-function LeftPanels({ project }: { project: ProjectFile }) {
+function LeftPanels({
+  project,
+  onProjectChange,
+  modalManager,
+}: {
+  project: ProjectFile;
+  onProjectChange: (project: ProjectFile) => void;
+  modalManager: ModalManager;
+}) {
+  const updateMetadata = (field: "title" | "artist" | "genre", value: string) => {
+    onProjectChange({
+      ...project,
+      metadata: { ...project.metadata, [field]: value },
+    });
+  };
+
   return (
     <Flex direction="column">
       <SidebarPanel
@@ -172,9 +227,26 @@ function LeftPanels({ project }: { project: ProjectFile }) {
             label: "Project Information",
             content: (
               <>
-                <Field label="Title" value={project.metadata.title} />
-                <Field label="Artist" value={project.metadata.artist} />
-                <Field label="Genre" value={project.metadata.genre} />
+                <EditableField
+                  label="Title"
+                  value={project.metadata.title}
+                  modalManager={modalManager}
+                  onEdit={(v) => updateMetadata("title", v)}
+                  validate={(v) => (v.trim() === "" ? "Title is required" : undefined)}
+                />
+                <EditableField
+                  label="Artist"
+                  value={project.metadata.artist}
+                  modalManager={modalManager}
+                  onEdit={(v) => updateMetadata("artist", v)}
+                  validate={(v) => (v.trim() === "" ? "Artist is required" : undefined)}
+                />
+                <EditableField
+                  label="Genre"
+                  value={project.metadata.genre}
+                  modalManager={modalManager}
+                  onEdit={(v) => updateMetadata("genre", v)}
+                />
               </>
             ),
           },
@@ -263,12 +335,14 @@ function LeftPanels({ project }: { project: ProjectFile }) {
 
 export function ProjectViewPage() {
   const { slug: _slug } = useParams<{ slug: string }>();
-  const project = useLoaderData() as ProjectFile;
+  const loadedProject = useLoaderData() as ProjectFile;
+  const [project, setProject] = useState(loadedProject);
   const error = useRouteError() as Error | undefined;
   const { showError } = useToast();
 
-  const [controller] = useState(() => new EditorController({ project }));
+  const [controller] = useState(() => new EditorController({ project: loadedProject }));
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [modalManager] = useState(() => new ModalManager());
 
   useEffect(() => {
     const commands = new CommandSet();
@@ -482,7 +556,9 @@ export function ProjectViewPage() {
   return (
     <>
       <ProjectLayout
-        leftPanels={<LeftPanels project={project} />}
+        leftPanels={
+          <LeftPanels project={project} onProjectChange={setProject} modalManager={modalManager} />
+        }
         rightPanels={<RightPanels controller={controller} />}
         toolbar={
           <Toolbar>
@@ -628,6 +704,7 @@ export function ProjectViewPage() {
           </Flex>
         </Dialog.Content>
       </Dialog.Root>
+      <ModalHost manager={modalManager} />
     </>
   );
 }
