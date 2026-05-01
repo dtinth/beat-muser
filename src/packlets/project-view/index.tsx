@@ -484,6 +484,15 @@ export function ProjectViewPage() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (paletteOpen) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.closest("[contenteditable='true']"))
+      ) {
+        return;
+      }
       handler.onKeyDown(e);
     };
     window.addEventListener("keydown", onKeyDown);
