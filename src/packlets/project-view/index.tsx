@@ -43,6 +43,7 @@ import {
   BPM_CHANGE,
   TIME_SIGNATURE,
   CHART,
+  LEVEL,
   EditEntityUserAction,
 } from "../editor-core";
 import type { ProjectFile } from "../project-format";
@@ -104,19 +105,42 @@ function EditableField({
   );
 }
 
-function RightPanels({ controller }: { controller: EditorController }) {
+function RightPanels({
+  controller,
+  modalManager,
+}: {
+  controller: EditorController;
+  modalManager: ModalManager;
+}) {
   const [levels, setLevels] = useState(() =>
     controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""),
   );
+  const [selectedLevelId, setSelectedLevelId] = useState(() => controller.$selectedLevelId.get());
 
   useEffect(() => {
-    const unsub = controller.$hiddenLevelIds.subscribe(() => {
+    const unsubHidden = controller.$hiddenLevelIds.subscribe(() => {
       setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
     });
-    return unsub;
+    const unsubSelected = controller.$selectedLevelId.subscribe((id) => {
+      setSelectedLevelId(id);
+    });
+    const unsubMutations = controller.getEntityManager().$mutationVersion.subscribe(() => {
+      setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
+    });
+    return () => {
+      unsubHidden();
+      unsubSelected();
+      unsubMutations();
+    };
   }, [controller]);
 
   const chartId = controller.$selectedChartId.get();
+  const selectedLevelEntity = selectedLevelId
+    ? controller.getEntityManager().get(selectedLevelId)
+    : undefined;
+  const selectedLevelComponent = selectedLevelEntity
+    ? controller.getEntityManager().getComponent(selectedLevelEntity, LEVEL)
+    : undefined;
 
   return (
     <Flex direction="column">
@@ -127,39 +151,50 @@ function RightPanels({ controller }: { controller: EditorController }) {
             content: (
               <>
                 <Flex direction="column" style={{ gap: 4 }}>
-                  {levels.map((level) => (
-                    <Flex
-                      key={level.id}
-                      justify="between"
-                      align="center"
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: 4,
-                        backgroundColor: level.visible ? "var(--accent-3)" : "transparent",
-                      }}
-                    >
-                      <Flex align="center" style={{ gap: 8 }}>
-                        <Text size="2">{level.name}</Text>
-                        <Text size="1" color="gray">
-                          {level.mode}
-                        </Text>
+                  {levels.map((level) => {
+                    const isSelected = level.id === selectedLevelId;
+                    return (
+                      <Flex
+                        key={level.id}
+                        justify="between"
+                        align="center"
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                          backgroundColor: isSelected ? "var(--accent-3)" : "transparent",
+                        }}
+                        onClick={() => controller.setSelectedLevelId(level.id)}
+                      >
+                        <Flex align="center" style={{ gap: 8 }}>
+                          <Text size="2">{level.name}</Text>
+                          <Text size="1" color="gray">
+                            {level.mode}
+                          </Text>
+                        </Flex>
+                        <Flex align="center" style={{ gap: 4 }}>
+                          <div
+                            style={{ cursor: "pointer" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              controller.toggleLevelVisibility(level.id);
+                            }}
+                          >
+                            {level.visible ? <Eye size={14} /> : <EyeOff size={14} />}
+                          </div>
+                          <div
+                            style={{ cursor: "pointer" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              controller.removeLevel(level.id);
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </div>
+                        </Flex>
                       </Flex>
-                      <Flex align="center" style={{ gap: 4 }}>
-                        <div
-                          style={{ cursor: "pointer" }}
-                          onClick={() => controller.toggleLevelVisibility(level.id)}
-                        >
-                          {level.visible ? <Eye size={14} /> : <EyeOff size={14} />}
-                        </div>
-                        <div
-                          style={{ cursor: "pointer" }}
-                          onClick={() => controller.removeLevel(level.id)}
-                        >
-                          <Trash2 size={14} />
-                        </div>
-                      </Flex>
-                    </Flex>
-                  ))}
+                    );
+                  })}
                 </Flex>
                 {chartId && (
                   <Flex
@@ -181,6 +216,46 @@ function RightPanels({ controller }: { controller: EditorController }) {
                   </Flex>
                 )}
               </>
+            ),
+          },
+        ]}
+      />
+
+      <SidebarPanel
+        tabs={[
+          {
+            label: "Level Info",
+            content: selectedLevelEntity ? (
+              <>
+                <EditableField
+                  label="Name"
+                  value={selectedLevelComponent?.name ?? ""}
+                  modalManager={modalManager}
+                  onEdit={(v) => {
+                    if (!selectedLevelEntity || v.trim() === "") return;
+                    const oldComponents = structuredClone(selectedLevelEntity.components);
+                    const newComponents = {
+                      ...oldComponents,
+                      level: { ...(oldComponents.level as object), name: v.trim() },
+                    };
+                    controller.applyAction(
+                      new EditEntityUserAction(
+                        controller.ctx,
+                        selectedLevelEntity.id,
+                        oldComponents,
+                        newComponents,
+                      ),
+                    );
+                  }}
+                  validate={(v) => (v.trim() === "" ? "Name is required" : undefined)}
+                />
+                <Field label="Mode" value={selectedLevelComponent?.mode ?? ""} />
+                <Field label="Sort Order" value={String(selectedLevelComponent?.sortOrder ?? 0)} />
+              </>
+            ) : (
+              <Text size="2" color="gray">
+                No level selected
+              </Text>
             ),
           },
         ]}
@@ -632,7 +707,7 @@ export function ProjectViewPage() {
             controller={controller}
           />
         }
-        rightPanels={<RightPanels controller={controller} />}
+        rightPanels={<RightPanels controller={controller} modalManager={modalManager} />}
         toolbar={
           <Toolbar>
             <ToolbarGroup label="Mode">

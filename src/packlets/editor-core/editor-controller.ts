@@ -59,6 +59,10 @@ export class EditorController {
     return this.ctx.get(LevelSlice).$hiddenLevelIds;
   }
 
+  get $selectedLevelId() {
+    return this.ctx.get(LevelSlice).$selectedLevelId;
+  }
+
   get $cursorPulse() {
     return this.ctx.get(CursorSlice).$cursorPulse;
   }
@@ -169,6 +173,10 @@ export class EditorController {
 
   toggleLevelVisibility(levelId: string): void {
     this.ctx.get(LevelSlice).toggleLevelVisibility(levelId);
+  }
+
+  setSelectedLevelId(id: string | null): void {
+    this.ctx.get(LevelSlice).setSelectedLevelId(id);
   }
 
   getContentHeight(): number {
