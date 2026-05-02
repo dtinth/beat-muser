@@ -85,6 +85,11 @@ export interface RenderObject {
    * Changing `layer` on subsequent renders has no effect.
    */
   layer?: "scroll" | "sticky";
+  /**
+   * Z-index for stacking order within the same layer. Higher values
+   * appear above lower values. Defaults to 0.
+   */
+  zIndex?: number;
 }
 
 /**
@@ -176,6 +181,7 @@ export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvas
         style={{
           position: "relative",
           overflow: "hidden",
+          zIndex: 0,
         }}
       />
     </div>
@@ -343,6 +349,9 @@ function positionElement(el: HTMLElement, obj: RenderObject) {
   el.style.top = `${obj.y}px`;
   el.style.width = `${obj.width}px`;
   el.style.height = `${obj.height}px`;
+  if (obj.zIndex !== undefined) {
+    el.style.zIndex = String(obj.zIndex);
+  }
   if (obj.testId) {
     el.dataset.testid = obj.testId;
   }

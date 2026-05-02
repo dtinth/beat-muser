@@ -200,7 +200,6 @@ function createPlayheadRenderer(): () => RenderHandle<{}> {
     const el = document.createElement("div");
     el.style.backgroundColor = "var(--accent-9)";
     el.style.pointerEvents = "none";
-    el.style.zIndex = "2";
     return {
       dom: el,
       update() {},
@@ -250,6 +249,7 @@ function specToRenderObject(spec: TimelineRenderSpec): RenderObject {
     data: spec.data,
     testId: spec.testId,
     layer: spec.layer,
+    zIndex: spec.zIndex,
   };
 }
 

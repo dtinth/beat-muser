@@ -46,6 +46,7 @@ export interface TimelineRenderSpec {
   testId?: string;
   layer?: "scroll" | "sticky";
   entityId?: string;
+  zIndex?: number;
 }
 
 export interface EditorOutboxEvents {

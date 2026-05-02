@@ -84,6 +84,7 @@ export class RenderSlice extends Slice {
         height: contentHeight,
         data: { backgroundColor: col.backgroundColor, showBorder: i > 0 },
         testId: "timeline-column-bg",
+        zIndex: 0,
       });
     }
 
@@ -112,6 +113,7 @@ export class RenderSlice extends Slice {
       height: contentHeight,
       data: {},
       testId: "trailing-border",
+      zIndex: 0,
     });
 
     // --- Gameplay notes ---
@@ -146,6 +148,7 @@ export class RenderSlice extends Slice {
         },
         testId: "note",
         entityId: entity.id,
+        zIndex: 2,
       });
     }
 
@@ -179,6 +182,7 @@ export class RenderSlice extends Slice {
           },
           testId: "bpm-change-marker",
           entityId: entity.id,
+          zIndex: 2,
         });
       }
     }
@@ -207,6 +211,7 @@ export class RenderSlice extends Slice {
           },
           testId: "time-sig-marker",
           entityId: entity.id,
+          zIndex: 2,
         });
       }
     }
@@ -247,6 +252,7 @@ export class RenderSlice extends Slice {
         },
         testId: "sound-event-marker",
         entityId: entity.id,
+        zIndex: 2,
       });
     }
 
@@ -262,6 +268,7 @@ export class RenderSlice extends Slice {
         height: 1,
         data: {},
         testId: "playhead",
+        zIndex: 3,
       });
     }
 
@@ -294,6 +301,7 @@ export class RenderSlice extends Slice {
           label: measureIndex >= 0 ? String(measureIndex + 1) : undefined,
         },
         testId: "measure-line",
+        zIndex: 1,
       });
     }
 
@@ -313,6 +321,7 @@ export class RenderSlice extends Slice {
         height: 1,
         data: { color: "var(--gray-7)" },
         testId: "beat-line",
+        zIndex: 1,
       });
     }
 
@@ -332,6 +341,7 @@ export class RenderSlice extends Slice {
         height: 1,
         data: { color: "var(--gray-6)" },
         testId: "snap-line",
+        zIndex: 1,
       });
     }
 
@@ -355,6 +365,7 @@ export class RenderSlice extends Slice {
           height: (boxRect.maxPulse - boxRect.minPulse) * scaleY,
           data: {},
           testId: "selection-box",
+          zIndex: 4,
         });
       }
     }
