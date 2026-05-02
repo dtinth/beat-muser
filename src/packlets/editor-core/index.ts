@@ -27,6 +27,7 @@ export * from "./slices/level-columns-slice";
 export * from "./slices/sound-columns-slice";
 export * from "./slices/render-slice";
 export * from "./slices/pointer-interaction-slice";
+export * from "./slices/drag-slice";
 export * from "./slices/view-command-slice";
 export * from "./slices/editor-command-slice";
 export * from "./editor-controller";

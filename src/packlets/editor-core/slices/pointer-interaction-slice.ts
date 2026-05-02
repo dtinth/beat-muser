@@ -12,9 +12,14 @@ import { SnapSlice } from "./snap-slice";
 import { RenderSlice } from "./render-slice";
 import { HistorySlice } from "./history-slice";
 import { TimingSlice } from "./timing-slice";
+import { DragSlice } from "./drag-slice";
 import { EVENT } from "../components";
 import { Point, Rect } from "../../geometry";
-import { EraseUserAction, PlaceEntityUserAction } from "../user-actions";
+import {
+  EraseUserAction,
+  PlaceEntityUserAction,
+  BatchEditEntitiesUserAction,
+} from "../user-actions";
 
 export class PointerInteractionSlice extends Slice {
   static readonly sliceKey = "pointer-interaction";
@@ -141,17 +146,50 @@ export class PointerInteractionSlice extends Slice {
 
     const hit = this.hitTest(point);
     if (hit) {
+      const currentSelection = this.ctx.get(SelectionSlice).$selection.get();
+      const em = this.ctx.get(ProjectSlice).entityManager;
+
+      // Determine the selection that will be dragged
+      let dragSelection: Set<string>;
       if (shiftKey) {
-        const next = new Set(this.ctx.get(SelectionSlice).$selection.get());
-        if (next.has(hit)) {
-          next.delete(hit);
+        if (currentSelection.has(hit)) {
+          // Shift+click on a selected event preserves selection (preparing to drag)
+          dragSelection = currentSelection;
         } else {
+          // Shift+click on an unselected event adds it to selection
+          const next = new Set(currentSelection);
           next.add(hit);
+          this.ctx.get(SelectionSlice).$selection.set(next);
+          dragSelection = next;
         }
-        this.ctx.get(SelectionSlice).$selection.set(next);
       } else {
-        this.ctx.get(SelectionSlice).$selection.set(new Set([hit]));
+        if (currentSelection.has(hit)) {
+          // Clicked a selected event — preserve selection
+          dragSelection = currentSelection;
+        } else {
+          // Clicked an unselected event — select it
+          dragSelection = new Set([hit]);
+          this.ctx.get(SelectionSlice).$selection.set(dragSelection);
+        }
       }
+
+      // Enter drag-pending state for the drag selection
+      const originalPulses = new Map<string, number>();
+      for (const entityId of dragSelection) {
+        const entity = em.get(entityId);
+        if (entity) {
+          const event = entity.components[EVENT.key];
+          if (event) {
+            originalPulses.set(entityId, (event as { y: number }).y);
+          }
+        }
+      }
+      const hitEntity = em.get(hit);
+      const hitEvent = hitEntity?.components[EVENT.key] as { y: number } | undefined;
+      const startPulse = hitEvent?.y ?? this.snapToGrid(this.computePulseFromViewportY(point.y));
+      this.ctx
+        .get(DragSlice)
+        .startDrag(point.y, Array.from(dragSelection), originalPulses, startPulse);
     } else {
       const colIndex = this.getColumnIndexFromViewportX(point.x);
       const pulse = this.computePulseFromViewportY(point.y);
@@ -163,7 +201,12 @@ export class PointerInteractionSlice extends Slice {
   }
 
   handlePointerMove(viewportX: number, viewportY: number): void {
-    if (this.ctx.get(BoxSelectionSlice).isActive()) {
+    const dragSlice = this.ctx.get(DragSlice);
+    if (dragSlice.isActive()) {
+      const currentPulse = this.snapToGrid(this.computePulseFromViewportY(viewportY));
+      dragSlice.updateDrag(viewportY, currentPulse);
+      this.ctx.get(RenderSlice).refresh();
+    } else if (this.ctx.get(BoxSelectionSlice).isActive()) {
       this.ctx
         .get(BoxSelectionSlice)
         .update(
@@ -176,6 +219,34 @@ export class PointerInteractionSlice extends Slice {
   }
 
   handlePointerUp(): void {
+    const dragSlice = this.ctx.get(DragSlice);
+    const delta = dragSlice.getDeltaPulse();
+    const originalPulses = dragSlice.getOriginalPulses();
+    const wasDragging = dragSlice.isDragging();
+    dragSlice.endDrag();
+
+    if (wasDragging && delta !== 0) {
+      const em = this.ctx.get(ProjectSlice).entityManager;
+      const edits: {
+        entityId: string;
+        oldComponents: Record<string, unknown>;
+        newComponents: Record<string, unknown>;
+      }[] = [];
+
+      for (const [entityId, originalPulse] of originalPulses) {
+        const entity = em.get(entityId);
+        if (!entity) continue;
+        const newComponents = structuredClone(entity.components);
+        const event = newComponents[EVENT.key] as { y: number };
+        event.y = originalPulse + delta;
+        edits.push({ entityId, oldComponents: structuredClone(entity.components), newComponents });
+      }
+
+      if (edits.length > 0) {
+        this.ctx.get(HistorySlice).applyAction(new BatchEditEntitiesUserAction(this.ctx, edits));
+      }
+    }
+
     if (!this.ctx.get(BoxSelectionSlice).isActive()) return;
     this.ctx
       .get(BoxSelectionSlice)

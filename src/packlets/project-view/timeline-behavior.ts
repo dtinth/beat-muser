@@ -250,6 +250,7 @@ function specToRenderObject(spec: TimelineRenderSpec): RenderObject {
     testId: spec.testId,
     layer: spec.layer,
     zIndex: spec.zIndex,
+    opacity: spec.opacity,
   };
 }
 

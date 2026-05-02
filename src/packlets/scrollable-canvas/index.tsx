@@ -90,6 +90,11 @@ export interface RenderObject {
    * appear above lower values. Defaults to 0.
    */
   zIndex?: number;
+  /**
+   * Opacity for the element. 0 = fully transparent, 1 = fully opaque.
+   * Applied as CSS `opacity`.
+   */
+  opacity?: number;
 }
 
 /**
@@ -351,6 +356,13 @@ function positionElement(el: HTMLElement, obj: RenderObject) {
   el.style.height = `${obj.height}px`;
   if (obj.zIndex !== undefined) {
     el.style.zIndex = String(obj.zIndex);
+  } else {
+    el.style.removeProperty("z-index");
+  }
+  if (obj.opacity !== undefined) {
+    el.style.opacity = String(obj.opacity);
+  } else {
+    el.style.removeProperty("opacity");
   }
   if (obj.testId) {
     el.dataset.testid = obj.testId;

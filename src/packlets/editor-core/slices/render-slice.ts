@@ -21,6 +21,7 @@ import {
   SOUND_CHANNEL,
 } from "../components";
 import type { TimelineRenderSpec } from "../types";
+import { DragSlice } from "./drag-slice";
 
 export class RenderSlice extends Slice {
   static readonly sliceKey = "render";
@@ -71,6 +72,12 @@ export class RenderSlice extends Slice {
     const columns = columnsSlice.$columns.get();
 
     const specs: TimelineRenderSpec[] = [];
+    const dragSlice = this.ctx.get(DragSlice);
+    const isDragging = dragSlice.isDragging();
+    const deltaPulse = dragSlice.getDeltaPulse();
+    const draggedEntityIds = isDragging
+      ? new Set(dragSlice.getOriginalPulses().keys())
+      : new Set<string>();
 
     // --- Column backgrounds (scroll layer) ---
     for (let i = 0; i < columns.length; i++) {
@@ -132,6 +139,10 @@ export class RenderSlice extends Slice {
       if (!laneCol) continue;
 
       const colIndex = columns.indexOf(laneCol);
+      const isSelected =
+        selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex);
+      const isDragged = draggedEntityIds.has(entity.id);
+
       specs.push({
         key: `note-${entity.id}`,
         type: "event-marker",
@@ -143,13 +154,36 @@ export class RenderSlice extends Slice {
           text: "",
           backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
           textColor: "#fff",
-          selected:
-            selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex),
+          selected: isSelected,
         },
         testId: "note",
         entityId: entity.id,
         zIndex: 2,
+        opacity: isDragging && isDragged ? 0.3 : undefined,
       });
+
+      if (isDragging && isDragged) {
+        const ghostPulse = pulse + deltaPulse;
+        if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+          specs.push({
+            key: `note-ghost-${entity.id}`,
+            type: "event-marker",
+            x: laneCol.x,
+            y: trackHeight - ghostPulse * scaleY - 14,
+            width: laneCol.width,
+            height: 14,
+            data: {
+              text: "",
+              backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
+              textColor: "#fff",
+              selected: true,
+            },
+            testId: "note-ghost",
+            zIndex: 3,
+            opacity: 0.5,
+          });
+        }
+      }
     }
 
     // --- Timing event markers ---
@@ -166,6 +200,10 @@ export class RenderSlice extends Slice {
         const pulse = event.y;
         if (pulse < pulseStart || pulse >= pulseEnd) continue;
 
+        const isSelected =
+          selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, bpmColIndex);
+        const isDragged = draggedEntityIds.has(entity.id);
+
         specs.push({
           key: `bpm-${entity.id}`,
           type: "event-marker",
@@ -177,13 +215,36 @@ export class RenderSlice extends Slice {
             text: String(bpm.bpm),
             backgroundColor: "var(--yellow-6)",
             textColor: "#fff",
-            selected:
-              selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, bpmColIndex),
+            selected: isSelected,
           },
           testId: "bpm-change-marker",
           entityId: entity.id,
           zIndex: 2,
+          opacity: isDragging && isDragged ? 0.3 : undefined,
         });
+
+        if (isDragging && isDragged) {
+          const ghostPulse = pulse + deltaPulse;
+          if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+            specs.push({
+              key: `bpm-ghost-${entity.id}`,
+              type: "event-marker",
+              x: bpmColumn.x,
+              y: trackHeight - ghostPulse * scaleY - 14,
+              width: bpmColumn.width,
+              height: 14,
+              data: {
+                text: String(bpm.bpm),
+                backgroundColor: "var(--yellow-6)",
+                textColor: "#fff",
+                selected: true,
+              },
+              testId: "bpm-change-ghost",
+              zIndex: 3,
+              opacity: 0.5,
+            });
+          }
+        }
       }
     }
 
@@ -194,6 +255,10 @@ export class RenderSlice extends Slice {
         if (!event || !ts) continue;
         const pulse = event.y;
         if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+        const isSelected =
+          selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, tsColIndex);
+        const isDragged = draggedEntityIds.has(entity.id);
 
         specs.push({
           key: `ts-${entity.id}`,
@@ -206,13 +271,36 @@ export class RenderSlice extends Slice {
             text: `${ts.numerator}/${ts.denominator}`,
             backgroundColor: "var(--tomato-6)",
             textColor: "#fff",
-            selected:
-              selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, tsColIndex),
+            selected: isSelected,
           },
           testId: "time-sig-marker",
           entityId: entity.id,
           zIndex: 2,
+          opacity: isDragging && isDragged ? 0.3 : undefined,
         });
+
+        if (isDragging && isDragged) {
+          const ghostPulse = pulse + deltaPulse;
+          if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+            specs.push({
+              key: `ts-ghost-${entity.id}`,
+              type: "event-marker",
+              x: tsColumn.x,
+              y: trackHeight - ghostPulse * scaleY - 14,
+              width: tsColumn.width,
+              height: 14,
+              data: {
+                text: `${ts.numerator}/${ts.denominator}`,
+                backgroundColor: "var(--tomato-6)",
+                textColor: "#fff",
+                selected: true,
+              },
+              testId: "time-sig-ghost",
+              zIndex: 3,
+              opacity: 0.5,
+            });
+          }
+        }
       }
     }
 
@@ -236,6 +324,10 @@ export class RenderSlice extends Slice {
         ? (entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.name ?? "?")
         : "?";
 
+      const isSelected =
+        selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex);
+      const isDragged = draggedEntityIds.has(entity.id);
+
       specs.push({
         key: `sound-${entity.id}`,
         type: "event-marker",
@@ -247,13 +339,36 @@ export class RenderSlice extends Slice {
           text: `${soundChannelName} [${soundEvent.command}]`,
           backgroundColor: "var(--blue-6)",
           textColor: "#fff",
-          selected:
-            selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex),
+          selected: isSelected,
         },
         testId: "sound-event-marker",
         entityId: entity.id,
         zIndex: 2,
+        opacity: isDragging && isDragged ? 0.3 : undefined,
       });
+
+      if (isDragging && isDragged) {
+        const ghostPulse = pulse + deltaPulse;
+        if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+          specs.push({
+            key: `sound-ghost-${entity.id}`,
+            type: "event-marker",
+            x: soundLaneCol.x,
+            y: trackHeight - ghostPulse * scaleY - 14,
+            width: soundLaneCol.width,
+            height: 14,
+            data: {
+              text: `${soundChannelName} [${soundEvent.command}]`,
+              backgroundColor: "var(--blue-6)",
+              textColor: "#fff",
+              selected: true,
+            },
+            testId: "sound-event-ghost",
+            zIndex: 3,
+            opacity: 0.5,
+          });
+        }
+      }
     }
 
     // --- Playhead ---

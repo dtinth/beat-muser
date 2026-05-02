@@ -19,6 +19,7 @@ import {
   SelectionSlice,
   ViewportSlice,
   ColumnsSlice,
+  HistorySlice,
 } from "./index";
 import { Rect } from "../geometry";
 import type { Entity } from "../entity-manager";
@@ -625,7 +626,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmB!.id);
     });
 
-    test("shift+click on selected event removes it from selection", () => {
+    test("shift+click on selected event preserves selection (enters drag-pending)", () => {
       let bpmA: Entity;
       let bpmB: Entity;
       const editor = new EditorTester({
@@ -648,7 +649,8 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmB!.id);
 
       editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)), { shiftKey: true });
-      expect(editor.instance.ctx.get(SelectionSlice).$selection.get().has(bpmA!.id)).toBe(false);
+      // Clicking a selected event preserves the selection (preparing to drag)
+      editor.selection.shouldContain(bpmA!.id);
       editor.selection.shouldContain(bpmB!.id);
     });
 
@@ -674,7 +676,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(bpmEntity!.id);
     });
 
-    test("regular click clears multi-selection", () => {
+    test("regular click on selected event preserves multi-selection", () => {
       let bpmA: Entity;
       let bpmB: Entity;
       const editor = new EditorTester({
@@ -695,9 +697,11 @@ describe("EditorController", () => {
       editor.pointerDown(Rect.center(editor.eventRect(bpmB!.id)), { shiftKey: true });
       expect(editor.instance.ctx.get(SelectionSlice).$selection.get().size).toBe(2);
 
+      // Clicking on a selected event preserves the multi-selection
       editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)));
-      expect(editor.instance.ctx.get(SelectionSlice).$selection.get().size).toBe(1);
+      expect(editor.instance.ctx.get(SelectionSlice).$selection.get().size).toBe(2);
       editor.selection.shouldContain(bpmA!.id);
+      editor.selection.shouldContain(bpmB!.id);
     });
   });
 
@@ -1091,6 +1095,190 @@ describe("EditorController", () => {
       editor.pointerDown({ x: 180, y: 392 });
 
       editor.selection.shouldBeEmpty();
+    });
+  });
+
+  describe("dragging events", () => {
+    test("dragging a selected note moves it vertically", () => {
+      let noteEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+      editor.selection.shouldContain(noteEntity!.id);
+
+      const center = Rect.center(editor.eventRect(noteEntity!.id));
+      // Drag down by 50px (timeline: down = toward earlier pulses)
+      editor.pointerMove({ x: center.x, y: center.y + 50 });
+      editor.pointerUp();
+
+      const em = editor.instance.getEntityManager();
+      const updated = em.get(noteEntity!.id);
+      // Delta = snapped cursor pulse - hit event pulse = 300 - 500 = -200
+      expect((updated!.components[EVENT.key] as { y: number }).y).toBe(300);
+    });
+
+    test("dragging multiple selected notes moves them all", () => {
+      let noteA: Entity;
+      let noteB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteA = c.note(500, 1, level.id);
+                noteB = c.note(600, 2, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteA!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(noteB!.id)), { shiftKey: true });
+      editor.selection.shouldContain(noteA!.id);
+      editor.selection.shouldContain(noteB!.id);
+
+      const center = Rect.center(editor.eventRect(noteA!.id));
+      editor.pointerMove({ x: center.x, y: center.y + 50 });
+      editor.pointerUp();
+
+      const em = editor.instance.getEntityManager();
+      const updatedA = em.get(noteA!.id);
+      const updatedB = em.get(noteB!.id);
+      // Drag anchored to last hit event (noteB at pulse 600)
+      // Delta = 300 - 600 = -300
+      expect((updatedA!.components[EVENT.key] as { y: number }).y).toBe(200);
+      expect((updatedB!.components[EVENT.key] as { y: number }).y).toBe(300);
+    });
+
+    test("drag with zero delta does not create an undo action", () => {
+      let noteEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+      editor.pointerUp();
+
+      const history = editor.instance.ctx.get(HistorySlice).$history.get();
+      expect(history.undo.length).toBe(0);
+    });
+
+    test("dragging is clamped to prevent negative pulse", () => {
+      let noteEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(60, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+      const center = Rect.center(editor.eventRect(noteEntity!.id));
+      // Try to drag down by a lot (would go negative)
+      editor.pointerMove({ x: center.x, y: center.y + 200 });
+      editor.pointerUp();
+
+      const em = editor.instance.getEntityManager();
+      const updated = em.get(noteEntity!.id);
+      expect((updated!.components[EVENT.key] as { y: number }).y).toBe(0);
+    });
+
+    test("undo restores dragged notes to original position", () => {
+      let noteEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+      const center = Rect.center(editor.eventRect(noteEntity!.id));
+      editor.pointerMove({ x: center.x, y: center.y + 50 });
+      editor.pointerUp();
+
+      const em = editor.instance.getEntityManager();
+      expect((em.get(noteEntity!.id)!.components[EVENT.key] as { y: number }).y).toBe(300);
+
+      editor.undo();
+      expect((em.get(noteEntity!.id)!.components[EVENT.key] as { y: number }).y).toBe(500);
+    });
+
+    test("ghost preview renders during drag", () => {
+      let noteEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+      const center = Rect.center(editor.eventRect(noteEntity!.id));
+      editor.pointerMove({ x: center.x, y: center.y + 50 });
+
+      const specs = editor.instance.$visibleRenderObjects.get();
+      const original = specs.find((s) => s.key === `note-${noteEntity!.id}`);
+      const ghost = specs.find((s) => s.key === `note-ghost-${noteEntity!.id}`);
+
+      expect(original).toBeDefined();
+      expect(original!.opacity).toBe(0.3);
+      expect(ghost).toBeDefined();
+      expect(ghost!.opacity).toBe(0.5);
+
+      editor.pointerUp();
     });
   });
 });

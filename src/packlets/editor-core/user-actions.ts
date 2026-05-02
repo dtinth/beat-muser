@@ -155,3 +155,51 @@ export class EditEntityUserAction implements UserAction {
     });
   }
 }
+
+export class BatchEditEntitiesUserAction implements UserAction {
+  title = "Move events";
+  private ctx: EditorContext;
+  private edits: {
+    entityId: string;
+    oldComponents: Record<string, unknown>;
+    newComponents: Record<string, unknown>;
+  }[];
+
+  constructor(
+    ctx: EditorContext,
+    edits: {
+      entityId: string;
+      oldComponents: Record<string, unknown>;
+      newComponents: Record<string, unknown>;
+    }[],
+  ) {
+    this.ctx = ctx;
+    this.edits = edits;
+  }
+
+  do(): void {
+    const em = this.ctx.get(ProjectSlice).entityManager;
+    for (const { entityId, newComponents } of this.edits) {
+      const entity = em.get(entityId);
+      if (!entity) continue;
+      em.insert({
+        ...entity,
+        components: structuredClone(newComponents),
+        version: uuidv7(),
+      });
+    }
+  }
+
+  undo(): void {
+    const em = this.ctx.get(ProjectSlice).entityManager;
+    for (const { entityId, oldComponents } of this.edits) {
+      const entity = em.get(entityId);
+      if (!entity) continue;
+      em.insert({
+        ...entity,
+        components: structuredClone(oldComponents),
+        version: uuidv7(),
+      });
+    }
+  }
+}
