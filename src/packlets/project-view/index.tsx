@@ -366,6 +366,15 @@ function LeftPanels({
                         onClick={() => controller.setSelectedChartId(chart.id)}
                       >
                         <Text size="2">{chartComponent?.name ?? "Untitled"}</Text>
+                        <div
+                          style={{ cursor: "pointer" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            controller.removeChart(chart.id);
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </div>
                       </Flex>
                     );
                   })}
@@ -379,6 +388,7 @@ function LeftPanels({
                     cursor: "pointer",
                     border: "1px dashed var(--gray-6)",
                   }}
+                  onClick={() => controller.addChart()}
                 >
                   <Plus size={14} style={{ marginRight: 4 }} />
                   <Text size="1" color="gray">

@@ -4,6 +4,7 @@ import type { EditorContext } from "../editor-context";
 import { ProjectSlice } from "./project-slice";
 import { CHART } from "../components";
 import { DEFAULT_CHART_SIZE } from "../types";
+import { EntityBuilder } from "../../entity-manager";
 import type { Entity } from "../../entity-manager";
 
 export class ChartSlice extends Slice {
@@ -39,5 +40,27 @@ export class ChartSlice extends Slice {
 
   setSelectedChartId(id: string | null): void {
     this.$selectedChartId.set(id);
+  }
+
+  addChart(
+    name: string = "New Chart",
+    size: number = DEFAULT_CHART_SIZE,
+    soundLanes: number = 1,
+  ): string {
+    const em = this.ctx.get(ProjectSlice).entityManager;
+    const chart = new EntityBuilder().with(CHART, { name, size, soundLanes }).build();
+    em.insert(chart);
+    this.$selectedChartId.set(chart.id);
+    return chart.id;
+  }
+
+  removeChart(chartId: string): void {
+    const em = this.ctx.get(ProjectSlice).entityManager;
+    em.remove(chartId);
+
+    if (this.$selectedChartId.get() === chartId) {
+      const remaining = this.getCharts();
+      this.$selectedChartId.set(remaining.length > 0 ? remaining[0]!.id : null);
+    }
   }
 }

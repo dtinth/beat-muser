@@ -179,6 +179,14 @@ export class EditorController {
     this.ctx.get(LevelSlice).setSelectedLevelId(id);
   }
 
+  addChart(name?: string, size?: number, soundLanes?: number): string {
+    return this.ctx.get(ChartSlice).addChart(name, size, soundLanes);
+  }
+
+  removeChart(chartId: string): void {
+    this.ctx.get(ChartSlice).removeChart(chartId);
+  }
+
   getContentHeight(): number {
     return this.viewport.getContentHeight();
   }
