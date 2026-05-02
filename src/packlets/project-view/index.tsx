@@ -214,11 +214,17 @@ function RightPanels({
                         })),
                       });
                       if (selected) {
-                        controller.addLevel(
-                          chartId,
-                          `${selected.value} #${levels.length + 1}`,
-                          selected.value,
-                        );
+                        const modeName = selected.value;
+                        const existingNames = new Set(levels.map((l) => l.name));
+                        let name = modeName;
+                        if (existingNames.has(name)) {
+                          let n = 2;
+                          while (existingNames.has(`${name} #${n}`)) {
+                            n++;
+                          }
+                          name = `${name} #${n}`;
+                        }
+                        controller.addLevel(chartId, name, modeName);
                       }
                     }}
                   >
