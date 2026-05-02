@@ -1079,8 +1079,9 @@ describe("EditorController", () => {
       editor.undo();
 
       const restored = editor.instance.getEntityManager().get(noteEntity!.id);
-      expect(restored?.components.note).toBeDefined();
-      expect((restored?.components.note as { lane: number }).lane).toBe(1);
+      expect(restored).toBeDefined();
+      expect(restored!.components.note).toBeDefined();
+      expect((restored!.components.note as { lane: number }).lane).toBe(1);
     });
 
     test("clicking empty space in erase mode does nothing", () => {

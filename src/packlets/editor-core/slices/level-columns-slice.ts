@@ -3,8 +3,8 @@ import type { EditorContext } from "../editor-context";
 import { ColumnsSlice } from "./columns-slice";
 import { ChartSlice } from "./chart-slice";
 import { LevelSlice } from "./level-slice";
+import { GameModeRegistrySlice } from "./game-mode-registry-slice";
 import { EVENT, NOTE, LEVEL_REF, CHART_REF } from "../components";
-import { getGameModeLayout } from "../lane-layouts";
 import { EntityBuilder } from "../../entity-manager";
 import type { ColumnDefinition } from "../types";
 
@@ -24,18 +24,23 @@ export class LevelColumnsSlice extends Slice {
     ctx.get(LevelSlice).onLevelsChanged(() => {
       columns.refreshColumns();
     });
+
+    ctx.get(GameModeRegistrySlice).$modes.subscribe(() => {
+      columns.refreshColumns();
+    });
   }
 
   getColumns(): ColumnDefinition[] {
     const chartId = this.ctx.get(ChartSlice).$selectedChartId.get();
     if (!chartId) return [];
 
+    const registry = this.ctx.get(GameModeRegistrySlice);
     const visibleLevels = this.ctx.get(LevelSlice).getVisibleLevels(chartId);
     const defs: ColumnDefinition[] = [];
 
     for (const level of visibleLevels) {
       defs.push({ id: `spacer-level-${level.id}`, title: "", width: 8 });
-      const layout = getGameModeLayout(level.mode);
+      const layout = registry.getGameModeLayout(level.mode);
       if (!layout) continue;
       for (const lane of layout.lanes) {
         defs.push({

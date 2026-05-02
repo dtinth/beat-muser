@@ -33,11 +33,13 @@ import { ColumnsSlice } from "./slices/columns-slice";
 import { TimingColumnsSlice } from "./slices/timing-columns-slice";
 import { LevelColumnsSlice } from "./slices/level-columns-slice";
 import { SoundColumnsSlice } from "./slices/sound-columns-slice";
+import { GameModeRegistrySlice } from "./slices/game-mode-registry-slice";
 import { RenderSlice } from "./slices/render-slice";
 import { PointerInteractionSlice } from "./slices/pointer-interaction-slice";
 import { DragSlice } from "./slices/drag-slice";
 import { ViewCommandSlice } from "./slices/view-command-slice";
 import { EditorCommandSlice } from "./slices/editor-command-slice";
+import { BEAT_5K_LAYOUT, BEAT_7K_LAYOUT } from "./lane-layouts";
 
 export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
@@ -126,6 +128,9 @@ export class EditorController {
     this.ctx.register(ToolSlice);
     this.ctx.register(TimingSlice);
     this.ctx.register(ColumnsSlice);
+    this.ctx.register(GameModeRegistrySlice);
+    this.ctx.get(GameModeRegistrySlice).registerGameMode(BEAT_5K_LAYOUT);
+    this.ctx.get(GameModeRegistrySlice).registerGameMode(BEAT_7K_LAYOUT);
     this.ctx.register(TimingColumnsSlice);
     this.ctx.register(LevelColumnsSlice);
     this.ctx.register(SoundColumnsSlice);

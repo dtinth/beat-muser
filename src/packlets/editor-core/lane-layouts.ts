@@ -5,6 +5,9 @@
  *
  * A lane is a gameplay column inside a level. Each game mode defines its own
  * lane layout: how many lanes, their widths, names, and background colors.
+ *
+ * These are raw layout definitions. The {@link GameModeRegistrySlice} is the
+ * source of truth for which modes are available at runtime.
  */
 
 export interface LaneDefinition {
@@ -25,7 +28,54 @@ export interface GameModeLayout {
   mode: string;
   /** Ordered lane definitions from left to right. */
   lanes: LaneDefinition[];
+  /** Whether this mode supports linking sound channels to notes (keysounding). */
+  keysounds?: boolean;
 }
+
+const BEAT_5K_LANES: LaneDefinition[] = [
+  {
+    laneIndex: 8,
+    name: "SC",
+    width: 56,
+    backgroundColor: "var(--red-2)",
+    noteColor: "var(--red-7)",
+  },
+  {
+    laneIndex: 1,
+    name: "1",
+    width: 36,
+    backgroundColor: "var(--gray-2)",
+    noteColor: "var(--gray-7)",
+  },
+  {
+    laneIndex: 2,
+    name: "2",
+    width: 36,
+    backgroundColor: "var(--indigo-2)",
+    noteColor: "var(--indigo-7)",
+  },
+  {
+    laneIndex: 3,
+    name: "3",
+    width: 36,
+    backgroundColor: "var(--gray-2)",
+    noteColor: "var(--gray-7)",
+  },
+  {
+    laneIndex: 4,
+    name: "4",
+    width: 36,
+    backgroundColor: "var(--indigo-2)",
+    noteColor: "var(--indigo-7)",
+  },
+  {
+    laneIndex: 5,
+    name: "5",
+    width: 36,
+    backgroundColor: "var(--gray-2)",
+    noteColor: "var(--gray-7)",
+  },
+];
 
 const BEAT_7K_LANES: LaneDefinition[] = [
   {
@@ -86,28 +136,24 @@ const BEAT_7K_LANES: LaneDefinition[] = [
   },
 ];
 
-const GAME_MODE_LAYOUTS: Record<string, GameModeLayout> = {
-  "beat-7k": { mode: "beat-7k", lanes: BEAT_7K_LANES },
+export const BEAT_5K_LAYOUT: GameModeLayout = {
+  mode: "beat-5k",
+  lanes: BEAT_5K_LANES,
+  keysounds: true,
+};
+
+export const BEAT_7K_LAYOUT: GameModeLayout = {
+  mode: "beat-7k",
+  lanes: BEAT_7K_LANES,
+  keysounds: true,
 };
 
 /**
- * Look up the lane layout for a given game mode.
+ * Get the total width of all lanes in a layout.
  *
- * @param mode Game mode identifier, e.g. "beat-7k".
- * @returns The layout definition, or undefined if the mode is not known.
+ * @param layout A game mode layout.
+ * @returns Total lane width in pixels.
  */
-export function getGameModeLayout(mode: string): GameModeLayout | undefined {
-  return GAME_MODE_LAYOUTS[mode];
-}
-
-/**
- * Get the total width of all lanes in a mode.
- *
- * @param mode Game mode identifier, e.g. "beat-7k".
- * @returns Total lane width in pixels, or 0 if mode is unknown.
- */
-export function getModeLaneWidth(mode: string): number {
-  const layout = getGameModeLayout(mode);
-  if (!layout) return 0;
+export function getModeLaneWidth(layout: GameModeLayout): number {
   return layout.lanes.reduce((sum, lane) => sum + lane.width, 0);
 }

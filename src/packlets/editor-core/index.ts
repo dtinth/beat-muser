@@ -5,6 +5,7 @@
  */
 
 export * from "./types";
+export * from "./lane-layouts";
 export * from "./components";
 export * from "./user-actions";
 export * from "./editor-context";
@@ -25,6 +26,7 @@ export * from "./slices/columns-slice";
 export * from "./slices/timing-columns-slice";
 export * from "./slices/level-columns-slice";
 export * from "./slices/sound-columns-slice";
+export * from "./slices/game-mode-registry-slice";
 export * from "./slices/render-slice";
 export * from "./slices/pointer-interaction-slice";
 export * from "./slices/drag-slice";
