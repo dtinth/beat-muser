@@ -39,6 +39,7 @@ import { PointerInteractionSlice } from "./slices/pointer-interaction-slice";
 import { DragSlice } from "./slices/drag-slice";
 import { ViewCommandSlice } from "./slices/view-command-slice";
 import { EditorCommandSlice } from "./slices/editor-command-slice";
+import type { GameModeLayout } from "./lane-layouts";
 import { BEAT_5K_LAYOUT, BEAT_7K_LAYOUT } from "./lane-layouts";
 
 export class EditorController {
@@ -291,5 +292,9 @@ export class EditorController {
 
   getCharts(): import("../entity-manager").Entity[] {
     return this.ctx.get(ChartSlice).getCharts();
+  }
+
+  getGameModes(): GameModeLayout[] {
+    return this.ctx.get(GameModeRegistrySlice).getAllModes();
   }
 }

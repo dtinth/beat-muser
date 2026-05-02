@@ -48,12 +48,7 @@ import {
 } from "../editor-core";
 import type { ProjectFile } from "../project-format";
 import { createTimelineBehaviorFactory } from "./timeline-behavior";
-import {
-  globalCommandRegistry,
-  CommandSet,
-  KeyboardShortcutHandler,
-  CommandPalette,
-} from "../command-registry";
+import { globalCommandRegistry, CommandSet, KeyboardShortcutHandler } from "../command-registry";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -207,7 +202,25 @@ function RightPanels({
                       cursor: "pointer",
                       border: "1px dashed var(--gray-6)",
                     }}
-                    onClick={() => controller.addLevel(chartId, "New Level", "beat-7k")}
+                    onClick={async () => {
+                      const modes = controller.getGameModes();
+                      const selected = await modalManager.select({
+                        title: "Select Game Mode",
+                        items: modes.map((m) => ({
+                          id: m.mode,
+                          label: m.mode,
+                          detail: `${m.lanes.length} lanes${m.keysounds ? ", keysounds" : ""}`,
+                          value: m.mode,
+                        })),
+                      });
+                      if (selected) {
+                        controller.addLevel(
+                          chartId,
+                          `${selected.value} #${levels.length + 1}`,
+                          selected.value,
+                        );
+                      }
+                    }}
                   >
                     <Plus size={14} style={{ marginRight: 4 }} />
                     <Text size="1" color="gray">
@@ -485,7 +498,6 @@ export function ProjectViewPage() {
   const { showError } = useToast();
 
   const [controller] = useState(() => new EditorController({ project: loadedProject }));
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const [modalManager] = useState(() => new ModalManager());
 
   useEffect(() => {
@@ -506,7 +518,24 @@ export function ProjectViewPage() {
       id: "openCommandPalette",
       title: "Open Command Palette",
       shortcut: "$mod+KeyK",
-      execute: () => setPaletteOpen(true),
+      execute: () => {
+        const commands = globalCommandRegistry.getAll().filter((c) => c.title);
+        void modalManager
+          .select({
+            title: "Commands",
+            items: commands.map((c) => ({
+              id: c.id,
+              label: c.title,
+              detail: c.shortcut,
+              testId: `palette-item-${c.id}`,
+              value: c,
+            })),
+            placeholder: "Type a command...",
+          })
+          .then((selected) => {
+            if (selected) selected.value.execute();
+          });
+      },
     });
     commands.add({
       id: "deleteSelection",
@@ -568,7 +597,7 @@ export function ProjectViewPage() {
     });
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (paletteOpen) return;
+      if (modalManager.$stack.get().length > 0) return;
       const target = e.target as HTMLElement | null;
       if (
         target &&
@@ -587,7 +616,7 @@ export function ProjectViewPage() {
       handler.dispose();
       unregister();
     };
-  }, [controller]);
+  }, [controller, modalManager]);
 
   const behaviorFactory = useMemo(() => createTimelineBehaviorFactory(controller), [controller]);
 
@@ -807,11 +836,6 @@ export function ProjectViewPage() {
           </Toolbar>
         }
         timeline={<ScrollableCanvas behavior={behaviorFactory} />}
-      />
-      <CommandPalette
-        registry={globalCommandRegistry}
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
       />
       <Dialog.Root open={bpmEditOpen} onOpenChange={setBpmEditOpen}>
         <Dialog.Content maxWidth="300px">
