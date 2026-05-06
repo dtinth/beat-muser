@@ -1341,7 +1341,9 @@ describe("EditorController", () => {
 
       editor.instance.removeSoundChannel(channelId);
 
-      expect(editor.instance.getEntityManager().get(channelId)).toBeUndefined();
+      const entity = editor.instance.getEntityManager().get(channelId);
+      expect(entity).toBeDefined();
+      expect(Object.keys(entity!.components)).toHaveLength(0);
     });
 
     test("removing a sound group removes its channels", () => {
@@ -1352,9 +1354,14 @@ describe("EditorController", () => {
 
       editor.instance.removeSoundGroup(groupId);
 
-      expect(editor.instance.getEntityManager().get(groupId)).toBeUndefined();
-      expect(editor.instance.getEntityManager().get(channel1)).toBeUndefined();
-      expect(editor.instance.getEntityManager().get(channel2)).toBeUndefined();
+      const group = editor.instance.getEntityManager().get(groupId);
+      expect(group).toBeDefined();
+      expect(Object.keys(group!.components)).toHaveLength(0);
+      for (const id of [channel1, channel2]) {
+        const entity = editor.instance.getEntityManager().get(id);
+        expect(entity).toBeDefined();
+        expect(Object.keys(entity!.components)).toHaveLength(0);
+      }
     });
 
     test("can list sound groups and channels through atoms", () => {
@@ -1397,6 +1404,132 @@ describe("EditorController", () => {
         channelId,
       );
       expect((events[0]!.components.soundEvent as { soundLane: number })?.soundLane).toBe(0);
+    });
+  });
+
+  describe("undoable add/remove operations", () => {
+    test("undo addLevel removes the level and restores previous selection", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            p.addLevel(chart.id, "Easy", "beat-7k");
+          }),
+      });
+      const chartId = editor.instance.ctx.get(ChartSlice).$selectedChartId.get()!;
+      const initialSelected = editor.instance.$selectedLevelId.get();
+
+      editor.instance.addLevel(chartId, "Normal", "beat-5k");
+      expect(editor.instance.getLevelsForChart(chartId)).toHaveLength(2);
+
+      editor.undo();
+      expect(editor.instance.getLevelsForChart(chartId)).toHaveLength(1);
+      expect(editor.instance.$selectedLevelId.get()).toBe(initialSelected);
+    });
+
+    test("undo removeLevel restores the level", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            p.addLevel(chart.id, "Easy", "beat-7k");
+          }),
+      });
+      const chartId = editor.instance.ctx.get(ChartSlice).$selectedChartId.get()!;
+      const levelId = editor.instance.getLevelsForChart(chartId)[0]!.id;
+
+      editor.instance.removeLevel(levelId);
+      expect(editor.instance.getLevelsForChart(chartId)).toHaveLength(0);
+
+      editor.undo();
+      expect(editor.instance.getLevelsForChart(chartId)).toHaveLength(1);
+      expect(editor.instance.getLevelsForChart(chartId)[0]!.id).toBe(levelId);
+    });
+
+    test("undo addChart removes the chart and restores previous selection", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 1000);
+          }),
+      });
+      const initialSelected = editor.instance.$selectedChartId.get();
+
+      editor.instance.addChart("Easy", 2000);
+      expect(editor.instance.getCharts()).toHaveLength(2);
+
+      editor.undo();
+      expect(editor.instance.getCharts()).toHaveLength(1);
+      expect(editor.instance.$selectedChartId.get()).toBe(initialSelected);
+    });
+
+    test("undo removeChart restores the chart", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 1000);
+            p.addChart("Easy", undefined, 2000);
+          }),
+      });
+      const charts = editor.instance.getCharts();
+      const chartId = charts[0]!.id;
+
+      editor.instance.removeChart(chartId);
+      expect(editor.instance.getCharts()).toHaveLength(1);
+
+      editor.undo();
+      expect(editor.instance.getCharts()).toHaveLength(2);
+    });
+
+    test("undo addSoundGroup removes the group", () => {
+      const editor = new EditorTester();
+      editor.instance.addSoundGroup("Drums");
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundGroups.get()).toHaveLength(1);
+
+      editor.undo();
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundGroups.get()).toHaveLength(0);
+    });
+
+    test("undo removeSoundGroup restores the group and its channels", () => {
+      const editor = new EditorTester();
+      const groupId = editor.instance.addSoundGroup("Drums");
+      const channelId = editor.instance.addSoundChannel(groupId);
+
+      editor.instance.removeSoundGroup(groupId);
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundGroups.get()).toHaveLength(0);
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()).toHaveLength(0);
+
+      editor.undo();
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundGroups.get()).toHaveLength(1);
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()).toHaveLength(1);
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()[0]!.id).toBe(
+        channelId,
+      );
+    });
+
+    test("undo addSoundChannel removes the channel", () => {
+      const editor = new EditorTester();
+      const groupId = editor.instance.addSoundGroup("Drums");
+      editor.instance.addSoundChannel(groupId);
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()).toHaveLength(1);
+
+      editor.undo();
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()).toHaveLength(0);
+    });
+
+    test("undo removeSoundChannel restores the channel", () => {
+      const editor = new EditorTester();
+      const groupId = editor.instance.addSoundGroup("Drums");
+      const channelId = editor.instance.addSoundChannel(groupId);
+
+      editor.instance.removeSoundChannel(channelId);
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()).toHaveLength(0);
+
+      editor.undo();
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()).toHaveLength(1);
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()[0]!.id).toBe(
+        channelId,
+      );
     });
   });
 });

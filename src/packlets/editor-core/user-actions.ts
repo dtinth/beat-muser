@@ -203,3 +203,97 @@ export class BatchEditEntitiesUserAction implements UserAction {
     }
   }
 }
+
+export class InsertEntityUserAction implements UserAction {
+  title = "Insert entity";
+  private ctx: EditorContext;
+  private entity: Entity;
+  private onDo?: () => void;
+  private onUndo?: () => void;
+
+  constructor(ctx: EditorContext, entity: Entity, onDo?: () => void, onUndo?: () => void) {
+    this.ctx = ctx;
+    this.entity = entity;
+    this.onDo = onDo;
+    this.onUndo = onUndo;
+  }
+
+  do(): void {
+    this.ctx.get(ProjectSlice).entityManager.insert(this.entity);
+    this.onDo?.();
+  }
+
+  undo(): void {
+    this.ctx.get(ProjectSlice).entityManager.delete(this.entity.id);
+    this.onUndo?.();
+  }
+}
+
+export class DeleteEntityUserAction implements UserAction {
+  title = "Delete entity";
+  private ctx: EditorContext;
+  private entityId: string;
+  private entitySnapshot: Entity;
+  private onDo?: () => void;
+  private onUndo?: () => void;
+
+  constructor(
+    ctx: EditorContext,
+    entityId: string,
+    entitySnapshot: Entity,
+    onDo?: () => void,
+    onUndo?: () => void,
+  ) {
+    this.ctx = ctx;
+    this.entityId = entityId;
+    this.entitySnapshot = entitySnapshot;
+    this.onDo = onDo;
+    this.onUndo = onUndo;
+  }
+
+  do(): void {
+    this.ctx.get(ProjectSlice).entityManager.delete(this.entityId);
+    this.onDo?.();
+  }
+
+  undo(): void {
+    this.ctx.get(ProjectSlice).entityManager.restore(this.entitySnapshot);
+    this.onUndo?.();
+  }
+}
+
+export class DeleteEntitiesUserAction implements UserAction {
+  title = "Delete entities";
+  private ctx: EditorContext;
+  private entitySnapshots: Entity[];
+  private onDo?: () => void;
+  private onUndo?: () => void;
+
+  constructor(
+    ctx: EditorContext,
+    entitySnapshots: Entity[],
+    onDo?: () => void,
+    onUndo?: () => void,
+  ) {
+    this.ctx = ctx;
+    this.entitySnapshots = entitySnapshots;
+    this.onDo = onDo;
+    this.onUndo = onUndo;
+  }
+
+  do(): void {
+    const em = this.ctx.get(ProjectSlice).entityManager;
+    for (const entity of this.entitySnapshots) {
+      em.delete(entity.id);
+    }
+    this.onDo?.();
+  }
+
+  undo(): void {
+    const em = this.ctx.get(ProjectSlice).entityManager;
+    for (const entity of this.entitySnapshots) {
+      em.restore(entity);
+    }
+    this.onUndo?.();
+  }
+}

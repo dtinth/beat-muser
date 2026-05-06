@@ -2,8 +2,14 @@ import { atom } from "nanostores";
 import { Slice } from "../slice";
 import type { EditorContext } from "../editor-context";
 import { ProjectSlice } from "./project-slice";
+import { HistorySlice } from "./history-slice";
 import { SOUND_GROUP, SOUND_CHANNEL } from "../components";
 import { EntityBuilder } from "../../entity-manager";
+import {
+  InsertEntityUserAction,
+  DeleteEntityUserAction,
+  DeleteEntitiesUserAction,
+} from "../user-actions";
 
 export interface SoundGroupInfo {
   id: string;
@@ -111,8 +117,7 @@ export class SoundChannelSlice extends Slice {
     const group = new EntityBuilder()
       .with(SOUND_GROUP, { name: groupName, sortOrder: maxOrder + 1 })
       .build();
-    em.insert(group);
-    this.refresh();
+    this.ctx.get(HistorySlice).applyAction(new InsertEntityUserAction(this.ctx, group));
     return group.id;
   }
 
@@ -132,25 +137,58 @@ export class SoundChannelSlice extends Slice {
         sortOrder: maxOrder + 1,
       })
       .build();
-    em.insert(channel);
-    this.refresh();
+    this.ctx.get(HistorySlice).applyAction(new InsertEntityUserAction(this.ctx, channel));
     return channel.id;
   }
 
   removeSoundChannel(id: string): void {
-    this.ctx.get(ProjectSlice).entityManager.remove(id);
-    this.refresh();
+    const em = this.ctx.get(ProjectSlice).entityManager;
+    const entity = em.get(id);
+    if (!entity) return;
+    const previousSelectedId = this.$selectedSoundChannelId.get();
+    this.ctx.get(HistorySlice).applyAction(
+      new DeleteEntityUserAction(
+        this.ctx,
+        id,
+        structuredClone(entity),
+        () => {
+          if (this.$selectedSoundChannelId.get() === id) {
+            this.$selectedSoundChannelId.set(null);
+          }
+        },
+        () => {
+          this.$selectedSoundChannelId.set(previousSelectedId);
+        },
+      ),
+    );
   }
 
   removeSoundGroup(id: string): void {
     const em = this.ctx.get(ProjectSlice).entityManager;
+    const groupEntity = em.get(id);
+    if (!groupEntity) return;
     const channels = em
       .entitiesWithComponent(SOUND_CHANNEL)
       .filter((e) => em.getComponent(e, SOUND_CHANNEL)?.soundGroupId === id);
-    for (const channel of channels) {
-      em.remove(channel.id);
-    }
-    em.remove(id);
-    this.refresh();
+    const snapshots = [structuredClone(groupEntity), ...channels.map((c) => structuredClone(c))];
+    const previousSelectedId = this.$selectedSoundChannelId.get();
+    this.ctx.get(HistorySlice).applyAction(
+      new DeleteEntitiesUserAction(
+        this.ctx,
+        snapshots,
+        () => {
+          const channelIds = new Set(channels.map((c) => c.id));
+          if (
+            this.$selectedSoundChannelId.get() !== null &&
+            channelIds.has(this.$selectedSoundChannelId.get()!)
+          ) {
+            this.$selectedSoundChannelId.set(null);
+          }
+        },
+        () => {
+          this.$selectedSoundChannelId.set(previousSelectedId);
+        },
+      ),
+    );
   }
 }

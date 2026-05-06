@@ -4,10 +4,12 @@ import { Slice } from "../slice";
 import type { EditorContext } from "../editor-context";
 import { ProjectSlice } from "./project-slice";
 import { ChartSlice } from "./chart-slice";
+import { HistorySlice } from "./history-slice";
 import { CHART_REF, LEVEL } from "../components";
 import { EntityBuilder } from "../../entity-manager";
 import type { Entity } from "../../entity-manager";
 import type { LevelInfo } from "../types";
+import { InsertEntityUserAction, DeleteEntityUserAction } from "../user-actions";
 
 export class LevelSlice extends Slice {
   static readonly sliceKey = "level";
@@ -80,25 +82,53 @@ export class LevelSlice extends Slice {
       .with(LEVEL, { name, mode, sortOrder: maxOrder + 1 })
       .with(CHART_REF, { chartId })
       .build();
-    em.insert(level);
-    this.$selectedLevelId.set(level.id);
-    this.events.emit("levelsChanged");
+    const previousSelectedLevelId = this.$selectedLevelId.get();
+    this.ctx.get(HistorySlice).applyAction(
+      new InsertEntityUserAction(
+        this.ctx,
+        level,
+        () => {
+          this.$selectedLevelId.set(level.id);
+          this.events.emit("levelsChanged");
+        },
+        () => {
+          this.$selectedLevelId.set(previousSelectedLevelId);
+          this.events.emit("levelsChanged");
+        },
+      ),
+    );
     return level.id;
   }
 
   removeLevel(levelId: string): void {
     const chartId = this.ctx.get(ChartSlice).$selectedChartId.get();
-    this.ctx.get(ProjectSlice).entityManager.remove(levelId);
-    const hidden = new Set(this.$hiddenLevelIds.get());
-    hidden.delete(levelId);
-    this.$hiddenLevelIds.set(hidden);
-
-    if (this.$selectedLevelId.get() === levelId && chartId) {
-      const remaining = this.getLevelEntitiesForChart(chartId);
-      this.$selectedLevelId.set(remaining.length > 0 ? remaining[0]!.id : null);
-    }
-
-    this.events.emit("levelsChanged");
+    const em = this.ctx.get(ProjectSlice).entityManager;
+    const entity = em.get(levelId);
+    if (!entity) return;
+    const previousHidden = new Set(this.$hiddenLevelIds.get());
+    const previousSelectedLevelId = this.$selectedLevelId.get();
+    this.ctx.get(HistorySlice).applyAction(
+      new DeleteEntityUserAction(
+        this.ctx,
+        levelId,
+        structuredClone(entity),
+        () => {
+          const hidden = new Set(this.$hiddenLevelIds.get());
+          hidden.delete(levelId);
+          this.$hiddenLevelIds.set(hidden);
+          if (this.$selectedLevelId.get() === levelId && chartId) {
+            const remaining = this.getLevelEntitiesForChart(chartId);
+            this.$selectedLevelId.set(remaining.length > 0 ? remaining[0]!.id : null);
+          }
+          this.events.emit("levelsChanged");
+        },
+        () => {
+          this.$hiddenLevelIds.set(previousHidden);
+          this.$selectedLevelId.set(previousSelectedLevelId);
+          this.events.emit("levelsChanged");
+        },
+      ),
+    );
   }
 
   toggleLevelVisibility(levelId: string): void {

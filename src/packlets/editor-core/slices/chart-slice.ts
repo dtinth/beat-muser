@@ -2,10 +2,12 @@ import { atom } from "nanostores";
 import { Slice } from "../slice";
 import type { EditorContext } from "../editor-context";
 import { ProjectSlice } from "./project-slice";
+import { HistorySlice } from "./history-slice";
 import { CHART } from "../components";
 import { DEFAULT_CHART_SIZE } from "../types";
 import { EntityBuilder } from "../../entity-manager";
 import type { Entity } from "../../entity-manager";
+import { InsertEntityUserAction, DeleteEntityUserAction } from "../user-actions";
 
 export class ChartSlice extends Slice {
   static readonly sliceKey = "chart";
@@ -47,20 +49,43 @@ export class ChartSlice extends Slice {
     size: number = DEFAULT_CHART_SIZE,
     soundLanes: number = 1,
   ): string {
-    const em = this.ctx.get(ProjectSlice).entityManager;
     const chart = new EntityBuilder().with(CHART, { name, size, soundLanes }).build();
-    em.insert(chart);
-    this.$selectedChartId.set(chart.id);
+    const previousSelectedChartId = this.$selectedChartId.get();
+    this.ctx.get(HistorySlice).applyAction(
+      new InsertEntityUserAction(
+        this.ctx,
+        chart,
+        () => {
+          this.$selectedChartId.set(chart.id);
+        },
+        () => {
+          this.$selectedChartId.set(previousSelectedChartId);
+        },
+      ),
+    );
     return chart.id;
   }
 
   removeChart(chartId: string): void {
     const em = this.ctx.get(ProjectSlice).entityManager;
-    em.remove(chartId);
-
-    if (this.$selectedChartId.get() === chartId) {
-      const remaining = this.getCharts();
-      this.$selectedChartId.set(remaining.length > 0 ? remaining[0]!.id : null);
-    }
+    const entity = em.get(chartId);
+    if (!entity) return;
+    const previousSelectedChartId = this.$selectedChartId.get();
+    this.ctx.get(HistorySlice).applyAction(
+      new DeleteEntityUserAction(
+        this.ctx,
+        chartId,
+        structuredClone(entity),
+        () => {
+          if (this.$selectedChartId.get() === chartId) {
+            const remaining = this.getCharts();
+            this.$selectedChartId.set(remaining.length > 0 ? remaining[0]!.id : null);
+          }
+        },
+        () => {
+          this.$selectedChartId.set(previousSelectedChartId);
+        },
+      ),
+    );
   }
 }
