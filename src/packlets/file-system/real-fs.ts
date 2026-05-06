@@ -20,13 +20,16 @@ export function createFileSystemFromHandle(handle: FileSystemDirectoryHandle): P
     return entries;
   }
 
-  async function getFileHandle(path: string): Promise<FileSystemFileHandle> {
+  async function getFileHandle(
+    path: string,
+    options?: FileSystemGetFileOptions,
+  ): Promise<FileSystemFileHandle> {
     const parts = path.split("/");
     let dir = handle;
     for (let i = 0; i < parts.length - 1; i++) {
-      dir = await dir.getDirectoryHandle(parts[i]);
+      dir = await dir.getDirectoryHandle(parts[i], { create: true });
     }
-    return dir.getFileHandle(parts[parts.length - 1]);
+    return dir.getFileHandle(parts[parts.length - 1], options);
   }
 
   return {
@@ -43,7 +46,7 @@ export function createFileSystemFromHandle(handle: FileSystemDirectoryHandle): P
       return new TextDecoder().decode(buffer);
     },
     async writeFile(path: string, content: string | ArrayBuffer) {
-      const fileHandle = await getFileHandle(path);
+      const fileHandle = await getFileHandle(path, { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(content);
       await writable.close();
