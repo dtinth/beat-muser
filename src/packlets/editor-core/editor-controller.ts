@@ -39,6 +39,7 @@ import { PointerInteractionSlice } from "./slices/pointer-interaction-slice";
 import { DragSlice } from "./slices/drag-slice";
 import { ViewCommandSlice } from "./slices/view-command-slice";
 import { EditorCommandSlice } from "./slices/editor-command-slice";
+import { SoundChannelSlice } from "./slices/sound-channel-slice";
 import type { GameModeLayout } from "./lane-layouts";
 import { BEAT_5K_LAYOUT, BEAT_7K_LAYOUT } from "./lane-layouts";
 
@@ -136,6 +137,7 @@ export class EditorController {
     this.ctx.register(LevelColumnsSlice);
     this.ctx.register(SoundColumnsSlice);
     this.ctx.register(DragSlice);
+    this.ctx.register(SoundChannelSlice);
     this.ctx.register(RenderSlice);
     this.ctx.register(PointerInteractionSlice);
     this.ctx.register(ViewCommandSlice);
@@ -296,5 +298,21 @@ export class EditorController {
 
   getGameModes(): GameModeLayout[] {
     return this.ctx.get(GameModeRegistrySlice).getAllModes();
+  }
+
+  addSoundGroup(name: string): string {
+    return this.ctx.get(SoundChannelSlice).addSoundGroup(name);
+  }
+
+  addSoundChannel(groupId: string, name?: string): string {
+    return this.ctx.get(SoundChannelSlice).addSoundChannel(groupId, name);
+  }
+
+  removeSoundChannel(id: string): void {
+    this.ctx.get(SoundChannelSlice).removeSoundChannel(id);
+  }
+
+  removeSoundGroup(id: string): void {
+    this.ctx.get(SoundChannelSlice).removeSoundGroup(id);
   }
 }

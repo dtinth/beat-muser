@@ -176,6 +176,9 @@ export const SOUND_GROUP = new EntityComponentType(
       name: Type.String({
         description: "Display name of the sound group.",
       }),
+      sortOrder: Type.Number({
+        description: "Order within the project. Lower values appear first.",
+      }),
       color: Type.Optional(
         Type.String({
           description: "Optional color for visual grouping.",
@@ -197,13 +200,15 @@ export const SOUND_CHANNEL = new EntityComponentType(
         description: "Display name of the sound channel.",
       }),
       path: Type.String({
-        description: "File path relative to the project directory.",
+        description:
+          "File path relative to the project directory. May be empty for a blank channel.",
       }),
-      soundGroupId: Type.Optional(
-        Type.String({
-          description: "UUID of the parent sound group, if any.",
-        }),
-      ),
+      soundGroupId: Type.String({
+        description: "UUID of the parent sound group.",
+      }),
+      sortOrder: Type.Number({
+        description: "Order within the parent group. Lower values appear first.",
+      }),
     },
     {
       additionalProperties: true,

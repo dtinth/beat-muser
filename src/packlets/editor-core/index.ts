@@ -30,6 +30,7 @@ export * from "./slices/game-mode-registry-slice";
 export * from "./slices/render-slice";
 export * from "./slices/pointer-interaction-slice";
 export * from "./slices/drag-slice";
+export * from "./slices/sound-channel-slice";
 export * from "./slices/view-command-slice";
 export * from "./slices/editor-command-slice";
 export * from "./editor-controller";

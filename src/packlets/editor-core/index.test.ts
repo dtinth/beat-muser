@@ -15,6 +15,9 @@ import {
   EVENT,
   CHART_REF,
   LEVEL_REF,
+  SOUND_GROUP,
+  SOUND_CHANNEL,
+  SoundChannelSlice,
   ChartSlice,
   SelectionSlice,
   ViewportSlice,
@@ -1280,6 +1283,71 @@ describe("EditorController", () => {
       expect(ghost!.opacity).toBe(0.5);
 
       editor.pointerUp();
+    });
+  });
+
+  describe("sound channel management", () => {
+    test("can add a sound group", () => {
+      const editor = new EditorTester();
+      const groupId = editor.instance.addSoundGroup("Drums");
+
+      const group = editor.instance.getEntityManager().get(groupId);
+      expect(group).toBeDefined();
+      const component = editor.instance.getEntityManager().getComponent(group!, SOUND_GROUP);
+      expect(component?.name).toBe("Drums");
+      expect(component?.sortOrder).toBe(0);
+    });
+
+    test("can add a sound channel to a group", () => {
+      const editor = new EditorTester();
+      const groupId = editor.instance.addSoundGroup("Drums");
+      const channelId = editor.instance.addSoundChannel(groupId, "Kick");
+
+      const channel = editor.instance.getEntityManager().get(channelId);
+      expect(channel).toBeDefined();
+      const component = editor.instance.getEntityManager().getComponent(channel!, SOUND_CHANNEL);
+      expect(component?.name).toBe("Kick");
+      expect(component?.soundGroupId).toBe(groupId);
+      expect(component?.path).toBe("");
+      expect(component?.sortOrder).toBe(0);
+    });
+
+    test("removing a sound channel deletes the entity", () => {
+      const editor = new EditorTester();
+      const groupId = editor.instance.addSoundGroup("Drums");
+      const channelId = editor.instance.addSoundChannel(groupId, "Kick");
+
+      editor.instance.removeSoundChannel(channelId);
+
+      expect(editor.instance.getEntityManager().get(channelId)).toBeUndefined();
+    });
+
+    test("removing a sound group removes its channels", () => {
+      const editor = new EditorTester();
+      const groupId = editor.instance.addSoundGroup("Drums");
+      const channel1 = editor.instance.addSoundChannel(groupId, "Kick");
+      const channel2 = editor.instance.addSoundChannel(groupId, "Snare");
+
+      editor.instance.removeSoundGroup(groupId);
+
+      expect(editor.instance.getEntityManager().get(groupId)).toBeUndefined();
+      expect(editor.instance.getEntityManager().get(channel1)).toBeUndefined();
+      expect(editor.instance.getEntityManager().get(channel2)).toBeUndefined();
+    });
+
+    test("can list sound groups and channels through atoms", () => {
+      const editor = new EditorTester();
+      const groupId = editor.instance.addSoundGroup("Drums");
+      editor.instance.addSoundChannel(groupId, "Kick");
+      editor.instance.addSoundChannel(groupId, "Snare");
+
+      const groups = editor.instance.ctx.get(SoundChannelSlice).$soundGroups.get();
+      const channels = editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get();
+
+      expect(groups).toHaveLength(1);
+      expect(groups[0]!.name).toBe("Drums");
+      expect(channels).toHaveLength(2);
+      expect(channels.map((c) => c.name)).toEqual(["Kick", "Snare"]);
     });
   });
 });

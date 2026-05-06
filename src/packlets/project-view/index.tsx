@@ -44,6 +44,7 @@ import {
   TIME_SIGNATURE,
   CHART,
   LEVEL,
+  SoundChannelSlice,
   EditEntityUserAction,
 } from "../editor-core";
 import type { ProjectFile } from "../project-format";
@@ -112,6 +113,13 @@ function RightPanels({
   );
   const [selectedLevelId, setSelectedLevelId] = useState(() => controller.$selectedLevelId.get());
 
+  const [soundGroups, setSoundGroups] = useState(() =>
+    controller.ctx.get(SoundChannelSlice).$soundGroups.get(),
+  );
+  const [soundChannels, setSoundChannels] = useState(() =>
+    controller.ctx.get(SoundChannelSlice).$soundChannels.get(),
+  );
+
   useEffect(() => {
     const unsubHidden = controller.$hiddenLevelIds.subscribe(() => {
       setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
@@ -122,10 +130,18 @@ function RightPanels({
     const unsubMutations = controller.getEntityManager().$mutationVersion.subscribe(() => {
       setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
     });
+    const unsubSoundGroups = controller.ctx
+      .get(SoundChannelSlice)
+      .$soundGroups.subscribe((v) => setSoundGroups([...v]));
+    const unsubSoundChannels = controller.ctx
+      .get(SoundChannelSlice)
+      .$soundChannels.subscribe((v) => setSoundChannels([...v]));
     return () => {
       unsubHidden();
       unsubSelected();
       unsubMutations();
+      unsubSoundGroups();
+      unsubSoundChannels();
     };
   }, [controller]);
 
@@ -275,6 +291,107 @@ function RightPanels({
               <Text size="2" color="gray">
                 No level selected
               </Text>
+            ),
+          },
+        ]}
+      />
+
+      <SidebarPanel
+        tabs={[
+          {
+            label: "Sounds",
+            content: (
+              <Flex direction="column" style={{ gap: 8 }}>
+                {soundGroups.map((group) => {
+                  const groupChannels = soundChannels.filter((c) => c.groupId === group.id);
+                  return (
+                    <Flex key={group.id} direction="column" style={{ gap: 2 }}>
+                      <Flex
+                        justify="between"
+                        align="center"
+                        style={{ padding: "4px 8px", borderRadius: 4 }}
+                      >
+                        <Flex align="center" style={{ gap: 8 }}>
+                          {group.color && (
+                            <div
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                backgroundColor: group.color,
+                              }}
+                            />
+                          )}
+                          <Text size="2">{group.name}</Text>
+                          <Text size="1" color="gray">
+                            ({groupChannels.length})
+                          </Text>
+                        </Flex>
+                        <Flex align="center" style={{ gap: 4 }}>
+                          <div
+                            style={{ cursor: "pointer" }}
+                            onClick={() => controller.addSoundChannel(group.id)}
+                          >
+                            <Plus size={14} />
+                          </div>
+                          <div
+                            style={{ cursor: "pointer" }}
+                            onClick={() => controller.removeSoundGroup(group.id)}
+                          >
+                            <Trash2 size={14} />
+                          </div>
+                        </Flex>
+                      </Flex>
+                      <Flex direction="column" style={{ gap: 2, paddingLeft: 16 }}>
+                        {groupChannels.map((channel) => (
+                          <Flex
+                            key={channel.id}
+                            justify="between"
+                            align="center"
+                            style={{ padding: "2px 8px", borderRadius: 4 }}
+                          >
+                            <Text size="1" color={channel.path ? undefined : "gray"}>
+                              {channel.name}
+                              {channel.path ? "" : " (blank)"}
+                            </Text>
+                            <div
+                              style={{ cursor: "pointer" }}
+                              onClick={() => controller.removeSoundChannel(channel.id)}
+                            >
+                              <Trash2 size={12} />
+                            </div>
+                          </Flex>
+                        ))}
+                      </Flex>
+                    </Flex>
+                  );
+                })}
+                <Flex
+                  justify="center"
+                  align="center"
+                  style={{
+                    marginTop: 4,
+                    padding: "4px 8px",
+                    borderRadius: 4,
+                    cursor: "pointer",
+                    border: "1px dashed var(--gray-6)",
+                  }}
+                  onClick={async () => {
+                    const result = await modalManager.input({
+                      title: "New Sound Group",
+                      value: `Group ${soundGroups.length + 1}`,
+                    });
+                    if (result !== undefined && result.trim() !== "") {
+                      controller.addSoundGroup(result.trim());
+                    }
+                  }}
+                >
+                  <Plus size={14} style={{ marginRight: 4 }} />
+                  <Text size="1" color="gray">
+                    Add Group
+                  </Text>
+                </Flex>
+              </Flex>
             ),
           },
         ]}
@@ -596,6 +713,38 @@ export function ProjectViewPage() {
       title: "Pan Tool",
       shortcut: "KeyR",
       execute: () => controller.setTool("pan"),
+    });
+    commands.add({
+      id: "addSoundGroup",
+      title: "Add Sound Group",
+      execute: async () => {
+        const result = await modalManager.input({
+          title: "New Sound Group",
+          value: "Group",
+        });
+        if (result !== undefined && result.trim() !== "") {
+          controller.addSoundGroup(result.trim());
+        }
+      },
+    });
+    commands.add({
+      id: "addSoundChannel",
+      title: "Add Sound Channel",
+      execute: async () => {
+        const groups = controller.ctx.get(SoundChannelSlice).$soundGroups.get();
+        if (groups.length === 0) return;
+        const selected = await modalManager.select({
+          title: "Select Sound Group",
+          items: groups.map((g) => ({
+            id: g.id,
+            label: g.name,
+            value: g.id,
+          })),
+        });
+        if (selected) {
+          controller.addSoundChannel(selected.value);
+        }
+      },
     });
     const unregister = commands.registerTo(globalCommandRegistry);
     const handler = new KeyboardShortcutHandler({
