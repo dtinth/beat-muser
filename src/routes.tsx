@@ -75,7 +75,8 @@ export const router = createBrowserRouter([
               const json = await fs.readText("beat-muser-project.json");
               projectFile = parseProjectFile(json);
             } catch (error) {
-              if ((error as Error).message?.includes("not found")) {
+              const isNotFound = error instanceof DOMException && error.name === "NotFoundError";
+              if (isNotFound) {
                 projectFile = {
                   schemaVersion: 2,
                   version: uuidv7(),
