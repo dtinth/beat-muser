@@ -120,7 +120,12 @@ export interface ScrollableCanvasBehavior {
   getContentSize(): { width: number; height: number };
   getVisibleObjects(): RenderObject[];
   onConnected?(): void;
-  onScroll?(scrollLeft: number, scrollTop: number): void;
+  onScroll?(
+    scrollLeft: number,
+    scrollTop: number,
+    viewportWidth: number,
+    viewportHeight: number,
+  ): void;
   onPointerEvent?(event: PointerEvent, contentX: number, contentY: number): void;
   [Symbol.dispose]?: () => void;
 }
@@ -205,6 +210,8 @@ function mountScrollableCanvas(
   let pendingScrollLeft: number | null = null;
   let isDisposed = false;
   let hasConnected = false;
+  let lastViewportWidth = 0;
+  let lastViewportHeight = 0;
   const reconciler = new RenderObjectReconciler({
     onAdd(_key, handle, obj) {
       positionElement(handle.dom, obj);
@@ -303,7 +310,12 @@ function mountScrollableCanvas(
   }
 
   function handleScroll() {
-    behaviorInstance.onScroll?.(container.scrollLeft, container.scrollTop);
+    behaviorInstance.onScroll?.(
+      container.scrollLeft,
+      container.scrollTop,
+      container.clientWidth,
+      container.clientHeight,
+    );
     if (pendingRaf === null) {
       pendingRaf = requestAnimationFrame(doRender);
     }
@@ -324,6 +336,13 @@ function mountScrollableCanvas(
   container.addEventListener("pointerup", handlePointerEvent);
 
   const resizeObserver = new ResizeObserver(() => {
+    const vw = container.clientWidth;
+    const vh = container.clientHeight;
+    if (vw !== lastViewportWidth || vh !== lastViewportHeight) {
+      lastViewportWidth = vw;
+      lastViewportHeight = vh;
+      behaviorInstance.onScroll?.(container.scrollLeft, container.scrollTop, vw, vh);
+    }
     if (pendingRaf === null) {
       pendingRaf = requestAnimationFrame(doRender);
     }

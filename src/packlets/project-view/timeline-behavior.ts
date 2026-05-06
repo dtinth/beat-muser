@@ -281,7 +281,13 @@ export function createTimelineBehaviorFactory(
         controller.onConnected();
       },
 
-      onScroll(scrollLeft: number, scrollTop: number) {
+      onScroll(
+        scrollLeft: number,
+        scrollTop: number,
+        viewportWidth: number,
+        viewportHeight: number,
+      ) {
+        controller.setViewportSize(viewportWidth, viewportHeight);
         controller.setScroll({ x: scrollLeft, y: scrollTop });
       },
 
