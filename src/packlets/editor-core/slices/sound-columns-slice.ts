@@ -3,7 +3,9 @@ import type { EditorContext } from "../editor-context";
 import { ColumnsSlice } from "./columns-slice";
 import { ChartSlice } from "./chart-slice";
 import { ProjectSlice } from "./project-slice";
-import { CHART } from "../components";
+import { SoundChannelSlice } from "./sound-channel-slice";
+import { CHART, EVENT, SOUND_EVENT, CHART_REF } from "../components";
+import { EntityBuilder } from "../../entity-manager";
 import type { ColumnDefinition } from "../types";
 
 export class SoundColumnsSlice extends Slice {
@@ -40,6 +42,15 @@ export class SoundColumnsSlice extends Slice {
         width: 100,
         backgroundColor: "var(--gray-2)",
         soundLane: i,
+        placementHandler: (pulse) => {
+          const channelId = this.ctx.get(SoundChannelSlice).$selectedSoundChannelId.get();
+          if (!channelId) return null;
+          return new EntityBuilder()
+            .with(EVENT, { y: pulse })
+            .with(SOUND_EVENT, { soundLane: i, soundChannelId: channelId, command: "play" })
+            .with(CHART_REF, { chartId: chart.id })
+            .build();
+        },
       });
     }
     return defs;

@@ -28,6 +28,7 @@ export class SoundChannelSlice extends Slice {
 
   $soundGroups = atom<SoundGroupInfo[]>([]);
   $soundChannels = atom<SoundChannelInfo[]>([]);
+  $selectedSoundChannelId = atom<string | null>(null);
 
   constructor(ctx: EditorContext) {
     super(ctx);
@@ -36,6 +37,10 @@ export class SoundChannelSlice extends Slice {
     em.$mutationVersion.subscribe(() => {
       this.refresh();
     });
+  }
+
+  setSelectedSoundChannelId(id: string | null): void {
+    this.$selectedSoundChannelId.set(id);
   }
 
   private refresh(): void {

@@ -23,6 +23,8 @@ import {
   Eye,
   EyeOff,
   Trash2,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { Flex, Text, Dialog, Button, TextField } from "@radix-ui/themes";
 import { useToast } from "../toast";
@@ -121,6 +123,10 @@ function RightPanels({
   const [soundChannels, setSoundChannels] = useState(() =>
     controller.ctx.get(SoundChannelSlice).$soundChannels.get(),
   );
+  const [selectedSoundChannelId, setSelectedSoundChannelId] = useState(() =>
+    controller.ctx.get(SoundChannelSlice).$selectedSoundChannelId.get(),
+  );
+  const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const unsubHidden = controller.$hiddenLevelIds.subscribe(() => {
@@ -138,12 +144,16 @@ function RightPanels({
     const unsubSoundChannels = controller.ctx
       .get(SoundChannelSlice)
       .$soundChannels.subscribe((v) => setSoundChannels([...v]));
+    const unsubSelectedChannel = controller.ctx
+      .get(SoundChannelSlice)
+      .$selectedSoundChannelId.subscribe((v) => setSelectedSoundChannelId(v));
     return () => {
       unsubHidden();
       unsubSelected();
       unsubMutations();
       unsubSoundGroups();
       unsubSoundChannels();
+      unsubSelectedChannel();
     };
   }, [controller]);
 
@@ -306,6 +316,7 @@ function RightPanels({
               <Flex direction="column" style={{ gap: 8 }}>
                 {soundGroups.map((group) => {
                   const groupChannels = soundChannels.filter((c) => c.groupId === group.id);
+                  const isCollapsed = collapsedGroupIds.has(group.id);
                   return (
                     <Flex key={group.id} direction="column" style={{ gap: 2 }}>
                       <Flex
@@ -314,6 +325,20 @@ function RightPanels({
                         style={{ padding: "4px 8px", borderRadius: 4 }}
                       >
                         <Flex align="center" style={{ gap: 8 }}>
+                          <div
+                            style={{ cursor: "pointer" }}
+                            onClick={() => {
+                              const next = new Set(collapsedGroupIds);
+                              if (next.has(group.id)) {
+                                next.delete(group.id);
+                              } else {
+                                next.add(group.id);
+                              }
+                              setCollapsedGroupIds(next);
+                            }}
+                          >
+                            {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                          </div>
                           {group.color && (
                             <div
                               style={{
@@ -375,60 +400,79 @@ function RightPanels({
                           </div>
                         </Flex>
                       </Flex>
-                      <Flex direction="column" style={{ gap: 2, paddingLeft: 16 }}>
-                        {groupChannels.map((channel) => (
-                          <Flex
-                            key={channel.id}
-                            justify="between"
-                            align="center"
-                            style={{ padding: "2px 8px", borderRadius: 4 }}
-                          >
-                            <Text size="1" color={channel.path ? undefined : "gray"}>
-                              {channel.displayNumber}:{" "}
-                              {channel.path ? channel.path.split("/").pop() : "(blank)"}
-                            </Text>
-                            <Flex align="center" style={{ gap: 4 }}>
-                              <div
-                                style={{ cursor: "pointer" }}
-                                onClick={async () => {
-                                  const entity = controller.getEntityManager().get(channel.id);
-                                  if (!entity) return;
-                                  const result = await modalManager.input({
-                                    title: "Edit File Path",
-                                    value: channel.path,
-                                  });
-                                  if (result !== undefined) {
-                                    const oldComponents = structuredClone(entity.components);
-                                    const newComponents = {
-                                      ...oldComponents,
-                                      [SOUND_CHANNEL.key]: {
-                                        ...(oldComponents[SOUND_CHANNEL.key] as object),
-                                        path: result,
-                                      },
-                                    };
-                                    controller.applyAction(
-                                      new EditEntityUserAction(
-                                        controller.ctx,
-                                        channel.id,
-                                        oldComponents,
-                                        newComponents,
-                                      ),
-                                    );
-                                  }
+                      {!isCollapsed && (
+                        <Flex direction="column" style={{ gap: 2, paddingLeft: 32 }}>
+                          {groupChannels.map((channel) => {
+                            const isSelected = channel.id === selectedSoundChannelId;
+                            return (
+                              <Flex
+                                key={channel.id}
+                                justify="between"
+                                align="center"
+                                style={{
+                                  padding: "2px 8px",
+                                  borderRadius: 4,
+                                  cursor: "pointer",
+                                  backgroundColor: isSelected ? "var(--accent-3)" : "transparent",
                                 }}
+                                onClick={() =>
+                                  controller.setSelectedSoundChannelId(
+                                    isSelected ? null : channel.id,
+                                  )
+                                }
                               >
-                                <Pencil size={12} />
-                              </div>
-                              <div
-                                style={{ cursor: "pointer" }}
-                                onClick={() => controller.removeSoundChannel(channel.id)}
-                              >
-                                <Trash2 size={12} />
-                              </div>
-                            </Flex>
-                          </Flex>
-                        ))}
-                      </Flex>
+                                <Text size="1" color={channel.path ? undefined : "gray"}>
+                                  {channel.displayNumber}:{" "}
+                                  {channel.path ? channel.path.split("/").pop() : "(blank)"}
+                                </Text>
+                                <Flex align="center" style={{ gap: 4 }}>
+                                  <div
+                                    style={{ cursor: "pointer" }}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const entity = controller.getEntityManager().get(channel.id);
+                                      if (!entity) return;
+                                      const result = await modalManager.input({
+                                        title: "Edit File Path",
+                                        value: channel.path,
+                                      });
+                                      if (result !== undefined) {
+                                        const oldComponents = structuredClone(entity.components);
+                                        const newComponents = {
+                                          ...oldComponents,
+                                          [SOUND_CHANNEL.key]: {
+                                            ...(oldComponents[SOUND_CHANNEL.key] as object),
+                                            path: result,
+                                          },
+                                        };
+                                        controller.applyAction(
+                                          new EditEntityUserAction(
+                                            controller.ctx,
+                                            channel.id,
+                                            oldComponents,
+                                            newComponents,
+                                          ),
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    <Pencil size={12} />
+                                  </div>
+                                  <div
+                                    style={{ cursor: "pointer" }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      controller.removeSoundChannel(channel.id);
+                                    }}
+                                  >
+                                    <Trash2 size={12} />
+                                  </div>
+                                </Flex>
+                              </Flex>
+                            );
+                          })}
+                        </Flex>
+                      )}
                     </Flex>
                   );
                 })}

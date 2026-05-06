@@ -17,6 +17,7 @@ import {
   LEVEL_REF,
   SOUND_GROUP,
   SOUND_CHANNEL,
+  SOUND_EVENT,
   SoundChannelSlice,
   ChartSlice,
   SelectionSlice,
@@ -1369,6 +1370,33 @@ describe("EditorController", () => {
       expect(groups[0]!.name).toBe("Drums");
       expect(channels).toHaveLength(2);
       expect(channels.map((c) => c.displayNumber)).toEqual(["001", "002"]);
+    });
+
+    test("selecting a sound channel enables placement on sound lanes", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 15360);
+          }),
+      });
+      const groupId = editor.instance.addSoundGroup("SFX");
+      const channelId = editor.instance.addSoundChannel(groupId);
+
+      editor.instance.ctx.get(SoundChannelSlice).setSelectedSoundChannelId(channelId);
+
+      editor.setTool("pencil");
+      editor.pointerMove({ y: 392 }); // pulse 240
+      editor.pointerDown({ x: 202, y: 392 }); // sound-lane-0 center
+
+      const events = editor.instance
+        .getEntityManager()
+        .entitiesWithComponent(SOUND_EVENT)
+        .filter((e) => (e.components.event as { y: number })?.y === 240);
+      expect(events).toHaveLength(1);
+      expect((events[0]!.components.soundEvent as { soundChannelId: string })?.soundChannelId).toBe(
+        channelId,
+      );
+      expect((events[0]!.components.soundEvent as { soundLane: number })?.soundLane).toBe(0);
     });
   });
 });

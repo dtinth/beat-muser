@@ -315,4 +315,8 @@ export class EditorController {
   removeSoundGroup(id: string): void {
     this.ctx.get(SoundChannelSlice).removeSoundGroup(id);
   }
+
+  setSelectedSoundChannelId(id: string | null): void {
+    this.ctx.get(SoundChannelSlice).setSelectedSoundChannelId(id);
+  }
 }
