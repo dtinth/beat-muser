@@ -844,6 +844,24 @@ export function ProjectViewPage() {
         }
       },
     });
+    commands.add({
+      id: "saveProject",
+      title: "Save Project",
+      shortcut: "$mod+KeyS",
+      execute: async () => {
+        try {
+          const projectFile = controller.serialize();
+          const json = JSON.stringify(projectFile, null, 2);
+          await fileSystem.writeFile("beat-muser-project.json", json);
+          showSuccess({ title: "Project saved" });
+        } catch (error) {
+          showError({
+            title: "Failed to save project",
+            description: (error as Error).message,
+          });
+        }
+      },
+    });
     const unregister = commands.registerTo(globalCommandRegistry);
     const handler = new KeyboardShortcutHandler({
       registry: globalCommandRegistry,
@@ -1038,18 +1056,8 @@ export function ProjectViewPage() {
               <ToolbarButton
                 icon={<Save size={16} />}
                 label="Save"
-                onClick={async () => {
-                  try {
-                    const projectFile = controller.serialize();
-                    const json = JSON.stringify(projectFile, null, 2);
-                    await fileSystem.writeFile("beat-muser-project.json", json);
-                    showSuccess({ title: "Project saved" });
-                  } catch (error) {
-                    showError({
-                      title: "Failed to save project",
-                      description: (error as Error).message,
-                    });
-                  }
+                onClick={() => {
+                  globalCommandRegistry.get("saveProject")?.execute();
                 }}
               />
             </ToolbarGroup>
