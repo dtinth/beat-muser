@@ -4,6 +4,7 @@ import { AppHeader } from "./packlets/app-header";
 import { ProjectListPage } from "./packlets/project-list";
 import { ProjectViewPage } from "./packlets/project-view";
 import { ScrollableCanvasTestPage } from "./packlets/scrollable-canvas-test";
+import { uuidv7 } from "uuidv7";
 import type { ProjectSource } from "./packlets/project-store/types";
 import {
   listProjects,
@@ -11,6 +12,9 @@ import {
   DEMO_SLUG,
   createDemoProjectFile,
 } from "./packlets/project-store";
+import { createProjectFileSystem } from "./packlets/file-system";
+import { parseProjectFile } from "./packlets/project-format";
+import type { ProjectFile } from "./packlets/project-format";
 
 export const router = createBrowserRouter([
   {
@@ -59,8 +63,30 @@ export const router = createBrowserRouter([
             }
             source = project.source;
           }
-          // TODO: load actual ProjectFile from filesystem
-          const projectFile = createDemoProjectFile();
+
+          let projectFile: ProjectFile;
+          if (source.provider === "examples") {
+            projectFile = createDemoProjectFile();
+          } else {
+            const fs = createProjectFileSystem(source);
+            try {
+              const json = await fs.readText("beat-muser-project.json");
+              projectFile = parseProjectFile(json);
+            } catch (error) {
+              if ((error as Error).message?.includes("not found")) {
+                projectFile = {
+                  schemaVersion: 2,
+                  version: uuidv7(),
+                  metadata: { title: "Untitled", artist: "", genre: "" },
+                  entities: [],
+                };
+              } else {
+                throw new Response(`Failed to load project: ${(error as Error).message}`, {
+                  status: 500,
+                });
+              }
+            }
+          }
           return { projectFile, source };
         },
         element: <ProjectViewPage />,
