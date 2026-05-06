@@ -4,6 +4,7 @@ import { AppHeader } from "./packlets/app-header";
 import { ProjectListPage } from "./packlets/project-list";
 import { ProjectViewPage } from "./packlets/project-view";
 import { ScrollableCanvasTestPage } from "./packlets/scrollable-canvas-test";
+import { ErrorPage } from "./packlets/error-page";
 import { uuidv7 } from "uuidv7";
 import type { ProjectSource } from "./packlets/project-store/types";
 import {
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
         </div>
       </Theme>
     ),
+    errorElement: <ErrorPage />,
     children: [
       {
         index: true,
