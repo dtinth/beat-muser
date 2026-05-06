@@ -41,6 +41,7 @@ export function ProjectListPage() {
       void navigate(`/projects/${project.slug}`);
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
+        console.error(error);
         showError({
           title: "Failed to open folder",
           description: (error as Error).message,
@@ -59,6 +60,7 @@ export function ProjectListPage() {
         setDemoOpen(false);
         void navigate(`/projects/${project.slug}`);
       } catch (error) {
+        console.error(error);
         showError({
           title: "Failed to create demo project",
           description: (error as Error).message,
@@ -74,6 +76,7 @@ export function ProjectListPage() {
         await removeProject(slug);
         void revalidator.revalidate();
       } catch (error) {
+        console.error(error);
         showError({
           title: "Failed to remove project",
           description: (error as Error).message,

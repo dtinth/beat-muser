@@ -855,6 +855,7 @@ export function ProjectViewPage() {
           await fileSystem.writeFile("beat-muser-project.json", json);
           showSuccess({ title: "Project saved" });
         } catch (error) {
+          console.error(error);
           showError({
             title: "Failed to save project",
             description: (error as Error).message,
@@ -999,6 +1000,7 @@ export function ProjectViewPage() {
 
   useEffect(() => {
     if (error) {
+      console.error(error);
       showError({
         title: "Failed to load project",
         description: error.message,
