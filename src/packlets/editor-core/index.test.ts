@@ -1532,4 +1532,46 @@ describe("EditorController", () => {
       );
     });
   });
+
+  describe("metadata", () => {
+    test("setMetadataField updates project metadata", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () => makeProject(),
+      });
+
+      editor.instance.setMetadataField("title", "New Title");
+
+      expect(editor.instance.getMetadata().title).toBe("New Title");
+      expect(editor.instance.getMetadata().artist).toBe("Test");
+    });
+
+    test("undo setMetadataField restores previous value", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () => makeProject(),
+      });
+
+      editor.instance.setMetadataField("title", "New Title");
+      expect(editor.instance.getMetadata().title).toBe("New Title");
+
+      editor.undo();
+      expect(editor.instance.getMetadata().title).toBe("Test");
+    });
+
+    test("serialize produces ProjectFile with current metadata and entities", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 1000);
+          }),
+      });
+
+      editor.instance.setMetadataField("title", "Serialized Title");
+      const serialized = editor.instance.serialize();
+
+      expect(serialized.metadata.title).toBe("Serialized Title");
+      expect(serialized.schemaVersion).toBe(2);
+      expect(serialized.entities.length).toBeGreaterThan(0);
+      expect(serialized.version).toMatch(UUID_V7_PATTERN);
+    });
+  });
 });

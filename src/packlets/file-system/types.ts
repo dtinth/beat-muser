@@ -9,4 +9,5 @@ export interface ProjectFileSystem {
   listFiles(): Promise<FileEntry[]>;
   readFile(path: string): Promise<ArrayBuffer>;
   readText(path: string): Promise<string>;
+  writeFile(path: string, content: string | ArrayBuffer): Promise<void>;
 }

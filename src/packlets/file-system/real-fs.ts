@@ -42,5 +42,11 @@ export function createFileSystemFromHandle(handle: FileSystemDirectoryHandle): P
       const buffer = await this.readFile(path);
       return new TextDecoder().decode(buffer);
     },
+    async writeFile(path: string, content: string | ArrayBuffer) {
+      const fileHandle = await getFileHandle(path);
+      const writable = await fileHandle.createWritable();
+      await writable.write(content);
+      await writable.close();
+    },
   };
 }

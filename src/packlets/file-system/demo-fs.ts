@@ -53,5 +53,8 @@ export function createFileSystemFromExample(name: string): ProjectFileSystem {
       }
       return content;
     },
+    async writeFile() {
+      throw new Error("Demo file system is read-only");
+    },
   };
 }

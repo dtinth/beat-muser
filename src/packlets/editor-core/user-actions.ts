@@ -14,6 +14,7 @@ import { SelectionSlice } from "./slices/selection-slice";
 import { LevelSlice } from "./slices/level-slice";
 import { ChartSlice } from "./slices/chart-slice";
 import type { UserAction } from "./types";
+import type { ProjectMetadata } from "../project-format";
 
 export class DeleteUserAction implements UserAction {
   title = "Delete selection";
@@ -295,5 +296,26 @@ export class DeleteEntitiesUserAction implements UserAction {
       em.restore(entity);
     }
     this.onUndo?.();
+  }
+}
+
+export class SetMetadataUserAction implements UserAction {
+  title = "Edit project metadata";
+  private ctx: EditorContext;
+  private oldMetadata: ProjectMetadata;
+  private newMetadata: ProjectMetadata;
+
+  constructor(ctx: EditorContext, oldMetadata: ProjectMetadata, newMetadata: ProjectMetadata) {
+    this.ctx = ctx;
+    this.oldMetadata = oldMetadata;
+    this.newMetadata = newMetadata;
+  }
+
+  do(): void {
+    this.ctx.get(ProjectSlice).$metadata.set(structuredClone(this.newMetadata));
+  }
+
+  undo(): void {
+    this.ctx.get(ProjectSlice).$metadata.set(structuredClone(this.oldMetadata));
   }
 }

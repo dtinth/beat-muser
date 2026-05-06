@@ -15,10 +15,12 @@ interface ToastOptions {
 
 interface ToastContextValue {
   showError: (options: ToastOptions) => void;
+  showSuccess: (options: ToastOptions) => void;
 }
 
 const ToastContext = createContext<ToastContextValue>({
   showError: () => {},
+  showSuccess: () => {},
 });
 
 export function useToast() {
@@ -30,8 +32,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     toast.error(options.title, { description: options.description });
   }, []);
 
+  const showSuccess = useCallback((options: ToastOptions) => {
+    toast.success(options.title, { description: options.description });
+  }, []);
+
   return (
-    <ToastContext.Provider value={{ showError }}>
+    <ToastContext.Provider value={{ showError, showSuccess }}>
       {children}
       <Toaster richColors position="top-right" />
     </ToastContext.Provider>

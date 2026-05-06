@@ -10,6 +10,7 @@ import type { Emitter } from "nanoevents";
 import { EntityManager } from "../entity-manager";
 import type { TimingEngine } from "../timing-engine";
 import { Point } from "../geometry";
+import { uuidv7 } from "uuidv7";
 import {
   type EditorControllerOptions,
   type LevelInfo,
@@ -42,6 +43,8 @@ import { EditorCommandSlice } from "./slices/editor-command-slice";
 import { SoundChannelSlice } from "./slices/sound-channel-slice";
 import type { GameModeLayout } from "./lane-layouts";
 import { BEAT_5K_LAYOUT, BEAT_7K_LAYOUT } from "./lane-layouts";
+import { SetMetadataUserAction } from "./user-actions";
+import type { ProjectFile, ProjectMetadata } from "../project-format";
 
 export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
@@ -318,5 +321,28 @@ export class EditorController {
 
   setSelectedSoundChannelId(id: string | null): void {
     this.ctx.get(SoundChannelSlice).setSelectedSoundChannelId(id);
+  }
+
+  getMetadata(): ProjectMetadata {
+    return this.ctx.get(ProjectSlice).$metadata.get();
+  }
+
+  setMetadataField(field: keyof ProjectMetadata, value: string): void {
+    const projectSlice = this.ctx.get(ProjectSlice);
+    const oldMetadata = projectSlice.$metadata.get();
+    const newMetadata = { ...oldMetadata, [field]: value };
+    this.ctx
+      .get(HistorySlice)
+      .applyAction(new SetMetadataUserAction(this.ctx, oldMetadata, newMetadata));
+  }
+
+  serialize(): ProjectFile {
+    const projectSlice = this.ctx.get(ProjectSlice);
+    return {
+      schemaVersion: 2,
+      version: uuidv7(),
+      metadata: projectSlice.$metadata.get(),
+      entities: projectSlice.entityManager.toArray(),
+    };
   }
 }

@@ -4,6 +4,7 @@ import { AppHeader } from "./packlets/app-header";
 import { ProjectListPage } from "./packlets/project-list";
 import { ProjectViewPage } from "./packlets/project-view";
 import { ScrollableCanvasTestPage } from "./packlets/scrollable-canvas-test";
+import type { ProjectSource } from "./packlets/project-store/types";
 import {
   listProjects,
   getProjectBySlug,
@@ -48,15 +49,19 @@ export const router = createBrowserRouter([
       {
         path: "projects/:slug",
         loader: async ({ params }) => {
+          let source: ProjectSource;
           if (params.slug === DEMO_SLUG) {
-            return createDemoProjectFile();
-          }
-          const project = await getProjectBySlug(params.slug!);
-          if (!project) {
-            throw new Response("Project not found", { status: 404 });
+            source = { provider: "examples", name: "demo" };
+          } else {
+            const project = await getProjectBySlug(params.slug!);
+            if (!project) {
+              throw new Response("Project not found", { status: 404 });
+            }
+            source = project.source;
           }
           // TODO: load actual ProjectFile from filesystem
-          return createDemoProjectFile();
+          const projectFile = createDemoProjectFile();
+          return { projectFile, source };
         },
         element: <ProjectViewPage />,
       },

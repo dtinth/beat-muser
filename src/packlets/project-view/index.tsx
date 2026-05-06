@@ -50,8 +50,11 @@ import {
   SOUND_CHANNEL,
   SoundChannelSlice,
   EditEntityUserAction,
+  ProjectSlice,
 } from "../editor-core";
 import type { ProjectFile } from "../project-format";
+import type { ProjectSource } from "../project-store/types";
+import { createProjectFileSystem } from "../file-system";
 import { createTimelineBehaviorFactory } from "./timeline-behavior";
 import { globalCommandRegistry, CommandSet, KeyboardShortcutHandler } from "../command-registry";
 
@@ -503,22 +506,20 @@ function RightPanels({
 }
 
 function LeftPanels({
-  project,
-  onProjectChange,
   modalManager,
   controller,
 }: {
-  project: ProjectFile;
-  onProjectChange: (project: ProjectFile) => void;
   modalManager: ModalManager;
   controller: EditorController;
 }) {
-  const updateMetadata = (field: "title" | "artist" | "genre", value: string) => {
-    onProjectChange({
-      ...project,
-      metadata: { ...project.metadata, [field]: value },
+  const [metadata, setMetadata] = useState(() => controller.getMetadata());
+
+  useEffect(() => {
+    const unsub = controller.ctx.get(ProjectSlice).$metadata.subscribe((newMetadata) => {
+      setMetadata(newMetadata);
     });
-  };
+    return () => unsub();
+  }, [controller]);
 
   const [charts, setCharts] = useState(() => controller.getCharts());
   const [selectedChartId, setSelectedChartId] = useState(() => controller.$selectedChartId.get());
@@ -556,23 +557,23 @@ function LeftPanels({
               <>
                 <EditableField
                   label="Title"
-                  value={project.metadata.title}
+                  value={metadata.title}
                   modalManager={modalManager}
-                  onEdit={(v) => updateMetadata("title", v)}
+                  onEdit={(v) => controller.setMetadataField("title", v)}
                   validate={(v) => (v.trim() === "" ? "Title is required" : undefined)}
                 />
                 <EditableField
                   label="Artist"
-                  value={project.metadata.artist}
+                  value={metadata.artist}
                   modalManager={modalManager}
-                  onEdit={(v) => updateMetadata("artist", v)}
+                  onEdit={(v) => controller.setMetadataField("artist", v)}
                   validate={(v) => (v.trim() === "" ? "Artist is required" : undefined)}
                 />
                 <EditableField
                   label="Genre"
-                  value={project.metadata.genre}
+                  value={metadata.genre}
                   modalManager={modalManager}
-                  onEdit={(v) => updateMetadata("genre", v)}
+                  onEdit={(v) => controller.setMetadataField("genre", v)}
                 />
               </>
             ),
@@ -717,10 +718,13 @@ function LeftPanels({
 
 export function ProjectViewPage() {
   const { slug: _slug } = useParams<{ slug: string }>();
-  const loadedProject = useLoaderData() as ProjectFile;
-  const [project, setProject] = useState(loadedProject);
+  const { projectFile: loadedProject, source } = useLoaderData() as {
+    projectFile: ProjectFile;
+    source: ProjectSource;
+  };
+  const [fileSystem] = useState(() => createProjectFileSystem(source));
   const error = useRouteError() as Error | undefined;
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
 
   const [controller] = useState(() => new EditorController({ project: loadedProject }));
   const [modalManager] = useState(() => new ModalManager());
@@ -987,14 +991,7 @@ export function ProjectViewPage() {
   return (
     <>
       <ProjectLayout
-        leftPanels={
-          <LeftPanels
-            project={project}
-            onProjectChange={setProject}
-            modalManager={modalManager}
-            controller={controller}
-          />
-        }
+        leftPanels={<LeftPanels modalManager={modalManager} controller={controller} />}
         rightPanels={<RightPanels controller={controller} modalManager={modalManager} />}
         toolbar={
           <Toolbar>
@@ -1038,7 +1035,23 @@ export function ProjectViewPage() {
                 label="Redo"
                 onClick={() => controller.redo()}
               />
-              <ToolbarButton icon={<Save size={16} />} label="Save" />
+              <ToolbarButton
+                icon={<Save size={16} />}
+                label="Save"
+                onClick={async () => {
+                  try {
+                    const projectFile = controller.serialize();
+                    const json = JSON.stringify(projectFile, null, 2);
+                    await fileSystem.writeFile("beat-muser-project.json", json);
+                    showSuccess({ title: "Project saved" });
+                  } catch (error) {
+                    showError({
+                      title: "Failed to save project",
+                      description: (error as Error).message,
+                    });
+                  }
+                }}
+              />
             </ToolbarGroup>
 
             <ToolbarDivider />
