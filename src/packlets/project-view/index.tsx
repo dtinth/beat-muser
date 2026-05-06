@@ -44,6 +44,8 @@ import {
   TIME_SIGNATURE,
   CHART,
   LEVEL,
+  SOUND_GROUP,
+  SOUND_CHANNEL,
   SoundChannelSlice,
   EditEntityUserAction,
 } from "../editor-core";
@@ -330,6 +332,37 @@ function RightPanels({
                         <Flex align="center" style={{ gap: 4 }}>
                           <div
                             style={{ cursor: "pointer" }}
+                            onClick={async () => {
+                              const entity = controller.getEntityManager().get(group.id);
+                              if (!entity) return;
+                              const result = await modalManager.input({
+                                title: "Edit Group Name",
+                                value: group.name,
+                              });
+                              if (result !== undefined && result.trim() !== "") {
+                                const oldComponents = structuredClone(entity.components);
+                                const newComponents = {
+                                  ...oldComponents,
+                                  [SOUND_GROUP.key]: {
+                                    ...(oldComponents[SOUND_GROUP.key] as object),
+                                    name: result.trim(),
+                                  },
+                                };
+                                controller.applyAction(
+                                  new EditEntityUserAction(
+                                    controller.ctx,
+                                    group.id,
+                                    oldComponents,
+                                    newComponents,
+                                  ),
+                                );
+                              }
+                            }}
+                          >
+                            <Pencil size={12} />
+                          </div>
+                          <div
+                            style={{ cursor: "pointer" }}
                             onClick={() => controller.addSoundChannel(group.id)}
                           >
                             <Plus size={14} />
@@ -352,14 +385,47 @@ function RightPanels({
                           >
                             <Text size="1" color={channel.path ? undefined : "gray"}>
                               {channel.name}
-                              {channel.path ? "" : " (blank)"}
+                              {channel.path ? ` — ${channel.path}` : " (blank)"}
                             </Text>
-                            <div
-                              style={{ cursor: "pointer" }}
-                              onClick={() => controller.removeSoundChannel(channel.id)}
-                            >
-                              <Trash2 size={12} />
-                            </div>
+                            <Flex align="center" style={{ gap: 4 }}>
+                              <div
+                                style={{ cursor: "pointer" }}
+                                onClick={async () => {
+                                  const entity = controller.getEntityManager().get(channel.id);
+                                  if (!entity) return;
+                                  const result = await modalManager.input({
+                                    title: "Edit File Path",
+                                    value: channel.path,
+                                  });
+                                  if (result !== undefined) {
+                                    const oldComponents = structuredClone(entity.components);
+                                    const newComponents = {
+                                      ...oldComponents,
+                                      [SOUND_CHANNEL.key]: {
+                                        ...(oldComponents[SOUND_CHANNEL.key] as object),
+                                        path: result,
+                                      },
+                                    };
+                                    controller.applyAction(
+                                      new EditEntityUserAction(
+                                        controller.ctx,
+                                        channel.id,
+                                        oldComponents,
+                                        newComponents,
+                                      ),
+                                    );
+                                  }
+                                }}
+                              >
+                                <Pencil size={12} />
+                              </div>
+                              <div
+                                style={{ cursor: "pointer" }}
+                                onClick={() => controller.removeSoundChannel(channel.id)}
+                              >
+                                <Trash2 size={12} />
+                              </div>
+                            </Flex>
                           </Flex>
                         ))}
                       </Flex>
