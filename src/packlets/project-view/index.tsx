@@ -384,8 +384,8 @@ function RightPanels({
                             style={{ padding: "2px 8px", borderRadius: 4 }}
                           >
                             <Text size="1" color={channel.path ? undefined : "gray"}>
-                              {channel.name}
-                              {channel.path ? ` — ${channel.path}` : " (blank)"}
+                              {channel.displayNumber}:{" "}
+                              {channel.path ? channel.path.split("/").pop() : "(blank)"}
                             </Text>
                             <Flex align="center" style={{ gap: 4 }}>
                               <div
@@ -442,15 +442,7 @@ function RightPanels({
                     cursor: "pointer",
                     border: "1px dashed var(--gray-6)",
                   }}
-                  onClick={async () => {
-                    const result = await modalManager.input({
-                      title: "New Sound Group",
-                      value: `Group ${soundGroups.length + 1}`,
-                    });
-                    if (result !== undefined && result.trim() !== "") {
-                      controller.addSoundGroup(result.trim());
-                    }
-                  }}
+                  onClick={() => controller.addSoundGroup()}
                 >
                   <Plus size={14} style={{ marginRight: 4 }} />
                   <Text size="1" color="gray">
@@ -783,15 +775,7 @@ export function ProjectViewPage() {
     commands.add({
       id: "addSoundGroup",
       title: "Add Sound Group",
-      execute: async () => {
-        const result = await modalManager.input({
-          title: "New Sound Group",
-          value: "Group",
-        });
-        if (result !== undefined && result.trim() !== "") {
-          controller.addSoundGroup(result.trim());
-        }
-      },
+      execute: () => controller.addSoundGroup(),
     });
     commands.add({
       id: "addSoundChannel",

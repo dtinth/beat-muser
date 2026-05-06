@@ -1287,7 +1287,7 @@ describe("EditorController", () => {
   });
 
   describe("sound channel management", () => {
-    test("can add a sound group", () => {
+    test("can add a sound group with custom name", () => {
       const editor = new EditorTester();
       const groupId = editor.instance.addSoundGroup("Drums");
 
@@ -1298,24 +1298,45 @@ describe("EditorController", () => {
       expect(component?.sortOrder).toBe(0);
     });
 
+    test("default sound group name follows GRP pattern", () => {
+      const editor = new EditorTester();
+      editor.instance.addSoundGroup();
+      editor.instance.addSoundGroup();
+
+      const groups = editor.instance.ctx.get(SoundChannelSlice).$soundGroups.get();
+      expect(groups.map((g) => g.name)).toEqual(["GRP1", "GRP2"]);
+    });
+
     test("can add a sound channel to a group", () => {
       const editor = new EditorTester();
       const groupId = editor.instance.addSoundGroup("Drums");
-      const channelId = editor.instance.addSoundChannel(groupId, "Kick");
+      const channelId = editor.instance.addSoundChannel(groupId);
 
       const channel = editor.instance.getEntityManager().get(channelId);
       expect(channel).toBeDefined();
       const component = editor.instance.getEntityManager().getComponent(channel!, SOUND_CHANNEL);
-      expect(component?.name).toBe("Kick");
       expect(component?.soundGroupId).toBe(groupId);
       expect(component?.path).toBe("");
       expect(component?.sortOrder).toBe(0);
     });
 
+    test("sound channel handle is computed from group name and index", () => {
+      const editor = new EditorTester();
+      const groupId = editor.instance.addSoundGroup("PNO");
+      editor.instance.addSoundChannel(groupId);
+      editor.instance.addSoundChannel(groupId);
+
+      const channels = editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get();
+      expect(channels[0]!.handle).toBe("PNO-001");
+      expect(channels[0]!.displayNumber).toBe("001");
+      expect(channels[1]!.handle).toBe("PNO-002");
+      expect(channels[1]!.displayNumber).toBe("002");
+    });
+
     test("removing a sound channel deletes the entity", () => {
       const editor = new EditorTester();
       const groupId = editor.instance.addSoundGroup("Drums");
-      const channelId = editor.instance.addSoundChannel(groupId, "Kick");
+      const channelId = editor.instance.addSoundChannel(groupId);
 
       editor.instance.removeSoundChannel(channelId);
 
@@ -1325,8 +1346,8 @@ describe("EditorController", () => {
     test("removing a sound group removes its channels", () => {
       const editor = new EditorTester();
       const groupId = editor.instance.addSoundGroup("Drums");
-      const channel1 = editor.instance.addSoundChannel(groupId, "Kick");
-      const channel2 = editor.instance.addSoundChannel(groupId, "Snare");
+      const channel1 = editor.instance.addSoundChannel(groupId);
+      const channel2 = editor.instance.addSoundChannel(groupId);
 
       editor.instance.removeSoundGroup(groupId);
 
@@ -1338,8 +1359,8 @@ describe("EditorController", () => {
     test("can list sound groups and channels through atoms", () => {
       const editor = new EditorTester();
       const groupId = editor.instance.addSoundGroup("Drums");
-      editor.instance.addSoundChannel(groupId, "Kick");
-      editor.instance.addSoundChannel(groupId, "Snare");
+      editor.instance.addSoundChannel(groupId);
+      editor.instance.addSoundChannel(groupId);
 
       const groups = editor.instance.ctx.get(SoundChannelSlice).$soundGroups.get();
       const channels = editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get();
@@ -1347,7 +1368,7 @@ describe("EditorController", () => {
       expect(groups).toHaveLength(1);
       expect(groups[0]!.name).toBe("Drums");
       expect(channels).toHaveLength(2);
-      expect(channels.map((c) => c.name)).toEqual(["Kick", "Snare"]);
+      expect(channels.map((c) => c.displayNumber)).toEqual(["001", "002"]);
     });
   });
 });

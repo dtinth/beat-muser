@@ -320,9 +320,10 @@ export class RenderSlice extends Slice {
 
       const colIndex = columns.indexOf(soundLaneCol);
       const soundChannel = entityManager.get(soundEvent.soundChannelId);
-      const soundChannelName = soundChannel
-        ? (entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.name ?? "?")
-        : "?";
+      const soundChannelPath = soundChannel
+        ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
+        : undefined;
+      const soundChannelName = soundChannelPath ? (soundChannelPath.split("/").pop() ?? "?") : "?";
 
       const isSelected =
         selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex);

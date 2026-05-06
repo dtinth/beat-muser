@@ -300,12 +300,12 @@ export class EditorController {
     return this.ctx.get(GameModeRegistrySlice).getAllModes();
   }
 
-  addSoundGroup(name: string): string {
+  addSoundGroup(name?: string): string {
     return this.ctx.get(SoundChannelSlice).addSoundGroup(name);
   }
 
-  addSoundChannel(groupId: string, name?: string): string {
-    return this.ctx.get(SoundChannelSlice).addSoundChannel(groupId, name);
+  addSoundChannel(groupId: string): string {
+    return this.ctx.get(SoundChannelSlice).addSoundChannel(groupId);
   }
 
   removeSoundChannel(id: string): void {

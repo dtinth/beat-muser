@@ -196,9 +196,6 @@ export const SOUND_CHANNEL = new EntityComponentType(
   "soundChannel",
   Type.Object(
     {
-      name: Type.String({
-        description: "Display name of the sound channel.",
-      }),
       path: Type.String({
         description:
           "File path relative to the project directory. May be empty for a blank channel.",
