@@ -42,10 +42,13 @@ import { ViewCommandSlice } from "./slices/view-command-slice";
 import { EditorCommandSlice } from "./slices/editor-command-slice";
 import { SoundChannelSlice } from "./slices/sound-channel-slice";
 import { WaveformSlice } from "./slices/waveform-slice";
+import { PlaybackSlice } from "./slices/playback-slice";
 import type { GameModeLayout } from "./lane-layouts";
 import { BEAT_5K_LAYOUT, BEAT_7K_LAYOUT } from "./lane-layouts";
 import { SetMetadataUserAction } from "./user-actions";
 import type { ProjectFile, ProjectMetadata } from "../project-format";
+import { createPlayback } from "./create-playback";
+import { SOUND_EVENT, CHART_REF, EVENT, SOUND_CHANNEL } from "./components";
 
 export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
@@ -108,6 +111,10 @@ export class EditorController {
     return this.ctx.get(WaveformSlice);
   }
 
+  get playback(): PlaybackSlice {
+    return this.ctx.get(PlaybackSlice);
+  }
+
   get $lastPlacedEntityInfo() {
     return this.ctx.get(PointerInteractionSlice).$lastPlacedEntityInfo;
   }
@@ -147,6 +154,7 @@ export class EditorController {
     this.ctx.register(DragSlice);
     this.ctx.register(SoundChannelSlice);
     this.ctx.register(WaveformSlice);
+    this.ctx.register(PlaybackSlice);
     this.ctx.register(RenderSlice);
     this.ctx.register(PointerInteractionSlice);
     this.ctx.register(ViewCommandSlice);
@@ -159,6 +167,14 @@ export class EditorController {
 
     this.ctx.get(ViewportSlice).onScrollRequest((point) => {
       this.outbox.emit("setScroll", point);
+    });
+
+    this.ctx.get(PlaybackSlice).onPlayRequest((playback) => {
+      this.outbox.emit("playbackPlay", playback, 1);
+    });
+
+    this.ctx.get(PlaybackSlice).onStopRequest((scrollY) => {
+      this.outbox.emit("playbackStop", scrollY);
     });
 
     this.ctx.get(ToolSlice).onToolChanged(() => {
@@ -176,6 +192,60 @@ export class EditorController {
     });
 
     this.ctx.get(ColumnsSlice).refreshColumns();
+  }
+
+  playChart(cursorPulse: number, scrollY: number): void {
+    const chartId = this.$selectedChartId.get();
+    if (!chartId) return;
+
+    const timingEngine = this.getTimingEngine();
+
+    const soundEvents = this.entityManager
+      .entitiesWithComponent(SOUND_EVENT)
+      .filter((e) => {
+        const ref = this.entityManager.getComponent(e, CHART_REF);
+        return ref?.chartId === chartId;
+      })
+      .map((e) => {
+        const event = this.entityManager.getComponent(e, EVENT);
+        const se = this.entityManager.getComponent(e, SOUND_EVENT);
+        return {
+          entityId: e.id,
+          pulse: event!.y,
+          soundLane: se!.soundLane,
+          soundChannelId: se!.soundChannelId,
+          command: se!.command,
+        };
+      });
+
+    const channels = new Map<string, { path: string; durationSec: number }>();
+    for (const e of this.entityManager.entitiesWithComponent(SOUND_EVENT)) {
+      const cr = this.entityManager.getComponent(e, CHART_REF);
+      if (!cr || cr.chartId !== chartId) continue;
+      const se = this.entityManager.getComponent(e, SOUND_EVENT);
+      if (!se) continue;
+      const channelId = se.soundChannelId;
+      if (channels.has(channelId)) continue;
+      const channelEntity = this.entityManager.get(channelId);
+      const sc = channelEntity
+        ? this.entityManager.getComponent(channelEntity, SOUND_CHANNEL)
+        : undefined;
+      if (!sc?.path) continue;
+      const waveformData = this.waveform.$waveformData.get().get(sc.path);
+      const durationSec = waveformData?.durationSec ?? 0;
+      channels.set(channelId, { path: sc.path, durationSec });
+    }
+
+    const playback = createPlayback({ soundEvents, timingEngine, cursorPulse, channels });
+    this.playback.play(playback, cursorPulse, scrollY);
+  }
+
+  pausePlayback(): void {
+    this.playback.pause();
+  }
+
+  stopPlayback(): void {
+    this.playback.stop();
   }
 
   getLevelsForChart(chartId: string): LevelInfo[] {
