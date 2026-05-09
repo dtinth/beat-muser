@@ -73,9 +73,11 @@ contextTime = startContextTime + triggerChartSec / rate
 | `chartSec`         | Chart time sec | Elapsed song time at the playhead           |
 | `rate`             | unitless       | Speed multiplier (1.0 = normal, 0.5 = half) |
 
-`startAudioPlayback()` reports the current `chartSec` via an `onTick` callback
-at ~25ms intervals. The consumer (project-view) converts it back to a pulse
-via `timingEngine.secToPulse(startChartSec + chartSec)` to drive the playhead.
+The audio engine calls `Playback.onPlaybackTimeChange(playbackSec)` on each tick
+(~25ms). The `Playback` implementation (provided by `createPlayback`) converts
+`playbackSec` to a pulse via
+`timingEngine.secToPulse(cursorChartSec + playbackSec)` and notifies the editor
+via an internal callback.
 
 ---
 
