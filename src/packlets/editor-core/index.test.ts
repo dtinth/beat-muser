@@ -27,6 +27,9 @@ import {
 } from "./index";
 import { Rect } from "../geometry";
 import type { Entity } from "../entity-manager";
+import { RenderSlice } from "./slices/render-slice";
+import type { WaveformData } from "./slices/waveform-slice";
+import { EditEntityUserAction } from "./user-actions";
 
 const UUID_V7_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -1572,6 +1575,111 @@ describe("EditorController", () => {
       expect(serialized.schemaVersion).toBe(2);
       expect(serialized.entities.length).toBeGreaterThan(0);
       expect(serialized.version).toMatch(UUID_V7_PATTERN);
+    });
+  });
+
+  describe("waveform slice computation", () => {
+    function makeWaveformData(seconds: number): WaveformData {
+      const chunkCount = Math.max(1, Math.floor(seconds * 120));
+      const peak = new Float32Array(chunkCount);
+      const rms = new Float32Array(chunkCount);
+      for (let i = 0; i < chunkCount; i++) {
+        peak[i] = (i + 1) / chunkCount;
+        rms[i] = peak[i] * 0.7;
+      }
+      return { peak, rms, durationSeconds: seconds, sampleRate: 48000 };
+    }
+
+    function setChannelPath(editor: EditorTester, channelId: string, path: string): void {
+      const entityManager = editor.instance.getEntityManager();
+      const entity = entityManager.get(channelId);
+      if (!entity) return;
+      const oldComponents = structuredClone(entity.components);
+      const newComponents = structuredClone(oldComponents);
+      (newComponents as Record<string, unknown>)["soundChannel"] = {
+        ...(oldComponents as Record<string, Record<string, unknown>>)["soundChannel"],
+        path,
+      };
+      editor.instance.ctx
+        .get(HistorySlice)
+        .applyAction(
+          new EditEntityUserAction(editor.instance.ctx, channelId, oldComponents, newComponents),
+        );
+    }
+
+    test("no waveform slices when no waveform data is available", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", (c) => {
+              c.bpmChange(0, 120);
+            });
+          }),
+      });
+
+      const renderSlice = editor.instance.ctx.get(RenderSlice);
+      expect(renderSlice.$waveformSlices.get()).toHaveLength(0);
+    });
+
+    test("single sound event with waveform data produces waveform slices", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", (c) => {
+              c.bpmChange(0, 120);
+            });
+          }),
+      });
+
+      const groupId = editor.instance.addSoundGroup("Drums");
+      const channelId = editor.instance.addSoundChannel(groupId);
+      setChannelPath(editor, channelId, "audio/kick.wav");
+
+      editor.instance.waveform.setWaveformData("audio/kick.wav", makeWaveformData(2));
+
+      editor.instance.ctx.get(SoundChannelSlice).setSelectedSoundChannelId(channelId);
+      editor.setTool("pencil");
+      editor.pointerMove({ y: 392 });
+      editor.pointerDown({ x: 202, y: 392 });
+
+      const renderSlice = editor.instance.ctx.get(RenderSlice);
+      const slices = renderSlice.$waveformSlices.get();
+      expect(slices.length, "should produce at least one waveform slice").toBeGreaterThan(0);
+    });
+
+    test("waveform segments are stacked bottom-to-top with no gaps", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", (c) => {
+              c.bpmChange(0, 120);
+            });
+          }),
+      });
+
+      const groupId = editor.instance.addSoundGroup("Drums");
+      const channelId = editor.instance.addSoundChannel(groupId);
+      setChannelPath(editor, channelId, "audio/kick.wav");
+
+      editor.instance.ctx.get(SoundChannelSlice).setSelectedSoundChannelId(channelId);
+      editor.setTool("pencil");
+      editor.pointerMove({ y: 392 });
+      editor.pointerDown({ x: 202, y: 392 });
+
+      editor.instance.waveform.setWaveformData("audio/kick.wav", makeWaveformData(5));
+
+      const renderSlice = editor.instance.ctx.get(RenderSlice);
+      const slices = renderSlice.$waveformSlices.get();
+      expect(slices.length, "should produce at least one waveform slice").toBeGreaterThan(0);
+
+      const sorted = [...slices].sort((a, b) => a.y - b.y);
+      for (let i = 1; i < sorted.length; i++) {
+        const prev = sorted[i - 1];
+        const curr = sorted[i];
+        const gap = curr.y - (prev.y + prev.height);
+        const label = `segment at y=${prev.y.toFixed(1)} h=${prev.height.toFixed(1)} → next at y=${curr.y.toFixed(1)}`;
+        expect(Math.abs(gap), label).toBeLessThan(1);
+      }
     });
   });
 });
