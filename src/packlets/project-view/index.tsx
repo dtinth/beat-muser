@@ -800,12 +800,18 @@ export function ProjectViewPage() {
           controller.playback.setPlaybackPulse(pulse);
           controller.$cursorPulse.set(pulse);
 
+          const chartEndPulse = controller.playback.getChartEndPulse();
+          if (pulse > chartEndPulse) {
+            controller.stopPlayback();
+            return;
+          }
+
           const scaleY = 0.2 * controller.$zoom.get();
           const contentHeight = controller.getContentHeight();
           const playheadContentY = contentHeight - pulse * scaleY;
           const viewportHeight = controller.getViewportHeight();
           const targetScrollY = playheadContentY - viewportHeight * 0.4;
-          controller.setScroll({ x: 0, y: Math.max(0, targetScrollY) });
+          controller.outbox.emit("setScroll", { x: 0, y: Math.max(0, targetScrollY) });
         },
       });
       stopPlaybackRef.current = stop;
@@ -815,7 +821,7 @@ export function ProjectViewPage() {
       const s = stopPlaybackRef.current;
       if (s) s();
       stopPlaybackRef.current = null;
-      controller.setScroll({ x: 0, y: scrollY });
+      controller.outbox.emit("setScroll", { x: 0, y: scrollY });
     });
 
     return () => {

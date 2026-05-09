@@ -51,10 +51,6 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     for (const event of events) {
       scheduleEvent(event);
     }
-
-    if (events.length === 0 && activeSources.length === 0) {
-      stop();
-    }
   }
 
   function scheduleEvent(event: PlaybackEvent): void {
