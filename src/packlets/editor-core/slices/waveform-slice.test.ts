@@ -10,7 +10,7 @@ describe("WaveformSlice", () => {
     const data: WaveformData = {
       peak: new Float32Array([0.5, 0.8]),
       rms: new Float32Array([0.3, 0.6]),
-      durationSeconds: 2.5,
+      durationSec: 2.5,
       sampleRate: 48000,
     };
 
@@ -37,7 +37,7 @@ describe("WaveformSlice", () => {
     const data: WaveformData = {
       peak: new Float32Array([0.5]),
       rms: new Float32Array([0.3]),
-      durationSeconds: 1,
+      durationSec: 1,
       sampleRate: 44100,
     };
 

@@ -17,7 +17,7 @@ describe("computeWaveformOffsets", () => {
           command: "play",
         },
       ],
-      new Map([["ch1", { durationSeconds: 2 }]]),
+      new Map([["ch1", { durationSec: 2 }]]),
       pulseToSeconds,
     );
 
@@ -42,7 +42,7 @@ describe("computeWaveformOffsets", () => {
           command: "continue",
         },
       ],
-      new Map([["ch1", { durationSeconds: 2 }]]),
+      new Map([["ch1", { durationSec: 2 }]]),
       pulseToSeconds,
     );
 
@@ -75,7 +75,7 @@ describe("computeWaveformOffsets", () => {
           command: "continue",
         },
       ],
-      new Map([["ch1", { durationSeconds: 2 }]]),
+      new Map([["ch1", { durationSec: 2 }]]),
       pulseToSeconds,
     );
 
@@ -116,7 +116,7 @@ describe("computeWaveformOffsets", () => {
           command: "continue",
         },
       ],
-      new Map([["ch1", { durationSeconds: 2 }]]),
+      new Map([["ch1", { durationSec: 2 }]]),
       pulseToSeconds,
     );
 
@@ -158,7 +158,7 @@ describe("computeWaveformOffsets", () => {
           command: "continue",
         },
       ],
-      new Map([["ch1", { durationSeconds: 2 }]]),
+      new Map([["ch1", { durationSec: 2 }]]),
       pulseToSeconds,
     );
 
@@ -199,8 +199,8 @@ describe("computeWaveformOffsets", () => {
         },
       ],
       new Map([
-        ["ch1", { durationSeconds: 2 }],
-        ["ch2", { durationSeconds: 3 }],
+        ["ch1", { durationSec: 2 }],
+        ["ch2", { durationSec: 3 }],
       ]),
       pulseToSeconds,
     );
@@ -220,7 +220,7 @@ describe("computeWaveformOffsets", () => {
           command: "continue",
         },
       ],
-      new Map([["ch1", { durationSeconds: 2 }]]),
+      new Map([["ch1", { durationSec: 2 }]]),
       pulseToSeconds,
     );
 
