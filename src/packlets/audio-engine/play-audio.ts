@@ -87,6 +87,7 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
 
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
+    source.playbackRate.value = rate;
     source.connect(channelGain);
 
     try {
