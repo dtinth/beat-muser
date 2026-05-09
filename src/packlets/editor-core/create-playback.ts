@@ -7,10 +7,17 @@ export interface CreatePlaybackOptions {
   timingEngine: TimingEngine;
   cursorPulse: number;
   channels: Map<string, { path: string; durationSec: number }>;
+  abortController?: AbortController;
 }
 
 export function createPlayback(options: CreatePlaybackOptions): Playback {
-  const { soundEvents, timingEngine, cursorPulse, channels } = options;
+  const {
+    soundEvents,
+    timingEngine,
+    cursorPulse,
+    channels,
+    abortController = new AbortController(),
+  } = options;
 
   const cursorChartSec = timingEngine.pulseToSeconds(cursorPulse);
 
@@ -127,8 +134,6 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
     }
     return result;
   }
-
-  const abortController = new AbortController();
 
   return {
     getEvents,

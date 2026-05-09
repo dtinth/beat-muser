@@ -174,10 +174,6 @@ export class EditorController {
       this.outbox.emit("playbackPlay", playback, 1);
     });
 
-    this.ctx.get(PlaybackSlice).onPauseRequest(() => {
-      this.outbox.emit("playbackPause");
-    });
-
     this.ctx.get(PlaybackSlice).onStopRequest((scrollY) => {
       this.outbox.emit("playbackStop", scrollY);
     });
@@ -246,7 +242,14 @@ export class EditorController {
       channels.set(channelId, { path: sc.path, durationSec });
     }
 
-    const playback = createPlayback({ soundEvents, timingEngine, cursorPulse, channels });
+    const abortController = this.playback.newAbortController();
+    const playback = createPlayback({
+      soundEvents,
+      timingEngine,
+      cursorPulse,
+      channels,
+      abortController,
+    });
     this.playback.play(playback, cursorPulse, scrollY);
   }
 
