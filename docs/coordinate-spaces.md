@@ -62,16 +62,19 @@ pitch. The conversion between chart time and Web Audio `AudioContext.currentTime
 is handled entirely within the `audio-engine` packlet:
 
 ```
-chartSec   = (contextTime - startContextTime) * rate
-contextTime = startContextTime + triggerChartSec / rate
+playbackSec = (contextTime - startContextTime) * rate
+contextTime = startContextTime + triggerPlaybackSec / rate
 ```
 
-| Variable           | Unit           | Meaning                                     |
-| ------------------ | -------------- | ------------------------------------------- |
-| `contextTime`      | seconds        | `AudioContext.currentTime`                  |
-| `startContextTime` | seconds        | `currentTime` captured when play begins     |
-| `chartSec`         | Chart time sec | Elapsed song time at the playhead           |
-| `rate`             | unitless       | Speed multiplier (1.0 = normal, 0.5 = half) |
+The rate is also set on each `AudioBufferSourceNode.playbackRate`, so audio
+plays slower/faster accordingly (pitch-shifted).
+
+| Variable           | Unit         | Meaning                                     |
+| ------------------ | ------------ | ------------------------------------------- |
+| `contextTime`      | seconds      | `AudioContext.currentTime`                  |
+| `startContextTime` | seconds      | `currentTime` captured when play begins     |
+| `playbackSec`      | Playback sec | Elapsed playback time (affected by rate)    |
+| `rate`             | unitless     | Speed multiplier (1.0 = normal, 0.5 = half) |
 
 The audio engine calls `Playback.onPlaybackTimeChange(playbackSec)` on each tick
 (~25ms). The `Playback` implementation (provided by `createPlayback`) converts
