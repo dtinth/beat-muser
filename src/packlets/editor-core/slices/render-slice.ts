@@ -641,11 +641,11 @@ export class RenderSlice extends Slice {
         const pulseA = pulse + renderingPos / scaleY;
         const pulseB = pulse + (renderingPos + 1) / scaleY;
 
-        const secA = timingEngine.pulseToSeconds(pulseA);
-        const secB = timingEngine.pulseToSeconds(pulseB);
+        const chartSecA = timingEngine.pulseToSeconds(pulseA);
+        const chartSecB = timingEngine.pulseToSeconds(pulseB);
 
-        const audioSecA = secA - eventChartSec + sampleOffsetAudioSec;
-        const audioSecB = secB - eventChartSec + sampleOffsetAudioSec;
+        const audioSecA = chartSecA - eventChartSec + sampleOffsetAudioSec;
+        const audioSecB = chartSecB - eventChartSec + sampleOffsetAudioSec;
 
         const audioTop = Math.max(audioSecA, audioSecB);
         const audioBottom = Math.min(audioSecA, audioSecB);
