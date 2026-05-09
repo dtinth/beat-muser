@@ -5,7 +5,7 @@
  * editor toolbar, chart panels, and a ScrollableCanvas timeline.
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useRouteError, useLoaderData } from "react-router";
 import {
   MousePointer2,
@@ -17,6 +17,7 @@ import {
   Save,
   Play,
   Pause,
+  StopCircle,
   ZoomOut,
   ZoomIn,
   Plus,
@@ -55,7 +56,7 @@ import {
 import type { ProjectFile } from "../project-format";
 import type { ProjectSource } from "../project-store/types";
 import { createProjectFileSystem } from "../file-system";
-import { createAudioEngine } from "../audio-engine";
+import { createAudioEngine, startAudioPlayback } from "../audio-engine";
 import { createTimelineBehaviorFactory } from "./timeline-behavior";
 import { globalCommandRegistry, CommandSet, KeyboardShortcutHandler } from "../command-registry";
 
@@ -729,6 +730,8 @@ export function ProjectViewPage() {
 
   const [controller] = useState(() => new EditorController({ project: loadedProject }));
   const [modalManager] = useState(() => new ModalManager());
+  const audioEngineRef = useRef<ReturnType<typeof createAudioEngine> | null>(null);
+  const stopPlaybackRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const engine = createAudioEngine({
@@ -745,6 +748,8 @@ export function ProjectViewPage() {
         },
       },
     });
+
+    audioEngineRef.current = engine;
 
     const soundChannelSlice = controller.ctx.get(SoundChannelSlice);
     let previousPaths = new Set<string>();
@@ -767,9 +772,40 @@ export function ProjectViewPage() {
 
     return () => {
       unsub();
+      const s = stopPlaybackRef.current;
+      if (s) s();
+      stopPlaybackRef.current = null;
+      audioEngineRef.current = null;
       engine.destroy();
     };
   }, [fileSystem, controller]);
+
+  useEffect(() => {
+    const unsub1 = controller.outbox.on("playbackPlay", (playback, rate) => {
+      const engine = audioEngineRef.current;
+      if (!engine) return;
+      const stop = startAudioPlayback({
+        playback,
+        rate,
+        audioContext: engine.audioContext,
+        buffers: engine.buffers,
+        masterGain: engine.masterGain,
+        channelGains: new Map(),
+      });
+      stopPlaybackRef.current = stop;
+    });
+
+    const unsub2 = controller.outbox.on("playbackStop", (_scrollY) => {
+      const s = stopPlaybackRef.current;
+      if (s) s();
+      stopPlaybackRef.current = null;
+    });
+
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [controller]);
 
   useEffect(() => {
     const commands = new CommandSet();
@@ -940,6 +976,22 @@ export function ProjectViewPage() {
     return unsub;
   }, [controller]);
 
+  const [transportState, setTransportState] = useState(controller.playback.$transportState.get());
+  useEffect(() => {
+    const unsub = controller.playback.onStateChanged(() => {
+      setTransportState(controller.playback.$transportState.get());
+    });
+    return unsub;
+  }, [controller]);
+
+  const [playbackPulse, setPlaybackPulse] = useState(controller.playback.$playbackPulse.get());
+  useEffect(() => {
+    const unsub = controller.playback.$playbackPulse.subscribe(setPlaybackPulse);
+    return unsub;
+  }, [controller]);
+
+  const displayPulse = transportState === "playing" ? playbackPulse : cursorPulse;
+
   const [snap, setSnap] = useState(controller.$snap.get());
   useEffect(() => {
     const unsub = controller.$snap.subscribe(setSnap);
@@ -1033,11 +1085,11 @@ export function ProjectViewPage() {
   const zoomPercent = `${Math.round(zoom * 100)}%`;
 
   const engine = controller.getTimingEngine();
-  const timeStr = engine.formatTime(engine.pulseToSeconds(cursorPulse));
+  const timeStr = engine.formatTime(engine.pulseToSeconds(displayPulse));
 
-  const measureInfo = engine.getMeasureAtPulse(cursorPulse);
+  const measureInfo = engine.getMeasureAtPulse(displayPulse);
   const beatLength = 240; // 1 quarter note = PPQN
-  const beat = Math.floor((cursorPulse - measureInfo.measureStart) / beatLength) + 1;
+  const beat = Math.floor((displayPulse - measureInfo.measureStart) / beatLength) + 1;
   const measureStr = `${measureInfo.measureIndex + 1}:${beat}`;
 
   useEffect(() => {
@@ -1109,9 +1161,22 @@ export function ProjectViewPage() {
             <ToolbarDivider />
 
             <ToolbarGroup label="Transport">
-              <ToolbarButton icon={<Play size={16} />} label="Play" />
-              <ToolbarButton icon={<Pause size={16} />} label="Pause" />
-              <TransportDisplay time={timeStr} pulse={String(cursorPulse)} measure={measureStr} />
+              <ToolbarButton
+                icon={<Play size={16} />}
+                label="Play"
+                onClick={() => controller.playChart(cursorPulse, controller.getScrollY())}
+              />
+              <ToolbarButton
+                icon={<Pause size={16} />}
+                label="Pause"
+                onClick={() => controller.pausePlayback()}
+              />
+              <ToolbarButton
+                icon={<StopCircle size={16} />}
+                label="Stop"
+                onClick={() => controller.stopPlayback()}
+              />
+              <TransportDisplay time={timeStr} pulse={String(displayPulse)} measure={measureStr} />
             </ToolbarGroup>
 
             <ToolbarDivider />
