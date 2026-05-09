@@ -650,12 +650,12 @@ export class RenderSlice extends Slice {
         const audioSecTop = Math.max(audioSecA, audioSecB);
         const audioSecBottom = Math.min(audioSecA, audioSecB);
 
-        let fs = Math.floor(audioSecBottom * framesPerSec);
-        let fe = Math.ceil(audioSecTop * framesPerSec);
-        if (fe <= fs) fe = fs + 1;
-        if (fe <= 0) return null;
+        let frameStart = Math.floor(audioSecBottom * framesPerSec);
+        let frameEnd = Math.ceil(audioSecTop * framesPerSec);
+        if (frameEnd <= frameStart) frameEnd = frameStart + 1;
+        if (frameEnd <= 0) return null;
 
-        return { startFrame: fs, endFrame: fe };
+        return { startFrame: frameStart, endFrame: frameEnd };
       };
 
       const segments = computeWaveformSegments(wd.peak, wd.rms, {
