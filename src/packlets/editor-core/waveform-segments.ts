@@ -1,6 +1,6 @@
 export interface WaveformSegmentSpec {
-  pixelStart: number;
-  pixelLength: number;
+  rpStart: number;
+  rpLength: number;
   getWaveformPixels(): { peak: Float32Array; rms: Float32Array };
 }
 
@@ -8,32 +8,32 @@ export function computeWaveformSegments(
   peak: Float32Array,
   rms: Float32Array,
   options: {
-    pixelLength: number;
+    rpLength: number;
     maxSegmentPixels: number;
     getFrameRange: (
       renderingPos: number,
-      pixelLength: number,
+      rpLength: number,
     ) => { startFrame: number; endFrame: number } | null;
   },
 ): WaveformSegmentSpec[] {
-  const { pixelLength, maxSegmentPixels, getFrameRange } = options;
+  const { rpLength, maxSegmentPixels, getFrameRange } = options;
 
   const segments: WaveformSegmentSpec[] = [];
 
-  for (let segStart = 0; segStart < pixelLength; segStart += maxSegmentPixels) {
-    const segLength = Math.min(maxSegmentPixels, pixelLength - segStart);
-    const segPixelStart = segStart;
+  for (let segStart = 0; segStart < rpLength; segStart += maxSegmentPixels) {
+    const segRpLength = Math.min(maxSegmentPixels, rpLength - segStart);
+    const segRpStart = segStart;
 
     segments.push({
-      pixelStart: segPixelStart,
-      pixelLength: segLength,
+      rpStart: segRpStart,
+      rpLength: segRpLength,
       getWaveformPixels: () => {
-        const segPeak = new Float32Array(segLength);
-        const segRms = new Float32Array(segLength);
+        const segPeak = new Float32Array(segRpLength);
+        const segRms = new Float32Array(segRpLength);
 
-        for (let rp = 0; rp < segLength; rp++) {
-          const renderingPos = segPixelStart + rp;
-          const frameRange = getFrameRange(renderingPos, pixelLength);
+        for (let rp = 0; rp < segRpLength; rp++) {
+          const renderingPos = segRpStart + rp;
+          const frameRange = getFrameRange(renderingPos, rpLength);
 
           if (!frameRange || frameRange.startFrame >= frameRange.endFrame) {
             segPeak[rp] = 0;
