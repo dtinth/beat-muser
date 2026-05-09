@@ -626,7 +626,7 @@ export class RenderSlice extends Slice {
 
       const trimPulse = nextPulse ?? size;
 
-      const sampleOffsetAudioSec = offsetInfo?.sampleOffsetSeconds ?? 0;
+      const sampleOffsetAudioSec = offsetInfo?.sampleOffsetAudioSec ?? 0;
       const eventChartSec = timingEngine.pulseToSeconds(pulse);
 
       const waveformTopY = trackHeight - trimPulse * scaleY;
