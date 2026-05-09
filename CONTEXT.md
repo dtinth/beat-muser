@@ -105,8 +105,8 @@ A speed multiplier applied to playback. At 1.0x, chart time and real time are th
 > **Domain expert:** "The waveform canvas simply isn't rendered — the DOM event-marker still shows with its label. Once waveform data arrives, the render slice regenerates specs and the canvas appears."
 
 > **Dev:** "During playback, how does the audio engine know when to schedule the next batch of sounds?"
-> **Domain expert:** "It runs a tick loop (~25ms interval). Each tick, it computes `currentPlaybackTime = (contextTime - startTime) * rate`, adds a lookahead window (e.g. 200ms), and calls `playback.getEvents(lookaheadChartTime)` to get the next batch of **Playback events**. It converts each event's chart time to context time and schedules `AudioBufferSourceNode.start(time)`."
-
+> **Domain expert:** "It runs a tick loop (~25ms interval). Each tick, it computes `currentChartTime = (contextTime - startTime) * rate`, adds a lookahead window (e.g. 200ms), and calls `playback.getEvents(lookaheadChartTime)` to get the next batch of **Playback events**. It converts each event's chart time to context time and schedules `AudioBufferSourceNode.start(time)`."
+>
 > **Dev:** "What happens if the chart has a `continue` sound event — does the audio engine need to handle that?"
 > **Domain expert:** "No — `createPlayback` coalesces `continue` chains into a single **Playback event** with the correct `audioStartTime`. The audio engine just sees flat, independent events."
 

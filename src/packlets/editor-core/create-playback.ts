@@ -61,20 +61,32 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
       if (isLastInChain) {
         const chainStartPulseValue = chainStartPulse!;
 
-        // Chain end as chart time (when audio would stop playing)
-        const chainEndChartTime =
-          timingEngine.pulseToSeconds(chainStartPulseValue) + channel.durationSec;
+        const chainStartChartTime = timingEngine.pulseToSeconds(chainStartPulseValue);
+        const nextPlayChartTime =
+          nextEvent && nextEvent.command === "play"
+            ? timingEngine.pulseToSeconds(nextEvent.pulse)
+            : Number.POSITIVE_INFINITY;
+        const chainEndChartTime = Math.min(
+          chainStartChartTime + channel.durationSec,
+          nextPlayChartTime,
+        );
 
         let triggerChartTime: number;
         let audioStartTime: number;
 
         if (chainStartPulseValue >= cursorPulse) {
-          triggerChartTime = timingEngine.pulseToSeconds(chainStartPulseValue) - cursorChartTime;
+          triggerChartTime = chainStartChartTime - cursorChartTime;
           audioStartTime = 0;
         } else if (cursorChartTime < chainEndChartTime) {
           triggerChartTime = 0;
-          audioStartTime = cursorChartTime - timingEngine.pulseToSeconds(chainStartPulseValue);
+          audioStartTime = cursorChartTime - chainStartChartTime;
         } else {
+          chainStart = -1;
+          continue;
+        }
+
+        const audioEndTime = chainEndChartTime - chainStartChartTime;
+        if (audioStartTime >= audioEndTime) {
           chainStart = -1;
           continue;
         }
@@ -82,7 +94,7 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
         allEvents.push({
           triggerChartTime,
           audioStartTime,
-          audioEndTime: channel.durationSec,
+          audioEndTime,
           channelId,
         });
 

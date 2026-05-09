@@ -33,10 +33,36 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     onTick,
   } = options;
 
+  if (!Number.isFinite(rate) || rate <= 0) {
+    throw new Error(`startAudioPlayback: rate must be a positive finite number, got ${rate}`);
+  }
+
   const startContextTime = audioContext.currentTime;
   let tickTimer: ReturnType<typeof setInterval> | null = null;
   const activeSources: ActiveSource[] = [];
   let stopped = false;
+
+  function stop(): void {
+    if (stopped) return;
+    stopped = true;
+    playback.abortSignal.removeEventListener("abort", onAbort);
+    if (tickTimer !== null) {
+      clearInterval(tickTimer);
+      tickTimer = null;
+    }
+    for (const { source } of activeSources) {
+      try {
+        source.stop();
+      } catch {
+        // Already stopped
+      }
+    }
+    activeSources.length = 0;
+  }
+
+  const onAbort = () => stop();
+  if (playback.abortSignal.aborted) return () => {};
+  playback.abortSignal.addEventListener("abort", onAbort, { once: true });
 
   function scheduleEvents(): void {
     if (stopped) return;
@@ -96,24 +122,8 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
   function startTick(): void {
     if (stopped) return;
     scheduleEvents();
-    tickTimer = setInterval(scheduleEvents, tickIntervalMs);
-  }
-
-  function stop(): void {
     if (stopped) return;
-    stopped = true;
-    if (tickTimer !== null) {
-      clearInterval(tickTimer);
-      tickTimer = null;
-    }
-    for (const { source } of activeSources) {
-      try {
-        source.stop();
-      } catch {
-        // Already stopped
-      }
-    }
-    activeSources.length = 0;
+    tickTimer = setInterval(scheduleEvents, tickIntervalMs);
   }
 
   // Start scheduling as soon as possible

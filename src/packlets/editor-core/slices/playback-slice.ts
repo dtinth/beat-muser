@@ -52,6 +52,7 @@ export class PlaybackSlice extends Slice {
   }
 
   stop(): void {
+    if (this.$transportState.get() === "stopped") return;
     this.$transportState.set("stopped");
     this.$playbackPulse.set(this.prePlaybackCursor);
     this.events.emit("stopRequest", this.prePlaybackScrollY);
