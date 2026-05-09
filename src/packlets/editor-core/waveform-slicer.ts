@@ -7,7 +7,7 @@ export interface SoundEventInput {
 }
 
 export interface WaveformOffsetInfo {
-  sampleOffsetSeconds: number;
+  sampleOffsetAudioSec: number;
 }
 
 export function computeWaveformOffsets(
@@ -40,7 +40,7 @@ export function computeWaveformOffsets(
         cumulativeSeconds = 0;
       }
 
-      result.set(event.entityId, { sampleOffsetSeconds: cumulativeSeconds });
+      result.set(event.entityId, { sampleOffsetAudioSec: cumulativeSeconds });
 
       if (nextEvent) {
         const playedSeconds = pulseToSeconds(nextEvent.pulse) - pulseToSeconds(event.pulse);

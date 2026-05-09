@@ -21,7 +21,7 @@ describe("computeWaveformOffsets", () => {
       pulseToSeconds,
     );
 
-    expect(result.get("e1")?.sampleOffsetSeconds).toBe(0);
+    expect(result.get("e1")?.sampleOffsetAudioSec).toBe(0);
   });
 
   test("continue event picks up where previous play left off", () => {
@@ -46,8 +46,8 @@ describe("computeWaveformOffsets", () => {
       pulseToSeconds,
     );
 
-    expect(result.get("e1")?.sampleOffsetSeconds).toBe(0);
-    expect(result.get("e2")?.sampleOffsetSeconds).toBe(1);
+    expect(result.get("e1")?.sampleOffsetAudioSec).toBe(0);
+    expect(result.get("e2")?.sampleOffsetAudioSec).toBe(1);
   });
 
   test("multiple continues accumulate offset", () => {
@@ -79,9 +79,9 @@ describe("computeWaveformOffsets", () => {
       pulseToSeconds,
     );
 
-    expect(result.get("e1")?.sampleOffsetSeconds).toBe(0);
-    expect(result.get("e2")?.sampleOffsetSeconds).toBe(1);
-    expect(result.get("e3")?.sampleOffsetSeconds).toBe(2);
+    expect(result.get("e1")?.sampleOffsetAudioSec).toBe(0);
+    expect(result.get("e2")?.sampleOffsetAudioSec).toBe(1);
+    expect(result.get("e3")?.sampleOffsetAudioSec).toBe(2);
   });
 
   test("play resets the chain", () => {
@@ -120,10 +120,10 @@ describe("computeWaveformOffsets", () => {
       pulseToSeconds,
     );
 
-    expect(result.get("e1")?.sampleOffsetSeconds).toBe(0);
-    expect(result.get("e2")?.sampleOffsetSeconds).toBe(1);
-    expect(result.get("e3")?.sampleOffsetSeconds).toBe(0);
-    expect(result.get("e4")?.sampleOffsetSeconds).toBe(1);
+    expect(result.get("e1")?.sampleOffsetAudioSec).toBe(0);
+    expect(result.get("e2")?.sampleOffsetAudioSec).toBe(1);
+    expect(result.get("e3")?.sampleOffsetAudioSec).toBe(0);
+    expect(result.get("e4")?.sampleOffsetAudioSec).toBe(1);
   });
 
   test("events on different lanes are independent", () => {
@@ -162,8 +162,8 @@ describe("computeWaveformOffsets", () => {
       pulseToSeconds,
     );
 
-    expect(result.get("e3")?.sampleOffsetSeconds).toBe(1);
-    expect(result.get("e4")?.sampleOffsetSeconds).toBe(2);
+    expect(result.get("e3")?.sampleOffsetAudioSec).toBe(1);
+    expect(result.get("e4")?.sampleOffsetAudioSec).toBe(2);
   });
 
   test("events on different channels on same lane are independent", () => {
@@ -205,8 +205,8 @@ describe("computeWaveformOffsets", () => {
       pulseToSeconds,
     );
 
-    expect(result.get("e3")?.sampleOffsetSeconds).toBe(1);
-    expect(result.get("e4")?.sampleOffsetSeconds).toBe(2);
+    expect(result.get("e3")?.sampleOffsetAudioSec).toBe(1);
+    expect(result.get("e4")?.sampleOffsetAudioSec).toBe(2);
   });
 
   test("continue without preceding play starts at offset 0", () => {
@@ -224,6 +224,6 @@ describe("computeWaveformOffsets", () => {
       pulseToSeconds,
     );
 
-    expect(result.get("e1")?.sampleOffsetSeconds).toBe(0);
+    expect(result.get("e1")?.sampleOffsetAudioSec).toBe(0);
   });
 });
