@@ -13,6 +13,7 @@ import { RenderSlice } from "./render-slice";
 import { HistorySlice } from "./history-slice";
 import { TimingSlice } from "./timing-slice";
 import { DragSlice } from "./drag-slice";
+import { PlaybackSlice } from "./playback-slice";
 import { EVENT } from "../components";
 import { Point, Rect } from "../../geometry";
 import {
@@ -202,6 +203,8 @@ export class PointerInteractionSlice extends Slice {
 
   handlePointerMove(viewportX: number, viewportY: number): void {
     const dragSlice = this.ctx.get(DragSlice);
+    const playbackSlice = this.ctx.get(PlaybackSlice);
+
     if (dragSlice.isActive()) {
       const currentPulse = this.snapToGrid(this.computePulseFromViewportY(viewportY));
       dragSlice.updateDrag(viewportY, currentPulse);
@@ -214,6 +217,7 @@ export class PointerInteractionSlice extends Slice {
           this.computePulseFromViewportY(viewportY),
         );
     }
+    if (playbackSlice.$transportState.get() === "playing") return;
     this.ctx.get(CursorSlice).$cursorViewportPos.set({ x: viewportX, y: viewportY });
     this.recomputeCursorPulse();
   }
