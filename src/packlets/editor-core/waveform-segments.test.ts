@@ -42,8 +42,12 @@ describe("computeWaveformSegments", () => {
     const pixels = getPixels(segments[0]);
     expect(pixels.peak.length).toBe(120);
     expect(pixels.rms.length).toBe(120);
-    expect(pixels.peak[0]).toBeCloseTo(1 / 120, 5);
-    expect(pixels.rms[0]).toBeCloseTo(0.7 / 120, 5);
+    // peak[0] = bottom pixel = last frame (119)
+    expect(pixels.peak[0]).toBeCloseTo(120 / 120, 5);
+    expect(pixels.rms[0]).toBeCloseTo((0.7 * 120) / 120, 5);
+    // peak[119] = top pixel = first frame (0)
+    expect(pixels.peak[119]).toBeCloseTo(1 / 120, 5);
+    expect(pixels.rms[119]).toBeCloseTo(0.7 / 120, 5);
   });
 
   test("downsampling — 2 frames per pixel", () => {
@@ -59,8 +63,10 @@ describe("computeWaveformSegments", () => {
     const pixels = getPixels(segments[0]);
     expect(pixels.peak.length).toBe(120);
     expect(pixels.rms.length).toBe(120);
-    expect(pixels.peak[0]).toBeCloseTo(2 / 240, 5);
-    expect(pixels.rms[0]).toBeCloseTo(0.7 * (1.5 / 240), 5);
+    // peak[0] = bottom pixel = frames 238-239 = max(239/240, 240/240) = 1
+    expect(pixels.peak[0]).toBeCloseTo(240 / 240, 5);
+    // peak[119] = top pixel = frames 0-1 = max(1/240, 2/240) = 2/240
+    expect(pixels.peak[119]).toBeCloseTo(2 / 240, 5);
   });
 
   test("upsampling — 1 frame per 2 pixels", () => {
@@ -75,8 +81,10 @@ describe("computeWaveformSegments", () => {
 
     const pixels = getPixels(segments[0]);
     expect(pixels.peak.length).toBe(120);
-    expect(pixels.peak[0]).toBeCloseTo(1 / 60, 5);
-    expect(pixels.peak[1]).toBeCloseTo(1 / 60, 5);
+    // peak[0] = bottom pixel = frame 59 → 60/60 = 1
+    expect(pixels.peak[0]).toBeCloseTo(60 / 60, 5);
+    // peak[119] = top pixel = frame 0 → 1/60
+    expect(pixels.peak[119]).toBeCloseTo(1 / 60, 5);
   });
 
   test("partitioning — splits into max 512px segments", () => {
@@ -112,7 +120,9 @@ describe("computeWaveformSegments", () => {
     expect(segments).toHaveLength(1);
 
     const pixels = getPixels(segments[0]);
-    expect(pixels.peak[0]).toBeCloseTo(61 / 120, 5);
-    expect(pixels.peak[29]).toBeCloseTo(90 / 120, 5);
+    // peak[0] = bottom pixel = frame 60+29=89 → 90/120 = 0.75
+    expect(pixels.peak[0]).toBeCloseTo(90 / 120, 5);
+    // peak[29] = top pixel = frame 60 → 61/120
+    expect(pixels.peak[29]).toBeCloseTo(61 / 120, 5);
   });
 });

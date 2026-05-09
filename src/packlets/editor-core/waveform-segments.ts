@@ -32,7 +32,8 @@ export function computeWaveformSegments(
         const segRms = new Float32Array(segHeight);
 
         for (let py = 0; py < segHeight; py++) {
-          const frameRange = getFrameRange(segPixelStart + py, pixelHeight);
+          const blockPixelIndex = segPixelStart + (segHeight - 1 - py);
+          const frameRange = getFrameRange(blockPixelIndex, pixelHeight);
 
           if (!frameRange || frameRange.startFrame >= frameRange.endFrame) {
             segPeak[py] = 0;
