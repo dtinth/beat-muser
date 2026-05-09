@@ -30,7 +30,35 @@ _Avoid_: sample, audio file (without "channel" qualifier)
 **Sound event**:
 A timed entity on a chart's sound lane that triggers a **Sound channel** at a specific pulse. Has a command (`play` or `continue`).
 
+**Waveform data**:
+A pre-computed visual envelope of an audio file: peak amplitude and RMS loudness per 1/120-second chunk, taken as the maximum of both stereo channels. Derived transiently from the audio file — not persisted in the project file. Stored as a pair of `Float32Array`s keyed by file path. Each file has a **Waveform status** tracking the pipeline state.
+_Avoid_: waveform (without "data" qualifier when referring to the stored data)
+
+**Waveform status**:
+The processing state of a sound file in the waveform pipeline: `nothing` (file not yet seen by the audio engine), `loading` (decoding in progress), `decoding-failed` (file unreadable or corrupt), `generating` (computing peak/RMS arrays), or `ready` (waveform data available). Exposed via the **Waveform slice** atom for sidebar display. _Avoid_: waveform state (ambiguous with React state)
+
+**Waveform slice**:
+The {@link WaveformSlice} in editor-core that stores waveform data and status keyed by file path. Exposes readable atoms (`$waveformData`, `$waveformStatus`) consumed by the render slice and sidebar, and setter methods called by the audio engine delegate.
+
+**Audio engine**:
+A separate packlet (`src/packlets/audio-engine/`) responsible for loading audio files from the project file system, decoding them via the Web Audio API, computing waveform data, and reporting results to the waveform slice via a delegate. Owns no editor state — it is a pure I/O and computation layer.
+
+**Waveform slicing**:
+The computation that determines, for each sound event on the timeline, how much of the referenced audio file is visible: the start offset (seconds into the sample, accounting for `continue` events that resume from prior position), and the trim point (pulse of the next event on the same lane).
+
 ## Relationships
+
+- A **Chart** contains one or more **Levels**
+- A **Level** references exactly one **Game mode** by identifier
+- A **Game mode** contains one or more **Lane definitions**
+- The **Game mode registry** holds zero or more **Game modes**
+- **Column definitions** are derived from visible **Levels** + their referenced **Game mode** layouts
+- A **Project** contains zero or more **Sound groups**
+- A **Sound group** contains one or more **Sound channels**
+- A **Sound event** references exactly one **Sound channel**
+- **Waveform data** is derived from a **Sound channel**'s audio file by the **Audio engine**
+- The **Audio engine** feeds **Waveform data** into the **Waveform slice**
+- The **Render slice** reads the **Waveform slice** to generate waveform render specs
 
 - A **Chart** contains one or more **Levels**
 - A **Level** references exactly one **Game mode** by identifier
@@ -48,6 +76,12 @@ A timed entity on a chart's sound lane that triggers a **Sound channel** at a sp
 
 > **Dev:** "Can I create a sound channel without assigning a file?"
 > **Domain expert:** "Yes — you create a blank channel inside a group, then assign the file later via the file picker command or by dragging an audio file into the group."
+
+> **Dev:** "If a sound event uses `continue` and the previous event was trimmed by the next event on the lane, where does the continue event start drawing?"
+> **Domain expert:** "The **Waveform slicing** logic tracks the cumulative elapsed time from the last `play` event. A `continue` event picks up from where the previous event's playback stopped, as if the audio file kept running between events. The waveform canvas shows the corresponding section of the audio file."
+
+> **Dev:** "What happens if the audio engine hasn't finished computing the waveform data for a file?"
+> **Domain expert:** "The waveform canvas simply isn't rendered — the DOM event-marker still shows with its label. Once waveform data arrives, the render slice regenerates specs and the canvas appears."
 
 ## Flagged ambiguities
 

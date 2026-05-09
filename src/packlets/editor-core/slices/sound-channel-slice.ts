@@ -34,6 +34,7 @@ export class SoundChannelSlice extends Slice {
 
   $soundGroups = atom<SoundGroupInfo[]>([]);
   $soundChannels = atom<SoundChannelInfo[]>([]);
+  $soundFilePaths = atom<string[]>([]);
   $selectedSoundChannelId = atom<string | null>(null);
 
   constructor(ctx: EditorContext) {
@@ -97,6 +98,9 @@ export class SoundChannelSlice extends Slice {
 
     this.$soundGroups.set(groups);
     this.$soundChannels.set(channels);
+
+    const filePaths = [...new Set(rawChannels.map((c) => c.path).filter((p) => p !== ""))];
+    this.$soundFilePaths.set(filePaths);
   }
 
   addSoundGroup(name?: string): string {

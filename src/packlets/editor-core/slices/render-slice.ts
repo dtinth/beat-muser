@@ -22,6 +22,10 @@ import {
 } from "../components";
 import type { TimelineRenderSpec } from "../types";
 import { DragSlice } from "./drag-slice";
+import { WaveformSlice } from "./waveform-slice";
+import { computeWaveformOffsets, type SoundEventInput } from "../waveform-slicer";
+import { computeWaveformSegments } from "../waveform-segments";
+import { SOUND_GROUP } from "../components";
 
 export class RenderSlice extends Slice {
   static readonly sliceKey = "render";
@@ -40,6 +44,9 @@ export class RenderSlice extends Slice {
       this.refresh();
     });
     ctx.get(CursorSlice).$cursorViewportPos.subscribe(() => {
+      this.refresh();
+    });
+    ctx.get(WaveformSlice).$waveformData.subscribe(() => {
       this.refresh();
     });
   }
@@ -306,6 +313,41 @@ export class RenderSlice extends Slice {
 
     // --- Sound events ---
     const selectedChartId = chartSlice.$selectedChartId.get();
+
+    const waveformSlice = this.ctx.get(WaveformSlice);
+    const waveformMap = waveformSlice.$waveformData.get();
+    const timingEngine = timing.getTimingEngine();
+    const channelDurations = new Map<string, { durationSeconds: number }>();
+
+    const soundEventInputs: SoundEventInput[] = [];
+    for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
+      const e = entityManager.getComponent(entity, EVENT);
+      const se = entityManager.getComponent(entity, SOUND_EVENT);
+      const cr = entityManager.getComponent(entity, CHART_REF);
+      if (!e || !se || !cr || cr.chartId !== selectedChartId) continue;
+
+      const soundChannel = entityManager.get(se.soundChannelId);
+      const channelPath = soundChannel
+        ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
+        : undefined;
+      if (channelPath && waveformMap.has(channelPath)) {
+        const wd = waveformMap.get(channelPath)!;
+        channelDurations.set(se.soundChannelId, { durationSeconds: wd.durationSeconds });
+      }
+
+      soundEventInputs.push({
+        entityId: entity.id,
+        pulse: e.y,
+        soundLane: se.soundLane,
+        soundChannelId: se.soundChannelId,
+        command: se.command,
+      });
+    }
+
+    const offsets = computeWaveformOffsets(soundEventInputs, channelDurations, (pulse: number) =>
+      timingEngine.pulseToSeconds(pulse),
+    );
+
     for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
       const event = entityManager.getComponent(entity, EVENT);
       const soundEvent = entityManager.getComponent(entity, SOUND_EVENT);
@@ -347,6 +389,79 @@ export class RenderSlice extends Slice {
         zIndex: 2,
         opacity: isDragging && isDragged ? 0.3 : undefined,
       });
+
+      if (soundChannelPath && waveformMap.has(soundChannelPath)) {
+        const wd = waveformMap.get(soundChannelPath)!;
+        const offsetInfo = offsets.get(entity.id);
+
+        const nextPulse = soundEventInputs
+          .filter(
+            (se) =>
+              se.soundLane === soundEvent.soundLane &&
+              se.soundChannelId === soundEvent.soundChannelId &&
+              se.pulse > pulse,
+          )
+          .map((se) => se.pulse)
+          .sort((a, b) => a - b)[0];
+
+        const trimPulse = nextPulse ?? size;
+        const visibleStart = Math.max(pulse, pulseStart);
+        const visibleEnd = Math.min(trimPulse, pulseEnd);
+
+        if (visibleEnd > visibleStart) {
+          const startSec = timingEngine.pulseToSeconds(visibleStart);
+          const endSec = timingEngine.pulseToSeconds(visibleEnd);
+          const rangeSec = endSec - startSec;
+
+          const chunksPerSec = 120;
+          const sampleOffset = offsetInfo?.sampleOffsetSeconds ?? 0;
+          const startChunk = Math.floor(sampleOffset * chunksPerSec);
+          const maxChunks = Math.floor((sampleOffset + rangeSec) * chunksPerSec);
+          const visibleChunks = Math.min(maxChunks - startChunk, wd.peak.length - startChunk);
+          const clampedVisibleChunks = Math.max(0, Math.min(visibleChunks, wd.peak.length));
+
+          if (clampedVisibleChunks > 0) {
+            const waveformTop = trackHeight - visibleEnd * scaleY;
+            const waveformBottom = trackHeight - visibleStart * scaleY;
+            const pixelHeight = Math.max(1, Math.round(waveformBottom - waveformTop));
+
+            const segments = computeWaveformSegments(wd.peak, wd.rms, {
+              startChunk,
+              chunkCount: clampedVisibleChunks,
+              pixelHeight,
+              maxSegmentPixels: 512,
+            });
+
+            let groupColor: string | undefined;
+            if (soundChannel) {
+              const groupId = entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.soundGroupId;
+              if (groupId) {
+                const group = entityManager.get(groupId);
+                if (group) {
+                  groupColor = entityManager.getComponent(group, SOUND_GROUP)?.color;
+                }
+              }
+            }
+
+            for (const segment of segments) {
+              specs.push({
+                key: `waveform-${entity.id}-${segment.pixelStart}`,
+                type: "waveform",
+                x: soundLaneCol.x + 4,
+                y: waveformTop + segment.pixelStart,
+                width: soundLaneCol.width - 8,
+                height: segment.pixelHeight,
+                data: {
+                  peak: segment.peak,
+                  rms: segment.rms,
+                  color: groupColor || "var(--gray-8)",
+                },
+                zIndex: 1,
+              });
+            }
+          }
+        }
+      }
 
       if (isDragging && isDragged) {
         const ghostPulse = pulse + deltaPulse;
