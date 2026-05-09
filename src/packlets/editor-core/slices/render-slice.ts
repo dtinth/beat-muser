@@ -635,22 +635,20 @@ export class RenderSlice extends Slice {
       const framesPerSec = 120;
 
       const getFrameRange = (
-        pixelIndex: number,
-        blockPixelHeight: number,
+        renderingPos: number,
+        _blockPixelLength: number,
       ): { startFrame: number; endFrame: number } | null => {
-        const fracTop = pixelIndex / blockPixelHeight;
-        const fracBottom = (pixelIndex + 1) / blockPixelHeight;
-        const pulseAtTop = trimPulse - fracTop * (trimPulse - pulse);
-        const pulseAtBottom = trimPulse - fracBottom * (trimPulse - pulse);
+        const pulseA = pulse + renderingPos / scaleY;
+        const pulseB = pulse + (renderingPos + 1) / scaleY;
 
-        const secTop = timingEngine.pulseToSeconds(pulseAtTop);
-        const secBottom = timingEngine.pulseToSeconds(pulseAtBottom);
+        const secA = timingEngine.pulseToSeconds(pulseA);
+        const secB = timingEngine.pulseToSeconds(pulseB);
 
-        const audioSecTop = secTop - eventAbsSeconds + sampleOffset;
-        const audioSecBottom = secBottom - eventAbsSeconds + sampleOffset;
+        const audioSecA = secA - eventAbsSeconds + sampleOffset;
+        const audioSecB = secB - eventAbsSeconds + sampleOffset;
 
-        const audioTop = Math.max(audioSecTop, audioSecBottom);
-        const audioBottom = Math.min(audioSecTop, audioSecBottom);
+        const audioTop = Math.max(audioSecA, audioSecB);
+        const audioBottom = Math.min(audioSecA, audioSecB);
 
         let fs = Math.floor(audioBottom * framesPerSec);
         let fe = Math.ceil(audioTop * framesPerSec);
@@ -677,20 +675,18 @@ export class RenderSlice extends Slice {
         }
       }
 
-      let currentY = waveformBottom;
       for (const segment of segments) {
         slices.push({
           key: `waveform-${entity.id}-${segment.pixelStart}`,
           pulseStart: pulse,
           pulseEnd: trimPulse,
           x: soundLaneCol.x + 4,
-          y: currentY - segment.pixelLength,
+          y: waveformBottom - segment.pixelStart - segment.pixelLength,
           width: soundLaneCol.width - 8,
           pixelLength: segment.pixelLength,
           color: groupColor || "#fff",
           getWaveformPixels: segment.getWaveformPixels,
         });
-        currentY -= segment.pixelLength;
       }
     }
 

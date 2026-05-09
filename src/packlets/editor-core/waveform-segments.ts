@@ -11,7 +11,7 @@ export function computeWaveformSegments(
     pixelLength: number;
     maxSegmentPixels: number;
     getFrameRange: (
-      pixelIndex: number,
+      renderingPos: number,
       pixelLength: number,
     ) => { startFrame: number; endFrame: number } | null;
   },
@@ -31,13 +31,13 @@ export function computeWaveformSegments(
         const segPeak = new Float32Array(segLength);
         const segRms = new Float32Array(segLength);
 
-        for (let py = 0; py < segLength; py++) {
-          const blockPixelIndex = segPixelStart + (segLength - 1 - py);
-          const frameRange = getFrameRange(blockPixelIndex, pixelLength);
+        for (let rp = 0; rp < segLength; rp++) {
+          const renderingPos = segPixelStart + rp;
+          const frameRange = getFrameRange(renderingPos, pixelLength);
 
           if (!frameRange || frameRange.startFrame >= frameRange.endFrame) {
-            segPeak[py] = 0;
-            segRms[py] = 0;
+            segPeak[rp] = 0;
+            segRms[rp] = 0;
             continue;
           }
 
@@ -52,8 +52,8 @@ export function computeWaveformSegments(
             sumRms += rms[f];
             count++;
           }
-          segPeak[py] = maxPeak;
-          segRms[py] = count > 0 ? sumRms / count : 0;
+          segPeak[rp] = maxPeak;
+          segRms[rp] = count > 0 ? sumRms / count : 0;
         }
 
         return { peak: segPeak, rms: segRms };
