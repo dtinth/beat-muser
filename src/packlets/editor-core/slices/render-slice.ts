@@ -647,11 +647,11 @@ export class RenderSlice extends Slice {
         const audioSecA = chartSecA - eventChartSec + sampleOffsetAudioSec;
         const audioSecB = chartSecB - eventChartSec + sampleOffsetAudioSec;
 
-        const audioTop = Math.max(audioSecA, audioSecB);
-        const audioBottom = Math.min(audioSecA, audioSecB);
+        const audioSecTop = Math.max(audioSecA, audioSecB);
+        const audioSecBottom = Math.min(audioSecA, audioSecB);
 
-        let fs = Math.floor(audioBottom * framesPerSec);
-        let fe = Math.ceil(audioTop * framesPerSec);
+        let fs = Math.floor(audioSecBottom * framesPerSec);
+        let fe = Math.ceil(audioSecTop * framesPerSec);
         if (fe <= fs) fe = fs + 1;
         if (fe <= 0) return null;
 
