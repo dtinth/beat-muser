@@ -658,19 +658,21 @@ export class RenderSlice extends Slice {
         }
       }
 
+      let currentY = waveformBottom;
       for (const segment of segments) {
         slices.push({
           key: `waveform-${entity.id}-${segment.pixelStart}`,
           pulseStart: pulse,
           pulseEnd: trimPulse,
           x: soundLaneCol.x + 4,
-          y: waveformTop + segment.pixelStart,
+          y: currentY - segment.pixelHeight,
           width: soundLaneCol.width - 8,
           height: segment.pixelHeight,
           peak: segment.peak,
           rms: segment.rms,
           color: groupColor || "#fff",
         });
+        currentY -= segment.pixelHeight;
       }
     }
 
