@@ -1,0 +1,122 @@
+import type { Playback, PlaybackEvent } from "../playback-contract";
+
+export interface AudioPlaybackOptions {
+  playback: Playback;
+  rate: number;
+  audioContext: AudioContext;
+  buffers: Map<string, AudioBuffer>;
+  masterGain: GainNode;
+  channelGains: Map<string, GainNode>;
+  /** Maximum lookahead in seconds (default 0.2). */
+  lookaheadSec?: number;
+  /** Tick interval in milliseconds (default 25). */
+  tickIntervalMs?: number;
+}
+
+interface ActiveSource {
+  source: AudioBufferSourceNode;
+  gain: GainNode;
+}
+
+export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
+  const {
+    playback,
+    rate,
+    audioContext,
+    buffers,
+    masterGain,
+    channelGains,
+    lookaheadSec = 0.2,
+    tickIntervalMs = 25,
+  } = options;
+
+  const startContextTime = audioContext.currentTime;
+  let tickTimer: ReturnType<typeof setInterval> | null = null;
+  const activeSources: ActiveSource[] = [];
+  let stopped = false;
+
+  function scheduleEvents(): void {
+    if (stopped) return;
+    const currentContextTime = audioContext.currentTime;
+    const currentPlaybackTime = (currentContextTime - startContextTime) * rate;
+    const lookaheadPlaybackTime = currentPlaybackTime + lookaheadSec;
+
+    const events = playback.getEvents(lookaheadPlaybackTime);
+
+    for (const event of events) {
+      scheduleEvent(event);
+    }
+
+    if (events.length === 0 && activeSources.length === 0) {
+      stop();
+    }
+  }
+
+  function scheduleEvent(event: PlaybackEvent): void {
+    const buffer = buffers.get(event.fileName);
+    if (!buffer) return;
+
+    const channelGain = channelGains.get(event.fileName) ?? masterGain;
+
+    // Convert chart time to context time
+    const scheduledContextTime = startContextTime + event.triggerChartTime / rate;
+    const now = audioContext.currentTime;
+
+    if (scheduledContextTime < now) {
+      // Event is in the past — skip
+      // The "join mid-stream" case: audioStartTime already accounts for offset
+      // Schedule immediately from the correct offset
+    }
+
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(channelGain);
+
+    try {
+      source.start(
+        Math.max(scheduledContextTime, now),
+        event.audioStartTime,
+        event.audioEndTime - event.audioStartTime,
+      );
+    } catch {
+      // Scheduling failed (e.g. negative offset)
+      return;
+    }
+
+    const entry: ActiveSource = { source, gain: channelGain };
+    activeSources.push(entry);
+
+    source.onended = () => {
+      const idx = activeSources.indexOf(entry);
+      if (idx >= 0) activeSources.splice(idx, 1);
+    };
+  }
+
+  function startTick(): void {
+    if (stopped) return;
+    scheduleEvents();
+    tickTimer = setInterval(scheduleEvents, tickIntervalMs);
+  }
+
+  function stop(): void {
+    if (stopped) return;
+    stopped = true;
+    if (tickTimer !== null) {
+      clearInterval(tickTimer);
+      tickTimer = null;
+    }
+    for (const { source } of activeSources) {
+      try {
+        source.stop();
+      } catch {
+        // Already stopped
+      }
+    }
+    activeSources.length = 0;
+  }
+
+  // Start scheduling as soon as possible
+  startTick();
+
+  return stop;
+}
