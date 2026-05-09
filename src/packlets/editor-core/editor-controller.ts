@@ -174,6 +174,10 @@ export class EditorController {
       this.outbox.emit("playbackPlay", playback, 1);
     });
 
+    this.ctx.get(PlaybackSlice).onPauseRequest(() => {
+      this.outbox.emit("playbackPause");
+    });
+
     this.ctx.get(PlaybackSlice).onStopRequest((scrollY) => {
       this.outbox.emit("playbackStop", scrollY);
     });
@@ -196,8 +200,6 @@ export class EditorController {
   }
 
   playChart(cursorPulse: number, scrollY: number): void {
-    if (this.playback.$transportState.get() === "playing") return;
-
     const chartId = this.$selectedChartId.get();
     if (!chartId) return;
 
