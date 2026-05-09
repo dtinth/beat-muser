@@ -1,60 +1,62 @@
 export interface WaveformSegmentSpec {
   pixelStart: number;
   pixelHeight: number;
-  peak: Float32Array;
-  rms: Float32Array;
+  getWaveformPixels(): { peak: Float32Array; rms: Float32Array };
 }
 
 export function computeWaveformSegments(
   peak: Float32Array,
   rms: Float32Array,
   options: {
-    startChunk: number;
-    chunkCount: number;
     pixelHeight: number;
     maxSegmentPixels: number;
+    getFrameRange: (
+      pixelIndex: number,
+      pixelHeight: number,
+    ) => { startFrame: number; endFrame: number } | null;
   },
 ): WaveformSegmentSpec[] {
-  const { startChunk, chunkCount, pixelHeight, maxSegmentPixels } = options;
+  const { pixelHeight, maxSegmentPixels, getFrameRange } = options;
 
-  // First, compute full downsampled arrays (one per pixel)
-  const downsampledPeak = new Float32Array(pixelHeight);
-  const downsampledRms = new Float32Array(pixelHeight);
-
-  for (let py = 0; py < pixelHeight; py++) {
-    const chunkStart = startChunk + (py * chunkCount) / pixelHeight;
-    const chunkEnd = startChunk + ((py + 1) * chunkCount) / pixelHeight;
-    const ci = Math.floor(chunkStart);
-    const cj = Math.ceil(chunkEnd) - 1;
-
-    if (ci > cj) {
-      // No chunks in range (edge case), use nearest
-      const idx = Math.max(0, Math.min(ci, peak.length - 1));
-      downsampledPeak[py] = peak[idx];
-      downsampledRms[py] = rms[idx];
-    } else {
-      let maxPeak = -Infinity;
-      let sumRms = 0;
-      let count = 0;
-      for (let c = ci; c <= cj && c < peak.length; c++) {
-        maxPeak = Math.max(maxPeak, peak[c]);
-        sumRms += rms[c];
-        count++;
-      }
-      downsampledPeak[py] = maxPeak;
-      downsampledRms[py] = count > 0 ? sumRms / count : 0;
-    }
-  }
-
-  // Partition into segments
   const segments: WaveformSegmentSpec[] = [];
-  for (let start = 0; start < pixelHeight; start += maxSegmentPixels) {
-    const height = Math.min(maxSegmentPixels, pixelHeight - start);
+
+  for (let segStart = 0; segStart < pixelHeight; segStart += maxSegmentPixels) {
+    const segHeight = Math.min(maxSegmentPixels, pixelHeight - segStart);
+    const segPixelStart = segStart;
+
     segments.push({
-      pixelStart: start,
-      pixelHeight: height,
-      peak: downsampledPeak.subarray(start, start + height),
-      rms: downsampledRms.subarray(start, start + height),
+      pixelStart: segPixelStart,
+      pixelHeight: segHeight,
+      getWaveformPixels: () => {
+        const segPeak = new Float32Array(segHeight);
+        const segRms = new Float32Array(segHeight);
+
+        for (let py = 0; py < segHeight; py++) {
+          const frameRange = getFrameRange(segPixelStart + py, pixelHeight);
+
+          if (!frameRange || frameRange.startFrame >= frameRange.endFrame) {
+            segPeak[py] = 0;
+            segRms[py] = 0;
+            continue;
+          }
+
+          const start = Math.max(0, frameRange.startFrame);
+          const end = Math.min(peak.length, frameRange.endFrame);
+
+          let maxPeak = -Infinity;
+          let sumRms = 0;
+          let count = 0;
+          for (let f = start; f < end; f++) {
+            maxPeak = Math.max(maxPeak, peak[f]);
+            sumRms += rms[f];
+            count++;
+          }
+          segPeak[py] = maxPeak;
+          segRms[py] = count > 0 ? sumRms / count : 0;
+        }
+
+        return { peak: segPeak, rms: segRms };
+      },
     });
   }
 

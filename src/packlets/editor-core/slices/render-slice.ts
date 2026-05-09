@@ -28,7 +28,7 @@ import { computeWaveformSegments } from "../waveform-segments";
 import { SOUND_GROUP } from "../components";
 import { ZoomSlice } from "./zoom-slice";
 
-interface WaveformSliceItem {
+interface WaveformSegment {
   key: string;
   pulseStart: number;
   pulseEnd: number;
@@ -36,9 +36,8 @@ interface WaveformSliceItem {
   y: number;
   width: number;
   height: number;
-  peak: Float32Array;
-  rms: Float32Array;
   color: string;
+  getWaveformPixels(): { peak: Float32Array; rms: Float32Array };
 }
 
 export class RenderSlice extends Slice {
@@ -46,7 +45,7 @@ export class RenderSlice extends Slice {
 
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
 
-  $waveformSlices!: ReadableAtom<WaveformSliceItem[]>;
+  $waveformSlices!: ReadableAtom<WaveformSegment[]>;
 
   constructor(ctx: EditorContext) {
     super(ctx);
@@ -418,8 +417,7 @@ export class RenderSlice extends Slice {
         width: slice.width,
         height: slice.height,
         data: {
-          peak: slice.peak,
-          rms: slice.rms,
+          getWaveformPixels: slice.getWaveformPixels,
           color: slice.color,
         },
         zIndex: 1,
@@ -543,7 +541,7 @@ export class RenderSlice extends Slice {
     return specs;
   }
 
-  private computeWaveformSlices(): WaveformSliceItem[] {
+  private computeWaveformSlices(): WaveformSegment[] {
     const chartSlice = this.ctx.get(ChartSlice);
     const viewport = this.ctx.get(ViewportSlice);
     const waveformSlice = this.ctx.get(WaveformSlice);
@@ -592,7 +590,7 @@ export class RenderSlice extends Slice {
       timingEngine.pulseToSeconds(pulse),
     );
 
-    const slices: WaveformSliceItem[] = [];
+    const slices: WaveformSegment[] = [];
 
     for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
       const event = entityManager.getComponent(entity, EVENT);
@@ -627,24 +625,43 @@ export class RenderSlice extends Slice {
       const trimPulse = nextPulse ?? size;
 
       const sampleOffset = offsetInfo?.sampleOffsetSeconds ?? 0;
-      const rangeSec = timingEngine.pulseToSeconds(trimPulse) - timingEngine.pulseToSeconds(pulse);
-      const chunksPerSec = 120;
-      const startChunk = Math.floor(sampleOffset * chunksPerSec);
-      const maxChunks = Math.floor((sampleOffset + rangeSec) * chunksPerSec);
-      const visibleChunks = Math.min(maxChunks - startChunk, wd.peak.length - startChunk);
-      const clampedVisibleChunks = Math.max(0, Math.min(visibleChunks, wd.peak.length));
-
-      if (clampedVisibleChunks <= 0) continue;
+      const eventAbsSeconds = timingEngine.pulseToSeconds(pulse);
 
       const waveformTop = trackHeight - trimPulse * scaleY;
       const waveformBottom = trackHeight - pulse * scaleY;
       const pixelHeight = Math.max(1, Math.round(waveformBottom - waveformTop));
+      const framesPerSec = 120;
+
+      const getFrameRange = (
+        pixelIndex: number,
+        blockPixelHeight: number,
+      ): { startFrame: number; endFrame: number } | null => {
+        const fracTop = pixelIndex / blockPixelHeight;
+        const fracBottom = (pixelIndex + 1) / blockPixelHeight;
+        const pulseAtTop = trimPulse - fracTop * (trimPulse - pulse);
+        const pulseAtBottom = trimPulse - fracBottom * (trimPulse - pulse);
+
+        const secTop = timingEngine.pulseToSeconds(pulseAtTop);
+        const secBottom = timingEngine.pulseToSeconds(pulseAtBottom);
+
+        const audioSecTop = secTop - eventAbsSeconds + sampleOffset;
+        const audioSecBottom = secBottom - eventAbsSeconds + sampleOffset;
+
+        const audioTop = Math.max(audioSecTop, audioSecBottom);
+        const audioBottom = Math.min(audioSecTop, audioSecBottom);
+
+        let fs = Math.floor(audioBottom * framesPerSec);
+        let fe = Math.ceil(audioTop * framesPerSec);
+        if (fe <= fs) fe = fs + 1;
+        if (fe <= 0) return null;
+
+        return { startFrame: fs, endFrame: fe };
+      };
 
       const segments = computeWaveformSegments(wd.peak, wd.rms, {
-        startChunk,
-        chunkCount: clampedVisibleChunks,
         pixelHeight,
         maxSegmentPixels: 512,
+        getFrameRange,
       });
 
       let groupColor: string | undefined;
@@ -668,9 +685,8 @@ export class RenderSlice extends Slice {
           y: currentY - segment.pixelHeight,
           width: soundLaneCol.width - 8,
           height: segment.pixelHeight,
-          peak: segment.peak,
-          rms: segment.rms,
           color: groupColor || "#fff",
+          getWaveformPixels: segment.getWaveformPixels,
         });
         currentY -= segment.pixelHeight;
       }
