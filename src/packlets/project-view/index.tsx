@@ -955,6 +955,30 @@ export function ProjectViewPage() {
         }
       },
     });
+    commands.add({
+      id: "playPause",
+      title: "Play / Pause",
+      shortcut: "Space",
+      execute: () => {
+        const state = controller.playback.$transportState.get();
+        if (state === "playing") {
+          controller.pausePlayback();
+        } else {
+          controller.playChart(controller.$cursorPulse.get(), controller.getScrollY());
+        }
+      },
+    });
+    commands.add({
+      id: "stop",
+      title: "Stop",
+      shortcut: "Escape",
+      execute: () => {
+        const state = controller.playback.$transportState.get();
+        if (state === "playing" || state === "paused") {
+          controller.stopPlayback();
+        }
+      },
+    });
     const unregister = commands.registerTo(globalCommandRegistry);
     const handler = new KeyboardShortcutHandler({
       registry: globalCommandRegistry,
