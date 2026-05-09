@@ -162,7 +162,9 @@ export class EditorController {
     this.ctx.register(EditorCommandSlice);
 
     this.ctx.get(ViewportSlice).onViewportChanged(() => {
-      this.pointer.recomputeCursorPulse();
+      if (this.playback.$transportState.get() !== "playing") {
+        this.pointer.recomputeCursorPulse();
+      }
       this.render.refresh();
     });
 
