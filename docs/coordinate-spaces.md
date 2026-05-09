@@ -55,6 +55,30 @@ pulse    = timingEngine.secToPulse(chartSec)  // inverse
 
 ---
 
+## Playback rate conversion
+
+Audio playback uses a rate multiplier to speed up or slow down without affecting
+pitch. The conversion between chart time and Web Audio `AudioContext.currentTime`
+is handled entirely within the `audio-engine` packlet:
+
+```
+chartSec   = (contextTime - startContextTime) * rate
+contextTime = startContextTime + triggerChartSec / rate
+```
+
+| Variable           | Unit           | Meaning                                     |
+| ------------------ | -------------- | ------------------------------------------- |
+| `contextTime`      | seconds        | `AudioContext.currentTime`                  |
+| `startContextTime` | seconds        | `currentTime` captured when play begins     |
+| `chartSec`         | Chart time sec | Elapsed song time at the playhead           |
+| `rate`             | unitless       | Speed multiplier (1.0 = normal, 0.5 = half) |
+
+`startAudioPlayback()` reports the current `chartSec` via an `onTick` callback
+at ~25ms intervals. The consumer (project-view) converts it back to a pulse
+via `timingEngine.secToPulse(startChartSec + chartSec)` to drive the playhead.
+
+---
+
 ## Waveform-extended spaces
 
 These three additional spaces are introduced by waveform previews. Rendering
