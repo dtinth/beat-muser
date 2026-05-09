@@ -784,12 +784,6 @@ export function ProjectViewPage() {
     const unsub1 = controller.outbox.on("playbackPlay", async (playback, rate) => {
       const engine = audioEngineRef.current;
       if (!engine) return;
-
-      // Stop any existing playback before starting a new one
-      const prev = stopPlaybackRef.current;
-      if (prev) prev();
-      stopPlaybackRef.current = null;
-
       if (engine.audioContext.state === "suspended") {
         await engine.audioContext.resume();
       }
@@ -824,13 +818,7 @@ export function ProjectViewPage() {
       stopPlaybackRef.current = stop;
     });
 
-    const unsub2 = controller.outbox.on("playbackPause", () => {
-      const s = stopPlaybackRef.current;
-      if (s) s();
-      stopPlaybackRef.current = null;
-    });
-
-    const unsub3 = controller.outbox.on("playbackStop", (scrollY) => {
+    const unsub2 = controller.outbox.on("playbackStop", (scrollY) => {
       const s = stopPlaybackRef.current;
       if (s) s();
       stopPlaybackRef.current = null;
@@ -840,7 +828,6 @@ export function ProjectViewPage() {
     return () => {
       unsub1();
       unsub2();
-      unsub3();
     };
   }, [controller]);
 

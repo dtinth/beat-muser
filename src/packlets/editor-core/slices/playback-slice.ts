@@ -14,11 +14,11 @@ export class PlaybackSlice extends Slice {
   private prePlaybackCursor = 0;
   private prePlaybackScrollY = 0;
   private chartEndPulse = Infinity;
+  private activeAbortController: AbortController | null = null;
 
   private events = createNanoEvents<{
     playRequest: (playback: Playback) => void;
     stopRequest: (scrollY: number) => void;
-    pauseRequest: () => void;
   }>();
 
   onPlayRequest(cb: (playback: Playback) => void): () => void {
@@ -29,12 +29,22 @@ export class PlaybackSlice extends Slice {
     return this.events.on("stopRequest", cb);
   }
 
-  onPauseRequest(cb: () => void): () => void {
-    return this.events.on("pauseRequest", cb);
-  }
-
   onStateChanged(cb: () => void): () => void {
     return this.$transportState.listen(cb);
+  }
+
+  newAbortController(): AbortController {
+    this.abort();
+    const controller = new AbortController();
+    this.activeAbortController = controller;
+    return controller;
+  }
+
+  abort(): void {
+    if (this.activeAbortController) {
+      this.activeAbortController.abort();
+      this.activeAbortController = null;
+    }
   }
 
   play(playback: Playback, cursorPulse: number, scrollY: number): void {
@@ -48,12 +58,13 @@ export class PlaybackSlice extends Slice {
   pause(): void {
     if (this.$transportState.get() !== "playing") return;
     this.$transportState.set("paused");
-    this.events.emit("pauseRequest");
+    this.abort();
   }
 
   stop(): void {
     if (this.$transportState.get() === "stopped") return;
     this.$transportState.set("stopped");
+    this.abort();
     this.$playbackPulse.set(this.prePlaybackCursor);
     this.events.emit("stopRequest", this.prePlaybackScrollY);
   }

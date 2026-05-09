@@ -54,7 +54,6 @@ export interface TimelineRenderSpec {
 export interface EditorOutboxEvents {
   setScroll: (point: Point) => void;
   playbackPlay: (playback: Playback, rate: number) => void;
-  playbackPause: () => void;
   playbackStop: (scrollY: number) => void;
 }
 
