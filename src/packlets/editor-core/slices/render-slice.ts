@@ -636,7 +636,7 @@ export class RenderSlice extends Slice {
 
       const getFrameRange = (
         renderingPos: number,
-        _blockPixelLength: number,
+        _rpLength: number,
       ): { startFrame: number; endFrame: number } | null => {
         const pulseA = pulse + renderingPos / scaleY;
         const pulseB = pulse + (renderingPos + 1) / scaleY;
