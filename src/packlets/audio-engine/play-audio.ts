@@ -7,12 +7,10 @@ export interface AudioPlaybackOptions {
   buffers: Map<string, AudioBuffer>;
   masterGain: GainNode;
   channelGains: Map<string, GainNode>;
-  /** Maximum lookahead in seconds (default 0.2). */
+  /** Maximum lookahead in playback seconds (default 0.2). */
   lookaheadSec?: number;
   /** Tick interval in milliseconds (default 25). */
   tickIntervalMs?: number;
-  /** Called on each tick with the current chart time in seconds. */
-  onTick?: (chartTimeSec: number) => void;
 }
 
 interface ActiveSource {
@@ -30,7 +28,6 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     channelGains,
     lookaheadSec = 0.2,
     tickIntervalMs = 25,
-    onTick,
   } = options;
 
   if (!Number.isFinite(rate) || rate <= 0) {
@@ -67,12 +64,12 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
   function scheduleEvents(): void {
     if (stopped) return;
     const currentContextTime = audioContext.currentTime;
-    const currentChartSec = (currentContextTime - startContextTime) * rate;
-    const lookaheadChartSec = currentChartSec + lookaheadSec;
+    const currentPlaybackSec = (currentContextTime - startContextTime) * rate;
+    const lookaheadPlaybackSec = currentPlaybackSec + lookaheadSec;
 
-    const events = playback.getEvents(lookaheadChartSec);
+    const events = playback.getEvents(lookaheadPlaybackSec);
 
-    onTick?.(currentChartSec);
+    playback.onPlaybackTimeChange(currentPlaybackSec);
 
     for (const event of events) {
       scheduleEvent(event);
@@ -85,15 +82,8 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
 
     const channelGain = channelGains.get(event.fileName) ?? masterGain;
 
-    // Convert chart time to context time
-    const scheduledContextTime = startContextTime + event.triggerChartSec / rate;
+    const scheduledContextTime = startContextTime + event.triggerPlaybackSec / rate;
     const now = audioContext.currentTime;
-
-    if (scheduledContextTime < now) {
-      // Event is in the past — skip
-      // The "join mid-stream" case: audioStartTime already accounts for offset
-      // Schedule immediately from the correct offset
-    }
 
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
@@ -106,7 +96,6 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
         event.audioEndSec - event.audioStartSec,
       );
     } catch {
-      // Scheduling failed (e.g. negative offset)
       return;
     }
 
@@ -126,7 +115,6 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     tickTimer = setInterval(scheduleEvents, tickIntervalMs);
   }
 
-  // Start scheduling as soon as possible
   startTick();
 
   return stop;

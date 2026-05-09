@@ -8,6 +8,7 @@ export interface CreatePlaybackOptions {
   cursorPulse: number;
   channels: Map<string, { path: string; durationSec: number }>;
   abortController?: AbortController;
+  onPulseUpdate?: (pulse: number) => void;
 }
 
 export function createPlayback(options: CreatePlaybackOptions): Playback {
@@ -17,6 +18,7 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
     cursorPulse,
     channels,
     abortController = new AbortController(),
+    onPulseUpdate,
   } = options;
 
   const cursorChartSec = timingEngine.pulseToSeconds(cursorPulse);
@@ -33,7 +35,7 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
   }
 
   interface ScheduledEvent {
-    triggerChartSec: number;
+    triggerPlaybackSec: number;
     audioStartSec: number;
     audioEndSec: number;
     channelId: string;
@@ -78,14 +80,14 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
           nextPlayChartSec,
         );
 
-        let triggerChartSec: number;
+        let triggerPlaybackSec: number;
         let audioStartSec: number;
 
         if (chainStartPulseValue >= cursorPulse) {
-          triggerChartSec = chainStartChartSec - cursorChartSec;
+          triggerPlaybackSec = chainStartChartSec - cursorChartSec;
           audioStartSec = 0;
         } else if (cursorChartSec < chainEndChartSec) {
-          triggerChartSec = 0;
+          triggerPlaybackSec = 0;
           audioStartSec = cursorChartSec - chainStartChartSec;
         } else {
           chainStart = -1;
@@ -99,7 +101,7 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
         }
 
         allEvents.push({
-          triggerChartSec,
+          triggerPlaybackSec,
           audioStartSec,
           audioEndSec,
           channelId,
@@ -110,15 +112,15 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
     }
   }
 
-  allEvents.sort((a, b) => a.triggerChartSec - b.triggerChartSec);
+  allEvents.sort((a, b) => a.triggerPlaybackSec - b.triggerPlaybackSec);
 
   let dequeIndex = 0;
 
-  function getEvents(lookaheadChartSec: number): PlaybackEvent[] {
+  function getEvents(lookaheadPlaybackSec: number): PlaybackEvent[] {
     const result: PlaybackEvent[] = [];
     while (dequeIndex < allEvents.length) {
       const event = allEvents[dequeIndex];
-      if (event.triggerChartSec > lookaheadChartSec) break;
+      if (event.triggerPlaybackSec > lookaheadPlaybackSec) break;
       const channel = channels.get(event.channelId);
       if (!channel) {
         dequeIndex++;
@@ -126,7 +128,7 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
       }
       result.push({
         fileName: channel.path,
-        triggerChartSec: event.triggerChartSec,
+        triggerPlaybackSec: event.triggerPlaybackSec,
         audioStartSec: event.audioStartSec,
         audioEndSec: event.audioEndSec,
       });
@@ -135,8 +137,16 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
     return result;
   }
 
+  function onPlaybackTimeChange(playbackSec: number): void {
+    if (!onPulseUpdate) return;
+    const chartSec = cursorChartSec + playbackSec;
+    const pulse = timingEngine.secondsToPulse(chartSec);
+    onPulseUpdate(pulse);
+  }
+
   return {
     getEvents,
+    onPlaybackTimeChange,
     abortSignal: abortController.signal,
   };
 }

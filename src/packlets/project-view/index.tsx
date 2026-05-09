@@ -787,8 +787,6 @@ export function ProjectViewPage() {
       if (engine.audioContext.state === "suspended") {
         await engine.audioContext.resume();
       }
-      const timingEngine = controller.getTimingEngine();
-      const startChartSec = timingEngine.pulseToSeconds(controller.$cursorPulse.get());
       const stop = startAudioPlayback({
         playback,
         rate,
@@ -796,24 +794,6 @@ export function ProjectViewPage() {
         buffers: engine.buffers,
         masterGain: engine.masterGain,
         channelGains: engine.channelGains,
-        onTick: (chartTimeSec) => {
-          const pulse = timingEngine.secondsToPulse(startChartSec + chartTimeSec);
-          controller.playback.setPlaybackPulse(pulse);
-          controller.$cursorPulse.set(pulse);
-
-          const chartEndPulse = controller.playback.getChartEndPulse();
-          if (pulse > chartEndPulse) {
-            controller.stopPlayback();
-            return;
-          }
-
-          const scaleY = 0.2 * controller.$zoom.get();
-          const contentHeight = controller.getContentHeight();
-          const playheadContentY = contentHeight - pulse * scaleY;
-          const viewportHeight = controller.getViewportHeight();
-          const targetScrollY = playheadContentY - viewportHeight * 0.4;
-          controller.outbox.emit("setScroll", { x: 0, y: Math.max(0, targetScrollY) });
-        },
       });
       stopPlaybackRef.current = stop;
     });
