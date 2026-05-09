@@ -72,6 +72,29 @@ export const router = createBrowserRouter([
           } else {
             const fs = createProjectFileSystem(source);
             try {
+              const handle = source.handle;
+              const permission = await (handle as any).requestPermission({ mode: "read" });
+              if (permission !== "granted") {
+                throw new Error(
+                  "Folder access was denied. Reopen the project to re-grant permission.",
+                );
+              }
+            } catch (e) {
+              console.error("Permission or read error:", e);
+              if (e instanceof DOMException && e.name === "NotFoundError") {
+                projectFile = {
+                  schemaVersion: 2,
+                  version: uuidv7(),
+                  metadata: { title: "Untitled", artist: "", genre: "" },
+                  entities: [],
+                };
+              } else {
+                throw new Response(`Failed to load project: ${(e as Error).message}`, {
+                  status: 500,
+                });
+              }
+            }
+            try {
               const json = await fs.readText("beat-muser-project.json");
               projectFile = parseProjectFile(json);
             } catch (error) {
@@ -84,6 +107,7 @@ export const router = createBrowserRouter([
                   entities: [],
                 };
               } else {
+                console.error("Failed to load project:", error);
                 throw new Response(`Failed to load project: ${(error as Error).message}`, {
                   status: 500,
                 });
