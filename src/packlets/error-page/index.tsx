@@ -20,12 +20,12 @@ export function ErrorPage() {
   if (isRouteErrorResponse(error)) {
     title = `${error.status} ${error.statusText}`;
     message = String(error.data ?? "Unknown error");
-    console.error("Route error:", error.status, error.data);
+    console.error(`Route error: ${error.status}`, error.data);
   } else if (error instanceof Error) {
     title = error.name;
     message = error.message;
     stack = error.stack;
-    console.error("Unhandled error:", error);
+    console.error("Unhandled error:", error.message, error.stack?.split("\n")[1]?.trim());
   } else {
     console.error("Unknown error:", error);
   }
