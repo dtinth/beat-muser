@@ -631,7 +631,7 @@ export class RenderSlice extends Slice {
 
       const waveformTop = trackHeight - trimPulse * scaleY;
       const waveformBottom = trackHeight - pulse * scaleY;
-      const pixelHeight = Math.max(1, Math.round(waveformBottom - waveformTop));
+      const pixelLength = Math.max(1, Math.round(waveformBottom - waveformTop));
       const framesPerSec = 120;
 
       const getFrameRange = (
@@ -661,7 +661,7 @@ export class RenderSlice extends Slice {
       };
 
       const segments = computeWaveformSegments(wd.peak, wd.rms, {
-        pixelHeight,
+        pixelLength,
         maxSegmentPixels: 512,
         getFrameRange,
       });
@@ -684,13 +684,13 @@ export class RenderSlice extends Slice {
           pulseStart: pulse,
           pulseEnd: trimPulse,
           x: soundLaneCol.x + 4,
-          y: currentY - segment.pixelHeight,
+          y: currentY - segment.pixelLength,
           width: soundLaneCol.width - 8,
-          height: segment.pixelHeight,
+          height: segment.pixelLength,
           color: groupColor || "#fff",
           getWaveformPixels: segment.getWaveformPixels,
         });
-        currentY -= segment.pixelHeight;
+        currentY -= segment.pixelLength;
       }
     }
 

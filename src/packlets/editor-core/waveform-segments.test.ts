@@ -15,10 +15,10 @@ describe("computeWaveformSegments", () => {
   function linearFrameRange(
     startChunk: number,
     chunkCount: number,
-  ): (pixelIndex: number, pixelHeight: number) => { startFrame: number; endFrame: number } | null {
-    return (pixelIndex: number, pixelHeight: number) => {
-      const fs = startChunk + Math.floor((pixelIndex * chunkCount) / pixelHeight);
-      const fe = startChunk + Math.ceil(((pixelIndex + 1) * chunkCount) / pixelHeight);
+  ): (pixelIndex: number, pixelLength: number) => { startFrame: number; endFrame: number } | null {
+    return (pixelIndex: number, pixelLength: number) => {
+      const fs = startChunk + Math.floor((pixelIndex * chunkCount) / pixelLength);
+      const fe = startChunk + Math.ceil(((pixelIndex + 1) * chunkCount) / pixelLength);
       return { startFrame: fs, endFrame: fe };
     };
   }
@@ -30,14 +30,14 @@ describe("computeWaveformSegments", () => {
   test("1:1 mapping — one frame per pixel, single segment", () => {
     const { peak, rms } = makeWaveformData(120);
     const segments = computeWaveformSegments(peak, rms, {
-      pixelHeight: 120,
+      pixelLength: 120,
       maxSegmentPixels: 512,
       getFrameRange: linearFrameRange(0, 120),
     });
 
     expect(segments).toHaveLength(1);
     expect(segments[0].pixelStart).toBe(0);
-    expect(segments[0].pixelHeight).toBe(120);
+    expect(segments[0].pixelLength).toBe(120);
 
     const pixels = getPixels(segments[0]);
     expect(pixels.peak.length).toBe(120);
@@ -53,7 +53,7 @@ describe("computeWaveformSegments", () => {
   test("downsampling — 2 frames per pixel", () => {
     const { peak, rms } = makeWaveformData(240);
     const segments = computeWaveformSegments(peak, rms, {
-      pixelHeight: 120,
+      pixelLength: 120,
       maxSegmentPixels: 512,
       getFrameRange: linearFrameRange(0, 240),
     });
@@ -72,7 +72,7 @@ describe("computeWaveformSegments", () => {
   test("upsampling — 1 frame per 2 pixels", () => {
     const { peak, rms } = makeWaveformData(60);
     const segments = computeWaveformSegments(peak, rms, {
-      pixelHeight: 120,
+      pixelLength: 120,
       maxSegmentPixels: 512,
       getFrameRange: linearFrameRange(0, 60),
     });
@@ -90,18 +90,18 @@ describe("computeWaveformSegments", () => {
   test("partitioning — splits into max 512px segments", () => {
     const { peak, rms } = makeWaveformData(1500);
     const segments = computeWaveformSegments(peak, rms, {
-      pixelHeight: 1500,
+      pixelLength: 1500,
       maxSegmentPixels: 512,
       getFrameRange: linearFrameRange(0, 1500),
     });
 
     expect(segments).toHaveLength(3);
     expect(segments[0].pixelStart).toBe(0);
-    expect(segments[0].pixelHeight).toBe(512);
+    expect(segments[0].pixelLength).toBe(512);
     expect(segments[1].pixelStart).toBe(512);
-    expect(segments[1].pixelHeight).toBe(512);
+    expect(segments[1].pixelLength).toBe(512);
     expect(segments[2].pixelStart).toBe(1024);
-    expect(segments[2].pixelHeight).toBe(476);
+    expect(segments[2].pixelLength).toBe(476);
 
     // Each segment's getWaveformPixels returns correct dimensions
     expect(getPixels(segments[0]).peak.length).toBe(512);
@@ -112,7 +112,7 @@ describe("computeWaveformSegments", () => {
   test("non-zero startChunk", () => {
     const { peak, rms } = makeWaveformData(120);
     const segments = computeWaveformSegments(peak, rms, {
-      pixelHeight: 30,
+      pixelLength: 30,
       maxSegmentPixels: 512,
       getFrameRange: linearFrameRange(60, 30),
     });

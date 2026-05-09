@@ -1,6 +1,6 @@
 export interface WaveformSegmentSpec {
   pixelStart: number;
-  pixelHeight: number;
+  pixelLength: number;
   getWaveformPixels(): { peak: Float32Array; rms: Float32Array };
 }
 
@@ -8,32 +8,32 @@ export function computeWaveformSegments(
   peak: Float32Array,
   rms: Float32Array,
   options: {
-    pixelHeight: number;
+    pixelLength: number;
     maxSegmentPixels: number;
     getFrameRange: (
       pixelIndex: number,
-      pixelHeight: number,
+      pixelLength: number,
     ) => { startFrame: number; endFrame: number } | null;
   },
 ): WaveformSegmentSpec[] {
-  const { pixelHeight, maxSegmentPixels, getFrameRange } = options;
+  const { pixelLength, maxSegmentPixels, getFrameRange } = options;
 
   const segments: WaveformSegmentSpec[] = [];
 
-  for (let segStart = 0; segStart < pixelHeight; segStart += maxSegmentPixels) {
-    const segHeight = Math.min(maxSegmentPixels, pixelHeight - segStart);
+  for (let segStart = 0; segStart < pixelLength; segStart += maxSegmentPixels) {
+    const segLength = Math.min(maxSegmentPixels, pixelLength - segStart);
     const segPixelStart = segStart;
 
     segments.push({
       pixelStart: segPixelStart,
-      pixelHeight: segHeight,
+      pixelLength: segLength,
       getWaveformPixels: () => {
-        const segPeak = new Float32Array(segHeight);
-        const segRms = new Float32Array(segHeight);
+        const segPeak = new Float32Array(segLength);
+        const segRms = new Float32Array(segLength);
 
-        for (let py = 0; py < segHeight; py++) {
-          const blockPixelIndex = segPixelStart + (segHeight - 1 - py);
-          const frameRange = getFrameRange(blockPixelIndex, pixelHeight);
+        for (let py = 0; py < segLength; py++) {
+          const blockPixelIndex = segPixelStart + (segLength - 1 - py);
+          const frameRange = getFrameRange(blockPixelIndex, pixelLength);
 
           if (!frameRange || frameRange.startFrame >= frameRange.endFrame) {
             segPeak[py] = 0;
