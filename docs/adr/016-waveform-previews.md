@@ -196,7 +196,7 @@ Waveform processing is now multi-stage (queued → decoding → computing → re
 
 The `WaveformSlice` tracks a status per file path via a `$waveformStatus` atom (`Map<string, WaveformStatus>`):
 
-```
+```text
 nothing           — file not yet seen by audio engine
 loading           — decoding in progress
 decoding-failed   — file unreadable, corrupt, or unsupported format

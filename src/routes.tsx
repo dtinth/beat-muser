@@ -73,7 +73,7 @@ export const router = createBrowserRouter([
             const fs = createProjectFileSystem(source);
             try {
               const handle = source.handle;
-              const permission = await (handle as any).requestPermission({ mode: "read" });
+              const permission = await (handle as any).requestPermission({ mode: "read" }); // TS DOM types missing requestPermission
               if (permission !== "granted") {
                 throw new Error(
                   "Folder access was denied. Reopen the project to re-grant permission.",

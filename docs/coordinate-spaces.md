@@ -32,23 +32,21 @@ pulse = (trackHeight - Y) / scaleY
 
 ### Pulse space
 
-| Property                                   | Value                                                           |
-| ------------------------------------------ | --------------------------------------------------------------- |
-| **Suffix**                                 | `Pulse` (e.g. `eventPulse`, `trimPulse`, `cursorPulse`)         |
-| **Unit**                                   | Pulse (PPQN = 240)                                              |
-| **Range**                                  | 0 (song start) – `chartSize`                                    |
-| **Purpose**                                | Musical position on the chart. Linear in Y — each pixel spans a |
-| fixed number of pulses regardless of tempo |
+| Property    | Value                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| **Suffix**  | `Pulse` (e.g. `eventPulse`, `trimPulse`, `cursorPulse`)                                                    |
+| **Unit**    | Pulse (PPQN = 240)                                                                                         |
+| **Range**   | 0 (song start) – `chartSize`                                                                               |
+| **Purpose** | Musical position on the chart. Linear in Y — each pixel spans a fixed number of pulses regardless of tempo |
 
 ### Chart time space
 
-| Property                                | Value                                                        |
-| --------------------------------------- | ------------------------------------------------------------ |
-| **Suffix**                              | `ChartSec` (e.g. `eventChartSec`, `playedChartSec`)          |
-| **Unit**                                | Seconds since song start (pulse 0)                           |
-| **Range**                               | 0 – chart duration                                           |
-| **Purpose**                             | Real-time position in the song. Non-linear with pulse due to |
-| BPM changes. Provided by `TimingEngine` |
+| Property    | Value                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------- |
+| **Suffix**  | `ChartSec` (e.g. `eventChartSec`, `playedChartSec`)                                                  |
+| **Unit**    | Seconds since song start (pulse 0)                                                                   |
+| **Range**   | 0 – chart duration                                                                                   |
+| **Purpose** | Real-time position in the song. Non-linear with pulse due to BPM changes. Provided by `TimingEngine` |
 
 ```
 chartSec = timingEngine.pulseToSec(pulse)     // O(log N) — binary search over BPM changes
@@ -82,14 +80,13 @@ To Y: `Y = waveformBottomY - rp`. From Y: `rp = waveformBottomY - Y`.
 
 ### Audio time space
 
-| Property      | Value                                                      |
-| ------------- | ---------------------------------------------------------- |
-| **Suffix**    | `AudioSec` (e.g. `audioSec`, `sampleOffsetAudioSec`)       |
-| **Unit**      | Seconds since start of the audio file                      |
-| **Range**     | 0 – `durationSec`                                          |
-| **Purpose**   | Position within a decoded audio file. Independent of chart |
-| position      |
-| **Stored in** | `WaveformSlice.$waveformData`                              |
+| Property      | Value                                                               |
+| ------------- | ------------------------------------------------------------------- |
+| **Suffix**    | `AudioSec` (e.g. `audioSec`, `sampleOffsetAudioSec`)                |
+| **Unit**      | Seconds since start of the audio file                               |
+| **Range**     | 0 – `durationSec`                                                   |
+| **Purpose**   | Position within a decoded audio file. Independent of chart position |
+| **Stored in** | `WaveformSlice.$waveformData`                                       |
 
 ```
 audioSec = chartSec - eventChartSec + sampleOffsetAudioSec
@@ -101,14 +98,13 @@ cumulative chart time consumed by prior events in the chain (computed by
 
 ### Waveform frame space
 
-| Property        | Value                                                             |
-| --------------- | ----------------------------------------------------------------- |
-| **Suffix**      | `Frame` (e.g. `frameStart`, `frameEnd`, `framesPerSec`)           |
-| **Unit**        | Frame index (120 frames/second)                                   |
-| **Range**       | 0 – `frameCount`                                                  |
-| **Purpose**     | Index into the `Float32Array peak[]` and `rms[]` arrays stored in |
-| `WaveformSlice` |
-| **Stored in**   | `WaveformSlice.$waveformData`                                     |
+| Property      | Value                                                                             |
+| ------------- | --------------------------------------------------------------------------------- |
+| **Suffix**    | `Frame` (e.g. `frameStart`, `frameEnd`, `framesPerSec`)                           |
+| **Unit**      | Frame index (120 frames/second)                                                   |
+| **Range**     | 0 – `frameCount`                                                                  |
+| **Purpose**   | Index into the `Float32Array peak[]` and `rms[]` arrays stored in `WaveformSlice` |
+| **Stored in** | `WaveformSlice.$waveformData`                                                     |
 
 ```
 frame = floor(audioSec * 120)
