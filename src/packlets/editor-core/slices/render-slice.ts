@@ -35,7 +35,7 @@ interface WaveformSegment {
   x: number;
   y: number;
   width: number;
-  height: number;
+  pixelLength: number;
   color: string;
   getWaveformPixels(): { peak: Float32Array; rms: Float32Array };
 }
@@ -416,7 +416,7 @@ export class RenderSlice extends Slice {
         x: segment.x,
         y: segment.y,
         width: segment.width,
-        height: segment.height,
+        height: segment.pixelLength,
         data: {
           peak,
           rms,
@@ -686,7 +686,7 @@ export class RenderSlice extends Slice {
           x: soundLaneCol.x + 4,
           y: currentY - segment.pixelLength,
           width: soundLaneCol.width - 8,
-          height: segment.pixelLength,
+          pixelLength: segment.pixelLength,
           color: groupColor || "#fff",
           getWaveformPixels: segment.getWaveformPixels,
         });
