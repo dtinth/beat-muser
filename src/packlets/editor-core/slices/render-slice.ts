@@ -406,19 +406,21 @@ export class RenderSlice extends Slice {
       }
     }
 
-    // --- Waveform slices (pre-computed, filtered by visibility) ---
-    for (const slice of this.$waveformSlices?.get() ?? []) {
-      if (slice.pulseEnd <= pulseStart || slice.pulseStart >= pulseEnd) continue;
+    // --- Waveform segments (pre-computed, filtered by visibility) ---
+    for (const segment of this.$waveformSlices?.get() ?? []) {
+      if (segment.pulseEnd <= pulseStart || segment.pulseStart >= pulseEnd) continue;
+      const { peak, rms } = segment.getWaveformPixels();
       specs.push({
-        key: slice.key,
+        key: segment.key,
         type: "waveform",
-        x: slice.x,
-        y: slice.y,
-        width: slice.width,
-        height: slice.height,
+        x: segment.x,
+        y: segment.y,
+        width: segment.width,
+        height: segment.height,
         data: {
-          getWaveformPixels: slice.getWaveformPixels,
-          color: slice.color,
+          peak,
+          rms,
+          color: segment.color,
         },
         zIndex: 1,
       });

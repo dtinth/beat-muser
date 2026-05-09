@@ -1,14 +1,14 @@
 import type { RenderHandle } from "../scrollable-canvas";
 
 interface WaveformRendererData {
-  getWaveformPixels(): { peak: Float32Array; rms: Float32Array };
+  peak: Float32Array;
+  rms: Float32Array;
   color: string;
 }
 
 export function createWaveformRenderer(): (data: unknown) => RenderHandle<WaveformRendererData> {
   return (data: unknown) => {
     const d = data as WaveformRendererData;
-    const { peak, rms } = d.getWaveformPixels();
     const canvas = document.createElement("canvas");
     canvas.style.pointerEvents = "none";
     canvas.style.display = "block";
@@ -16,25 +16,20 @@ export function createWaveformRenderer(): (data: unknown) => RenderHandle<Wavefo
     canvas.style.height = "100%";
     canvas.style.imageRendering = "auto";
 
-    drawWaveform(canvas, peak, rms, d.color);
+    drawWaveform(canvas, d);
 
     return {
       dom: canvas,
       update(newData: unknown) {
         const nd = newData as WaveformRendererData;
-        const { peak: np, rms: nr } = nd.getWaveformPixels();
-        drawWaveform(canvas, np, nr, nd.color);
+        drawWaveform(canvas, nd);
       },
     };
   };
 }
 
-function drawWaveform(
-  canvas: HTMLCanvasElement,
-  peak: Float32Array,
-  rms: Float32Array,
-  color: string,
-): void {
+function drawWaveform(canvas: HTMLCanvasElement, data: WaveformRendererData): void {
+  const { peak, rms, color } = data;
   const pixelHeight = peak.length;
 
   const dpr = window.devicePixelRatio || 1;
