@@ -781,9 +781,12 @@ export function ProjectViewPage() {
   }, [fileSystem, controller]);
 
   useEffect(() => {
-    const unsub1 = controller.outbox.on("playbackPlay", (playback, rate) => {
+    const unsub1 = controller.outbox.on("playbackPlay", async (playback, rate) => {
       const engine = audioEngineRef.current;
       if (!engine) return;
+      if (engine.audioContext.state === "suspended") {
+        await engine.audioContext.resume();
+      }
       const timingEngine = controller.getTimingEngine();
       const stop = startAudioPlayback({
         playback,
