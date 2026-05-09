@@ -13,6 +13,7 @@ export class PlaybackSlice extends Slice {
 
   private prePlaybackCursor = 0;
   private prePlaybackScrollY = 0;
+  private chartEndPulse = Infinity;
 
   private events = createNanoEvents<{
     playRequest: (playback: Playback) => void;
@@ -58,5 +59,13 @@ export class PlaybackSlice extends Slice {
 
   setPlaybackPulse(pulse: number): void {
     this.$playbackPulse.set(pulse);
+  }
+
+  setChartEndPulse(pulse: number): void {
+    this.chartEndPulse = pulse;
+  }
+
+  getChartEndPulse(): number {
+    return this.chartEndPulse;
   }
 }

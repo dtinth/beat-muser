@@ -48,7 +48,8 @@ import { BEAT_5K_LAYOUT, BEAT_7K_LAYOUT } from "./lane-layouts";
 import { SetMetadataUserAction } from "./user-actions";
 import type { ProjectFile, ProjectMetadata } from "../project-format";
 import { createPlayback } from "./create-playback";
-import { SOUND_EVENT, CHART_REF, EVENT, SOUND_CHANNEL } from "./components";
+import { SOUND_EVENT, CHART_REF, EVENT, SOUND_CHANNEL, CHART } from "./components";
+import { DEFAULT_CHART_SIZE } from "./types";
 
 export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
@@ -195,8 +196,15 @@ export class EditorController {
   }
 
   playChart(cursorPulse: number, scrollY: number): void {
+    if (this.playback.$transportState.get() === "playing") return;
+
     const chartId = this.$selectedChartId.get();
     if (!chartId) return;
+
+    const chartEntity = this.entityManager.get(chartId);
+    const chartSize =
+      this.entityManager.getComponent(chartEntity!, CHART)?.size ?? DEFAULT_CHART_SIZE;
+    this.playback.setChartEndPulse(chartSize);
 
     const timingEngine = this.getTimingEngine();
 
