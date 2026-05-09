@@ -788,6 +788,7 @@ export function ProjectViewPage() {
         await engine.audioContext.resume();
       }
       const timingEngine = controller.getTimingEngine();
+      const startChartSec = timingEngine.pulseToSeconds(controller.$cursorPulse.get());
       const stop = startAudioPlayback({
         playback,
         rate,
@@ -796,7 +797,7 @@ export function ProjectViewPage() {
         masterGain: engine.masterGain,
         channelGains: engine.channelGains,
         onTick: (chartTimeSec) => {
-          const pulse = timingEngine.secondsToPulse(chartTimeSec);
+          const pulse = timingEngine.secondsToPulse(startChartSec + chartTimeSec);
           controller.playback.setPlaybackPulse(pulse);
           controller.$cursorPulse.set(pulse);
 

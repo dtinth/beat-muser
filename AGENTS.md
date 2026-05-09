@@ -82,6 +82,27 @@ Event-based chart format (PPQN 240, default BPM 60) with versioned metadata, cha
 - Toolbar buttons: `<Button variant="surface" size="1" color="gray">` at 32×32
 - `moduleDetection: "auto"` in `tsconfig.json` required for CSS module declarations
 
+### Coordinate Space Naming
+
+Defined in `docs/coordinate-spaces.md`. Every coordinate variable carries its space as a suffix:
+
+| Space          | Suffix     | Examples                                                  |
+| -------------- | ---------- | --------------------------------------------------------- |
+| Timeline Y     | `Y`        | `segmentY`, `scrollY`, `waveformBottomY`                  |
+| Pulse          | `Pulse`    | `cursorPulse`, `eventPulse`, `trimPulse`                  |
+| Chart time     | `ChartSec` | `triggerChartSec`, `cursorChartSec`, `chainStartChartSec` |
+| Audio time     | `AudioSec` | `audioStartSec`, `sampleOffsetAudioSec`                   |
+| Waveform frame | `Frame`    | `frameStart`, `frameEnd`                                  |
+
+Conversion functions use `toSpaceFromSpace` naming: `pulseToSec(pulse)`, `secToPulse(sec)`.
+
+The audio engine converts chart time to `AudioContext.currentTime` via:
+
+```
+contextTime = startContextTime + triggerChartSec / rate
+chartSec   = (contextTime - startContextTime) * rate
+```
+
 <!--VITE PLUS START-->
 
 # Using Vite+, the Unified Toolchain for the Web

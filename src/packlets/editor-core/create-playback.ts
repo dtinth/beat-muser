@@ -12,7 +12,7 @@ export interface CreatePlaybackOptions {
 export function createPlayback(options: CreatePlaybackOptions): Playback {
   const { soundEvents, timingEngine, cursorPulse, channels } = options;
 
-  const cursorChartTime = timingEngine.pulseToSeconds(cursorPulse);
+  const cursorChartSec = timingEngine.pulseToSeconds(cursorPulse);
 
   const groups = new Map<string, SoundEventInput[]>();
   for (const event of soundEvents) {
@@ -26,9 +26,9 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
   }
 
   interface ScheduledEvent {
-    triggerChartTime: number;
-    audioStartTime: number;
-    audioEndTime: number;
+    triggerChartSec: number;
+    audioStartSec: number;
+    audioEndSec: number;
     channelId: string;
   }
 
@@ -61,40 +61,40 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
       if (isLastInChain) {
         const chainStartPulseValue = chainStartPulse!;
 
-        const chainStartChartTime = timingEngine.pulseToSeconds(chainStartPulseValue);
-        const nextPlayChartTime =
+        const chainStartChartSec = timingEngine.pulseToSeconds(chainStartPulseValue);
+        const nextPlayChartSec =
           nextEvent && nextEvent.command === "play"
             ? timingEngine.pulseToSeconds(nextEvent.pulse)
             : Number.POSITIVE_INFINITY;
-        const chainEndChartTime = Math.min(
-          chainStartChartTime + channel.durationSec,
-          nextPlayChartTime,
+        const chainEndChartSec = Math.min(
+          chainStartChartSec + channel.durationSec,
+          nextPlayChartSec,
         );
 
-        let triggerChartTime: number;
-        let audioStartTime: number;
+        let triggerChartSec: number;
+        let audioStartSec: number;
 
         if (chainStartPulseValue >= cursorPulse) {
-          triggerChartTime = chainStartChartTime - cursorChartTime;
-          audioStartTime = 0;
-        } else if (cursorChartTime < chainEndChartTime) {
-          triggerChartTime = 0;
-          audioStartTime = cursorChartTime - chainStartChartTime;
+          triggerChartSec = chainStartChartSec - cursorChartSec;
+          audioStartSec = 0;
+        } else if (cursorChartSec < chainEndChartSec) {
+          triggerChartSec = 0;
+          audioStartSec = cursorChartSec - chainStartChartSec;
         } else {
           chainStart = -1;
           continue;
         }
 
-        const audioEndTime = chainEndChartTime - chainStartChartTime;
-        if (audioStartTime >= audioEndTime) {
+        const audioEndSec = chainEndChartSec - chainStartChartSec;
+        if (audioStartSec >= audioEndSec) {
           chainStart = -1;
           continue;
         }
 
         allEvents.push({
-          triggerChartTime,
-          audioStartTime,
-          audioEndTime,
+          triggerChartSec,
+          audioStartSec,
+          audioEndSec,
           channelId,
         });
 
@@ -103,23 +103,15 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
     }
   }
 
-  // Sort by triggerChartTime
-  allEvents.sort((a, b) => a.triggerChartTime - b.triggerChartTime);
-
-  // Second pass: merge overlapping events on the same channel
-  // If two events on the same channel overlap (their play durations overlap in chart time),
-  // the second event should start playing in its own chain
-  // For now, we trust the chain logic handles this correctly for most cases.
-  // The key insight: events on the same (soundLane, soundChannelId) key should
-  // not overlap because a new `play` ends the previous chain.
+  allEvents.sort((a, b) => a.triggerChartSec - b.triggerChartSec);
 
   let dequeIndex = 0;
 
-  function getEvents(lookaheadChartTime: number): PlaybackEvent[] {
+  function getEvents(lookaheadChartSec: number): PlaybackEvent[] {
     const result: PlaybackEvent[] = [];
     while (dequeIndex < allEvents.length) {
       const event = allEvents[dequeIndex];
-      if (event.triggerChartTime > lookaheadChartTime) break;
+      if (event.triggerChartSec > lookaheadChartSec) break;
       const channel = channels.get(event.channelId);
       if (!channel) {
         dequeIndex++;
@@ -127,9 +119,9 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
       }
       result.push({
         fileName: channel.path,
-        triggerChartTime: event.triggerChartTime,
-        audioStartTime: event.audioStartTime,
-        audioEndTime: event.audioEndTime,
+        triggerChartSec: event.triggerChartSec,
+        audioStartSec: event.audioStartSec,
+        audioEndSec: event.audioEndSec,
       });
       dequeIndex++;
     }

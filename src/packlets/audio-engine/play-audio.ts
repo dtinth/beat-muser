@@ -67,12 +67,12 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
   function scheduleEvents(): void {
     if (stopped) return;
     const currentContextTime = audioContext.currentTime;
-    const currentChartTime = (currentContextTime - startContextTime) * rate;
-    const lookaheadChartTime = currentChartTime + lookaheadSec;
+    const currentChartSec = (currentContextTime - startContextTime) * rate;
+    const lookaheadChartSec = currentChartSec + lookaheadSec;
 
-    const events = playback.getEvents(lookaheadChartTime);
+    const events = playback.getEvents(lookaheadChartSec);
 
-    onTick?.(currentChartTime);
+    onTick?.(currentChartSec);
 
     for (const event of events) {
       scheduleEvent(event);
@@ -86,7 +86,7 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     const channelGain = channelGains.get(event.fileName) ?? masterGain;
 
     // Convert chart time to context time
-    const scheduledContextTime = startContextTime + event.triggerChartTime / rate;
+    const scheduledContextTime = startContextTime + event.triggerChartSec / rate;
     const now = audioContext.currentTime;
 
     if (scheduledContextTime < now) {
@@ -102,8 +102,8 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     try {
       source.start(
         Math.max(scheduledContextTime, now),
-        event.audioStartTime,
-        event.audioEndTime - event.audioStartTime,
+        event.audioStartSec,
+        event.audioEndSec - event.audioStartSec,
       );
     } catch {
       // Scheduling failed (e.g. negative offset)
