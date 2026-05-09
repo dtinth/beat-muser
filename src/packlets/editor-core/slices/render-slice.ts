@@ -1,4 +1,4 @@
-import { atom } from "nanostores";
+import { atom, computed, type ReadableAtom } from "nanostores";
 import { Slice } from "../slice";
 import type { EditorContext } from "../editor-context";
 import { ProjectSlice } from "./project-slice";
@@ -26,11 +26,27 @@ import { WaveformSlice } from "./waveform-slice";
 import { computeWaveformOffsets, type SoundEventInput } from "../waveform-slicer";
 import { computeWaveformSegments } from "../waveform-segments";
 import { SOUND_GROUP } from "../components";
+import { ZoomSlice } from "./zoom-slice";
+
+interface WaveformSliceItem {
+  key: string;
+  pulseStart: number;
+  pulseEnd: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  peak: Float32Array;
+  rms: Float32Array;
+  color: string;
+}
 
 export class RenderSlice extends Slice {
   static readonly sliceKey = "render";
 
   $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
+
+  $waveformSlices!: ReadableAtom<WaveformSliceItem[]>;
 
   constructor(ctx: EditorContext) {
     super(ctx);
@@ -46,7 +62,18 @@ export class RenderSlice extends Slice {
     ctx.get(CursorSlice).$cursorViewportPos.subscribe(() => {
       this.refresh();
     });
-    ctx.get(WaveformSlice).$waveformData.subscribe(() => {
+
+    this.$waveformSlices = computed(
+      [
+        ctx.get(ProjectSlice).entityManager.$mutationVersion,
+        ctx.get(WaveformSlice).$waveformData,
+        ctx.get(ZoomSlice).$zoom,
+        ctx.get(ChartSlice).$selectedChartId,
+      ],
+      () => this.computeWaveformSlices(),
+    );
+
+    this.$waveformSlices.subscribe(() => {
       this.refresh();
     });
   }
@@ -314,40 +341,6 @@ export class RenderSlice extends Slice {
     // --- Sound events ---
     const selectedChartId = chartSlice.$selectedChartId.get();
 
-    const waveformSlice = this.ctx.get(WaveformSlice);
-    const waveformMap = waveformSlice.$waveformData.get();
-    const timingEngine = timing.getTimingEngine();
-    const channelDurations = new Map<string, { durationSeconds: number }>();
-
-    const soundEventInputs: SoundEventInput[] = [];
-    for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
-      const e = entityManager.getComponent(entity, EVENT);
-      const se = entityManager.getComponent(entity, SOUND_EVENT);
-      const cr = entityManager.getComponent(entity, CHART_REF);
-      if (!e || !se || !cr || cr.chartId !== selectedChartId) continue;
-
-      const soundChannel = entityManager.get(se.soundChannelId);
-      const channelPath = soundChannel
-        ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
-        : undefined;
-      if (channelPath && waveformMap.has(channelPath)) {
-        const wd = waveformMap.get(channelPath)!;
-        channelDurations.set(se.soundChannelId, { durationSeconds: wd.durationSeconds });
-      }
-
-      soundEventInputs.push({
-        entityId: entity.id,
-        pulse: e.y,
-        soundLane: se.soundLane,
-        soundChannelId: se.soundChannelId,
-        command: se.command,
-      });
-    }
-
-    const offsets = computeWaveformOffsets(soundEventInputs, channelDurations, (pulse: number) =>
-      timingEngine.pulseToSeconds(pulse),
-    );
-
     for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
       const event = entityManager.getComponent(entity, EVENT);
       const soundEvent = entityManager.getComponent(entity, SOUND_EVENT);
@@ -390,79 +383,6 @@ export class RenderSlice extends Slice {
         opacity: isDragging && isDragged ? 0.3 : undefined,
       });
 
-      if (soundChannelPath && waveformMap.has(soundChannelPath)) {
-        const wd = waveformMap.get(soundChannelPath)!;
-        const offsetInfo = offsets.get(entity.id);
-
-        const nextPulse = soundEventInputs
-          .filter(
-            (se) =>
-              se.soundLane === soundEvent.soundLane &&
-              se.soundChannelId === soundEvent.soundChannelId &&
-              se.pulse > pulse,
-          )
-          .map((se) => se.pulse)
-          .sort((a, b) => a - b)[0];
-
-        const trimPulse = nextPulse ?? size;
-        const visibleStart = Math.max(pulse, pulseStart);
-        const visibleEnd = Math.min(trimPulse, pulseEnd);
-
-        if (visibleEnd > visibleStart) {
-          const startSec = timingEngine.pulseToSeconds(visibleStart);
-          const endSec = timingEngine.pulseToSeconds(visibleEnd);
-          const rangeSec = endSec - startSec;
-
-          const chunksPerSec = 120;
-          const sampleOffset = offsetInfo?.sampleOffsetSeconds ?? 0;
-          const startChunk = Math.floor(sampleOffset * chunksPerSec);
-          const maxChunks = Math.floor((sampleOffset + rangeSec) * chunksPerSec);
-          const visibleChunks = Math.min(maxChunks - startChunk, wd.peak.length - startChunk);
-          const clampedVisibleChunks = Math.max(0, Math.min(visibleChunks, wd.peak.length));
-
-          if (clampedVisibleChunks > 0) {
-            const waveformTop = trackHeight - visibleEnd * scaleY;
-            const waveformBottom = trackHeight - visibleStart * scaleY;
-            const pixelHeight = Math.max(1, Math.round(waveformBottom - waveformTop));
-
-            const segments = computeWaveformSegments(wd.peak, wd.rms, {
-              startChunk,
-              chunkCount: clampedVisibleChunks,
-              pixelHeight,
-              maxSegmentPixels: 512,
-            });
-
-            let groupColor: string | undefined;
-            if (soundChannel) {
-              const groupId = entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.soundGroupId;
-              if (groupId) {
-                const group = entityManager.get(groupId);
-                if (group) {
-                  groupColor = entityManager.getComponent(group, SOUND_GROUP)?.color;
-                }
-              }
-            }
-
-            for (const segment of segments) {
-              specs.push({
-                key: `waveform-${entity.id}-${segment.pixelStart}`,
-                type: "waveform",
-                x: soundLaneCol.x + 4,
-                y: waveformTop + segment.pixelStart,
-                width: soundLaneCol.width - 8,
-                height: segment.pixelHeight,
-                data: {
-                  peak: segment.peak,
-                  rms: segment.rms,
-                  color: groupColor || "var(--gray-8)",
-                },
-                zIndex: 1,
-              });
-            }
-          }
-        }
-      }
-
       if (isDragging && isDragged) {
         const ghostPulse = pulse + deltaPulse;
         if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
@@ -485,6 +405,25 @@ export class RenderSlice extends Slice {
           });
         }
       }
+    }
+
+    // --- Waveform slices (pre-computed, filtered by visibility) ---
+    for (const slice of this.$waveformSlices?.get() ?? []) {
+      if (slice.pulseEnd <= pulseStart || slice.pulseStart >= pulseEnd) continue;
+      specs.push({
+        key: slice.key,
+        type: "waveform",
+        x: slice.x,
+        y: slice.y,
+        width: slice.width,
+        height: slice.height,
+        data: {
+          peak: slice.peak,
+          rms: slice.rms,
+          color: slice.color,
+        },
+        zIndex: 1,
+      });
     }
 
     // --- Playhead ---
@@ -602,5 +541,139 @@ export class RenderSlice extends Slice {
     }
 
     return specs;
+  }
+
+  private computeWaveformSlices(): WaveformSliceItem[] {
+    const chartSlice = this.ctx.get(ChartSlice);
+    const viewport = this.ctx.get(ViewportSlice);
+    const waveformSlice = this.ctx.get(WaveformSlice);
+    const columnsSlice = this.ctx.get(ColumnsSlice);
+    const timing = this.ctx.get(TimingSlice);
+    const entityManager = this.ctx.get(ProjectSlice).entityManager;
+
+    const selectedChartId = chartSlice.$selectedChartId.get();
+    if (!selectedChartId) return [];
+
+    const scaleY = viewport.getScaleY();
+    const trackHeight = viewport.getTrackHeight();
+    const size = chartSlice.getChartSize();
+    const columns = columnsSlice.$columns.get();
+    const waveformMap = waveformSlice.$waveformData.get();
+    const timingEngine = timing.getTimingEngine();
+
+    const channelDurations = new Map<string, { durationSeconds: number }>();
+    const soundEventInputs: SoundEventInput[] = [];
+
+    for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
+      const e = entityManager.getComponent(entity, EVENT);
+      const se = entityManager.getComponent(entity, SOUND_EVENT);
+      const cr = entityManager.getComponent(entity, CHART_REF);
+      if (!e || !se || !cr || cr.chartId !== selectedChartId) continue;
+
+      const soundChannel = entityManager.get(se.soundChannelId);
+      const channelPath = soundChannel
+        ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
+        : undefined;
+      if (channelPath && waveformMap.has(channelPath)) {
+        const wd = waveformMap.get(channelPath)!;
+        channelDurations.set(se.soundChannelId, { durationSeconds: wd.durationSeconds });
+      }
+
+      soundEventInputs.push({
+        entityId: entity.id,
+        pulse: e.y,
+        soundLane: se.soundLane,
+        soundChannelId: se.soundChannelId,
+        command: se.command,
+      });
+    }
+
+    const offsets = computeWaveformOffsets(soundEventInputs, channelDurations, (pulse: number) =>
+      timingEngine.pulseToSeconds(pulse),
+    );
+
+    const slices: WaveformSliceItem[] = [];
+
+    for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
+      const event = entityManager.getComponent(entity, EVENT);
+      const soundEvent = entityManager.getComponent(entity, SOUND_EVENT);
+      const chartRef = entityManager.getComponent(entity, CHART_REF);
+      if (!event || !soundEvent || !chartRef || chartRef.chartId !== selectedChartId) continue;
+
+      const soundChannel = entityManager.get(soundEvent.soundChannelId);
+      const soundChannelPath = soundChannel
+        ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
+        : undefined;
+      if (!soundChannelPath || !waveformMap.has(soundChannelPath)) continue;
+
+      const wd = waveformMap.get(soundChannelPath)!;
+      const offsetInfo = offsets.get(entity.id);
+
+      const soundLaneCol = columns.find((c) => c.soundLane === soundEvent.soundLane);
+      if (!soundLaneCol) continue;
+
+      const pulse = event.y;
+
+      const nextPulse = soundEventInputs
+        .filter(
+          (se) =>
+            se.soundLane === soundEvent.soundLane &&
+            se.soundChannelId === soundEvent.soundChannelId &&
+            se.pulse > pulse,
+        )
+        .map((se) => se.pulse)
+        .sort((a, b) => a - b)[0];
+
+      const trimPulse = nextPulse ?? size;
+
+      const sampleOffset = offsetInfo?.sampleOffsetSeconds ?? 0;
+      const rangeSec = timingEngine.pulseToSeconds(trimPulse) - timingEngine.pulseToSeconds(pulse);
+      const chunksPerSec = 120;
+      const startChunk = Math.floor(sampleOffset * chunksPerSec);
+      const maxChunks = Math.floor((sampleOffset + rangeSec) * chunksPerSec);
+      const visibleChunks = Math.min(maxChunks - startChunk, wd.peak.length - startChunk);
+      const clampedVisibleChunks = Math.max(0, Math.min(visibleChunks, wd.peak.length));
+
+      if (clampedVisibleChunks <= 0) continue;
+
+      const waveformTop = trackHeight - trimPulse * scaleY;
+      const waveformBottom = trackHeight - pulse * scaleY;
+      const pixelHeight = Math.max(1, Math.round(waveformBottom - waveformTop));
+
+      const segments = computeWaveformSegments(wd.peak, wd.rms, {
+        startChunk,
+        chunkCount: clampedVisibleChunks,
+        pixelHeight,
+        maxSegmentPixels: 512,
+      });
+
+      let groupColor: string | undefined;
+      if (soundChannel) {
+        const groupId = entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.soundGroupId;
+        if (groupId) {
+          const group = entityManager.get(groupId);
+          if (group) {
+            groupColor = entityManager.getComponent(group, SOUND_GROUP)?.color;
+          }
+        }
+      }
+
+      for (const segment of segments) {
+        slices.push({
+          key: `waveform-${entity.id}-${segment.pixelStart}`,
+          pulseStart: pulse,
+          pulseEnd: trimPulse,
+          x: soundLaneCol.x + 4,
+          y: waveformTop + segment.pixelStart,
+          width: soundLaneCol.width - 8,
+          height: segment.pixelHeight,
+          peak: segment.peak,
+          rms: segment.rms,
+          color: groupColor || "#fff",
+        });
+      }
+    }
+
+    return slices;
   }
 }
