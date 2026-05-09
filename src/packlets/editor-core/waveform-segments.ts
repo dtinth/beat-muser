@@ -18,6 +18,10 @@ export function computeWaveformSegments(
 ): WaveformSegmentSpec[] {
   const { rpLength, maxSegmentPixels, getFrameRange } = options;
 
+  if (!Number.isFinite(maxSegmentPixels) || maxSegmentPixels <= 0) {
+    throw new Error("maxSegmentPixels must be > 0");
+  }
+
   const segments: WaveformSegmentSpec[] = [];
 
   for (let segStart = 0; segStart < rpLength; segStart += maxSegmentPixels) {
@@ -42,9 +46,14 @@ export function computeWaveformSegments(
           }
 
           const start = Math.max(0, frameRange.startFrame);
-          const end = Math.min(peak.length, frameRange.endFrame);
+          const end = Math.min(peak.length, rms.length, frameRange.endFrame);
+          if (start >= end) {
+            segPeak[rp] = 0;
+            segRms[rp] = 0;
+            continue;
+          }
 
-          let maxPeak = -Infinity;
+          let maxPeak = 0;
           let sumRms = 0;
           let count = 0;
           for (let f = start; f < end; f++) {

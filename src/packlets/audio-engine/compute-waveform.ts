@@ -3,6 +3,9 @@ export function computePeakAndRms(
   sampleRate: number,
   framesPerSec: number,
 ): { peak: Float32Array; rms: Float32Array } {
+  if (sampleRate <= 0 || framesPerSec <= 0) {
+    throw new Error("sampleRate and framesPerSec must be positive");
+  }
   const chunkSize = Math.floor(sampleRate / framesPerSec);
   if (chunkSize === 0 || channelData.length === 0) {
     return { peak: new Float32Array(0), rms: new Float32Array(0) };

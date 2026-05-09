@@ -615,12 +615,7 @@ export class RenderSlice extends Slice {
       const pulse = event.y;
 
       const nextPulse = soundEventInputs
-        .filter(
-          (se) =>
-            se.soundLane === soundEvent.soundLane &&
-            se.soundChannelId === soundEvent.soundChannelId &&
-            se.pulse > pulse,
-        )
+        .filter((se) => se.soundLane === soundEvent.soundLane && se.pulse > pulse)
         .map((se) => se.pulse)
         .sort((a, b) => a - b)[0];
 
