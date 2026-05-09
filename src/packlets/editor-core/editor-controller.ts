@@ -280,6 +280,10 @@ export class EditorController {
     return this.viewport.getContentHeight();
   }
 
+  getViewportHeight(): number {
+    return this.viewport.$viewportSize.get().height;
+  }
+
   getScrollY(): number {
     return this.viewport.$scroll.get().y;
   }
