@@ -747,11 +747,20 @@ export function ProjectViewPage() {
     });
 
     const soundChannelSlice = controller.ctx.get(SoundChannelSlice);
+    let previousPaths = new Set<string>();
     const unsub = soundChannelSlice.$soundFilePaths.subscribe((paths) => {
+      const nextPaths = new Set(paths);
+      for (const oldPath of previousPaths) {
+        if (!nextPaths.has(oldPath)) {
+          controller.waveform.removeWaveformData(oldPath);
+        }
+      }
+      previousPaths = nextPaths;
       engine.setFilePaths([...paths]);
     });
 
     const initialPaths = soundChannelSlice.$soundFilePaths.get();
+    previousPaths = new Set(initialPaths);
     if (initialPaths.length > 0) {
       engine.setFilePaths([...initialPaths]);
     }
