@@ -1,9 +1,9 @@
 export function computePeakAndRms(
   channelData: Float32Array[],
   sampleRate: number,
-  chunksPerSecond: number,
+  framesPerSec: number,
 ): { peak: Float32Array; rms: Float32Array } {
-  const chunkSize = Math.floor(sampleRate / chunksPerSecond);
+  const chunkSize = Math.floor(sampleRate / framesPerSec);
   if (chunkSize === 0 || channelData.length === 0) {
     return { peak: new Float32Array(0), rms: new Float32Array(0) };
   }
@@ -23,9 +23,9 @@ export function computePeakAndRms(
 export function computePeakAndRmsAsync(
   channelData: Float32Array[],
   sampleRate: number,
-  chunksPerSecond: number,
+  framesPerSec: number,
 ): Promise<{ peak: Float32Array; rms: Float32Array }> {
-  const chunkSize = Math.floor(sampleRate / chunksPerSecond);
+  const chunkSize = Math.floor(sampleRate / framesPerSec);
   if (chunkSize === 0 || channelData.length === 0) {
     return Promise.resolve({ peak: new Float32Array(0), rms: new Float32Array(0) });
   }
@@ -35,7 +35,7 @@ export function computePeakAndRmsAsync(
   const peak = new Float32Array(chunkCount);
   const rms = new Float32Array(chunkCount);
 
-  const BATCH_CHUNKS = Math.max(1, Math.floor(chunksPerSecond / 4));
+  const BATCH_CHUNKS = Math.max(1, Math.floor(framesPerSec / 4));
 
   return new Promise((resolve) => {
     let batchStart = 0;
