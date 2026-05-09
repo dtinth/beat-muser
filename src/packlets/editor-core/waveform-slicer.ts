@@ -31,20 +31,20 @@ export function computeWaveformOffsets(
   for (const group of groups.values()) {
     group.sort((a, b) => a.pulse - b.pulse);
 
-    let cumulativeSeconds = 0;
+    let cumulativeChartSec = 0;
     for (let i = 0; i < group.length; i++) {
       const event = group[i];
       const nextEvent = group[i + 1];
 
       if (event.command === "play") {
-        cumulativeSeconds = 0;
+        cumulativeChartSec = 0;
       }
 
-      result.set(event.entityId, { sampleOffsetAudioSec: cumulativeSeconds });
+      result.set(event.entityId, { sampleOffsetAudioSec: cumulativeChartSec });
 
       if (nextEvent) {
-        const playedSeconds = pulseToSeconds(nextEvent.pulse) - pulseToSeconds(event.pulse);
-        cumulativeSeconds += playedSeconds;
+        const playedChartSec = pulseToSeconds(nextEvent.pulse) - pulseToSeconds(event.pulse);
+        cumulativeChartSec += playedChartSec;
       }
     }
   }
