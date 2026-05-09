@@ -561,7 +561,7 @@ export class RenderSlice extends Slice {
     const waveformMap = waveformSlice.$waveformData.get();
     const timingEngine = timing.getTimingEngine();
 
-    const channelDurations = new Map<string, { durationSeconds: number }>();
+    const channelDurations = new Map<string, { durationSec: number }>();
     const soundEventInputs: SoundEventInput[] = [];
 
     for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
@@ -576,7 +576,7 @@ export class RenderSlice extends Slice {
         : undefined;
       if (channelPath && waveformMap.has(channelPath)) {
         const wd = waveformMap.get(channelPath)!;
-        channelDurations.set(se.soundChannelId, { durationSeconds: wd.durationSeconds });
+        channelDurations.set(se.soundChannelId, { durationSec: wd.durationSec });
       }
 
       soundEventInputs.push({

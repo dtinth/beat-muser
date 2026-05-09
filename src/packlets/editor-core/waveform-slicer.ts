@@ -12,7 +12,7 @@ export interface WaveformOffsetInfo {
 
 export function computeWaveformOffsets(
   events: SoundEventInput[],
-  _channels: Map<string, { durationSeconds: number }>,
+  _channels: Map<string, { durationSec: number }>,
   pulseToSeconds: (pulse: number) => number,
 ): Map<string, WaveformOffsetInfo> {
   const result = new Map<string, WaveformOffsetInfo>();

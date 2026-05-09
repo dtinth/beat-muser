@@ -4,7 +4,7 @@ import { Slice } from "../slice";
 export interface WaveformData {
   peak: Float32Array;
   rms: Float32Array;
-  durationSeconds: number;
+  durationSec: number;
   sampleRate: number;
 }
 

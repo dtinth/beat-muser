@@ -1587,7 +1587,7 @@ describe("EditorController", () => {
         peak[i] = (i + 1) / chunkCount;
         rms[i] = peak[i] * 0.7;
       }
-      return { peak, rms, durationSeconds: seconds, sampleRate: 48000 };
+      return { peak, rms, durationSec: seconds, sampleRate: 48000 };
     }
 
     function setChannelPath(editor: EditorTester, channelId: string, path: string): void {

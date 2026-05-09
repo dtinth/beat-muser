@@ -18,7 +18,7 @@ export async function computeWaveformData(audioBuffer: AudioBuffer): Promise<Wav
   return {
     peak,
     rms,
-    durationSeconds: audioBuffer.duration,
+    durationSec: audioBuffer.duration,
     sampleRate: audioBuffer.sampleRate,
   };
 }
