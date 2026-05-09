@@ -794,7 +794,7 @@ export function ProjectViewPage() {
         audioContext: engine.audioContext,
         buffers: engine.buffers,
         masterGain: engine.masterGain,
-        channelGains: new Map(),
+        channelGains: engine.channelGains,
         onTick: (chartTimeSec) => {
           const pulse = timingEngine.secondsToPulse(chartTimeSec);
           controller.playback.setPlaybackPulse(pulse);

@@ -110,5 +110,6 @@ export function createAudioEngine(options: CreateAudioEngineOptions) {
     getOrCreateChannelGain,
     getBuffer: (path: string) => buffers.get(path),
     buffers,
+    channelGains,
   };
 }
