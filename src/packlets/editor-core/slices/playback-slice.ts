@@ -11,7 +11,7 @@ export class PlaybackSlice extends Slice {
   $transportState = atom<TransportState>("stopped");
   $playbackPulse = atom<number>(0);
 
-  private prePlaybackCursor = 0;
+  private prePlaybackCursorPulse = 0;
   private prePlaybackScrollY = 0;
   private chartEndPulse = Infinity;
   private activeAbortController: AbortController | null = null;
@@ -48,7 +48,7 @@ export class PlaybackSlice extends Slice {
   }
 
   play(playback: Playback, cursorPulse: number, scrollY: number): void {
-    this.prePlaybackCursor = cursorPulse;
+    this.prePlaybackCursorPulse = cursorPulse;
     this.prePlaybackScrollY = scrollY;
     this.$playbackPulse.set(cursorPulse);
     this.$transportState.set("playing");
@@ -65,7 +65,7 @@ export class PlaybackSlice extends Slice {
     if (this.$transportState.get() === "stopped") return;
     this.$transportState.set("stopped");
     this.abort();
-    this.$playbackPulse.set(this.prePlaybackCursor);
+    this.$playbackPulse.set(this.prePlaybackCursorPulse);
     this.events.emit("stopRequest", this.prePlaybackScrollY);
   }
 

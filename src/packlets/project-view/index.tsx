@@ -787,6 +787,7 @@ export function ProjectViewPage() {
       if (engine.audioContext.state === "suspended") {
         await engine.audioContext.resume();
       }
+      if (playback.abortSignal.aborted) return;
       const stop = startAudioPlayback({
         playback,
         rate,
