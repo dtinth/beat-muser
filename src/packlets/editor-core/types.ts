@@ -6,6 +6,7 @@
 
 import type { Point } from "../geometry";
 import type { Entity } from "../entity-manager";
+import type { Playback } from "../playback-contract";
 
 export interface EditorControllerOptions {
   project: import("../project-format").ProjectFile;
@@ -52,6 +53,8 @@ export interface TimelineRenderSpec {
 
 export interface EditorOutboxEvents {
   setScroll: (point: Point) => void;
+  playbackPlay: (playback: Playback, rate: number) => void;
+  playbackStop: (scrollY: number) => void;
 }
 
 export const DEFAULT_CHART_SIZE = 15360;

@@ -32,6 +32,7 @@ export * from "./slices/pointer-interaction-slice";
 export * from "./slices/drag-slice";
 export * from "./slices/sound-channel-slice";
 export * from "./slices/waveform-slice";
+export * from "./slices/playback-slice";
 export * from "./slices/view-command-slice";
 export * from "./slices/editor-command-slice";
 export * from "./waveform-slicer";
