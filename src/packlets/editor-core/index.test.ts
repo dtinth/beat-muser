@@ -1676,8 +1676,8 @@ describe("EditorController", () => {
       for (let i = 1; i < sorted.length; i++) {
         const prev = sorted[i - 1];
         const curr = sorted[i];
-        const gap = curr.y - (prev.y + prev.pixelLength);
-        const label = `segment at y=${prev.y.toFixed(1)} h=${prev.pixelLength.toFixed(1)} → next at y=${curr.y.toFixed(1)}`;
+        const gap = curr.y - (prev.y + prev.rpLength);
+        const label = `segment at y=${prev.y.toFixed(1)} h=${prev.rpLength.toFixed(1)} → next at y=${curr.y.toFixed(1)}`;
         expect(Math.abs(gap), label).toBeLessThan(1);
       }
     });

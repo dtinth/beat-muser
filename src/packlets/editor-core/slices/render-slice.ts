@@ -35,7 +35,7 @@ interface WaveformSegment {
   x: number;
   y: number;
   width: number;
-  pixelLength: number;
+  rpLength: number;
   color: string;
   getWaveformPixels(): { peak: Float32Array; rms: Float32Array };
 }
@@ -416,7 +416,7 @@ export class RenderSlice extends Slice {
         x: segment.x,
         y: segment.y,
         width: segment.width,
-        height: segment.pixelLength,
+        height: segment.rpLength,
         data: {
           peak,
           rms,
@@ -626,12 +626,12 @@ export class RenderSlice extends Slice {
 
       const trimPulse = nextPulse ?? size;
 
-      const sampleOffset = offsetInfo?.sampleOffsetSeconds ?? 0;
-      const eventAbsSeconds = timingEngine.pulseToSeconds(pulse);
+      const sampleOffsetAudioSec = offsetInfo?.sampleOffsetSeconds ?? 0;
+      const eventChartSec = timingEngine.pulseToSeconds(pulse);
 
-      const waveformTop = trackHeight - trimPulse * scaleY;
-      const waveformBottom = trackHeight - pulse * scaleY;
-      const pixelLength = Math.max(1, Math.round(waveformBottom - waveformTop));
+      const waveformTopY = trackHeight - trimPulse * scaleY;
+      const waveformBottomY = trackHeight - pulse * scaleY;
+      const rpLength = Math.max(1, Math.round(waveformBottomY - waveformTopY));
       const framesPerSec = 120;
 
       const getFrameRange = (
@@ -644,8 +644,8 @@ export class RenderSlice extends Slice {
         const secA = timingEngine.pulseToSeconds(pulseA);
         const secB = timingEngine.pulseToSeconds(pulseB);
 
-        const audioSecA = secA - eventAbsSeconds + sampleOffset;
-        const audioSecB = secB - eventAbsSeconds + sampleOffset;
+        const audioSecA = secA - eventChartSec + sampleOffsetAudioSec;
+        const audioSecB = secB - eventChartSec + sampleOffsetAudioSec;
 
         const audioTop = Math.max(audioSecA, audioSecB);
         const audioBottom = Math.min(audioSecA, audioSecB);
@@ -659,7 +659,7 @@ export class RenderSlice extends Slice {
       };
 
       const segments = computeWaveformSegments(wd.peak, wd.rms, {
-        pixelLength,
+        rpLength,
         maxSegmentPixels: 512,
         getFrameRange,
       });
@@ -677,13 +677,13 @@ export class RenderSlice extends Slice {
 
       for (const segment of segments) {
         slices.push({
-          key: `waveform-${entity.id}-${segment.pixelStart}`,
+          key: `waveform-${entity.id}-${segment.rpStart}`,
           pulseStart: pulse,
           pulseEnd: trimPulse,
           x: soundLaneCol.x + 4,
-          y: waveformBottom - segment.pixelStart - segment.pixelLength,
+          y: waveformBottomY - segment.rpStart - segment.rpLength,
           width: soundLaneCol.width - 8,
-          pixelLength: segment.pixelLength,
+          rpLength: segment.rpLength,
           color: groupColor || "#fff",
           getWaveformPixels: segment.getWaveformPixels,
         });
