@@ -245,12 +245,29 @@ export class EditorController {
     }
 
     const abortController = this.playback.newAbortController();
+
     const playback = createPlayback({
       soundEvents,
       timingEngine,
       cursorPulse,
       channels,
       abortController,
+      onPulseUpdate: (pulse) => {
+        this.playback.setPlaybackPulse(pulse);
+        this.cursor.$cursorPulse.set(pulse);
+
+        if (pulse > chartSize) {
+          this.stopPlayback();
+          return;
+        }
+
+        const scaleY = 0.2 * this.$zoom.get();
+        const contentHeight = this.getContentHeight();
+        const playheadContentY = contentHeight - pulse * scaleY;
+        const viewportHeight = this.getViewportHeight();
+        const targetScrollY = playheadContentY - viewportHeight * 0.4;
+        this.outbox.emit("setScroll", { x: 0, y: Math.max(0, targetScrollY) });
+      },
     });
     this.playback.play(playback, cursorPulse, scrollY);
   }

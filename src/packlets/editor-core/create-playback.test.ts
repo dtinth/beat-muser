@@ -16,7 +16,7 @@ function collectAllEvents(playback: ReturnType<typeof createPlayback>): Playback
   let newEvents = playback.getEvents(999);
   while (newEvents.length > 0) {
     events.push(...newEvents);
-    newEvents = playback.getEvents(events[events.length - 1]!.triggerChartSec + 999);
+    newEvents = playback.getEvents(events[events.length - 1]!.triggerPlaybackSec + 999);
   }
   return events;
 }
@@ -40,7 +40,7 @@ function makeSoundEvent(
 }
 
 describe("createPlayback", () => {
-  test("single sound event at cursor produces one event at triggerChartSec 0", () => {
+  test("single sound event at cursor produces one event at triggerPlaybackSec 0", () => {
     const playback = createPlayback({
       soundEvents: [makeSoundEvent()],
       timingEngine: createTimingEngine(
@@ -55,13 +55,13 @@ describe("createPlayback", () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       fileName: "drums.wav",
-      triggerChartSec: 0,
+      triggerPlaybackSec: 0,
       audioStartSec: 0,
       audioEndSec: 2,
     });
   });
 
-  test("sound event after cursor has correct triggerChartSec offset", () => {
+  test("sound event after cursor has correct triggerPlaybackSec offset", () => {
     const playback = createPlayback({
       soundEvents: [makeSoundEvent({ pulse: 240 })],
       timingEngine: createTimingEngine(
@@ -73,7 +73,7 @@ describe("createPlayback", () => {
     });
 
     const events = collectAllEvents(playback);
-    expect(events[0].triggerChartSec).toBeCloseTo(0.5, 2);
+    expect(events[0].triggerPlaybackSec).toBeCloseTo(0.5, 2);
   });
 
   test("multiple events on same channel produce correct times", () => {
@@ -92,8 +92,8 @@ describe("createPlayback", () => {
 
     const events = collectAllEvents(playback);
     expect(events).toHaveLength(2);
-    expect(events[0].triggerChartSec).toBe(0);
-    expect(events[1].triggerChartSec).toBeCloseTo(1, 2);
+    expect(events[0].triggerPlaybackSec).toBe(0);
+    expect(events[1].triggerPlaybackSec).toBeCloseTo(1, 2);
   });
 
   test("continue coalesced into preceding play", () => {
@@ -113,7 +113,7 @@ describe("createPlayback", () => {
     const events = collectAllEvents(playback);
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
-      triggerChartSec: 0,
+      triggerPlaybackSec: 0,
       audioStartSec: 0,
       audioEndSec: 5,
     });
@@ -136,8 +136,8 @@ describe("createPlayback", () => {
 
     const events = collectAllEvents(playback);
     expect(events).toHaveLength(2);
-    expect(events[0]).toMatchObject({ triggerChartSec: 0, audioStartSec: 0 });
-    expect(events[1]).toMatchObject({ triggerChartSec: 2, audioStartSec: 0, audioEndSec: 5 });
+    expect(events[0]).toMatchObject({ triggerPlaybackSec: 0, audioStartSec: 0 });
+    expect(events[1]).toMatchObject({ triggerPlaybackSec: 2, audioStartSec: 0, audioEndSec: 5 });
   });
 
   test("different sound lanes are independent", () => {
@@ -160,9 +160,9 @@ describe("createPlayback", () => {
     // lane 0: play at 0 + continue at 480 → coalesced into one
     // lane 1: play at 0 + continue at 960 → coalesced into one
     expect(events).toHaveLength(2);
-    const sorted = [...events].sort((a, b) => a.triggerChartSec - b.triggerChartSec);
-    expect(sorted[0].triggerChartSec).toBe(0);
-    expect(sorted[1].triggerChartSec).toBe(0);
+    const sorted = [...events].sort((a, b) => a.triggerPlaybackSec - b.triggerPlaybackSec);
+    expect(sorted[0].triggerPlaybackSec).toBe(0);
+    expect(sorted[1].triggerPlaybackSec).toBe(0);
   });
 
   test("join mid-stream: cursor starts between play and continue", () => {
@@ -182,7 +182,7 @@ describe("createPlayback", () => {
     const events = collectAllEvents(playback);
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
-      triggerChartSec: 0,
+      triggerPlaybackSec: 0,
       audioStartSec: 0.5, // halfway through the file
       audioEndSec: 5,
     });
@@ -217,7 +217,7 @@ describe("createPlayback", () => {
     const events = collectAllEvents(playback);
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
-      triggerChartSec: 0,
+      triggerPlaybackSec: 0,
       audioStartSec: 1, // 1s of the 10s audio has already "played"
       audioEndSec: 10,
     });
@@ -238,11 +238,11 @@ describe("createPlayback", () => {
       channels: new Map([makeChannel("ch1", "drums.wav")]),
     });
 
-    // First chain (play at 0 + continue at 240) coalesced at triggerChartSec 0
+    // First chain (play at 0 + continue at 240) coalesced at triggerPlaybackSec 0
     const batch1 = playback.getEvents(0.6);
     expect(batch1).toHaveLength(1);
 
-    // Second chain (play at 480) at triggerChartSec 1.0
+    // Second chain (play at 480) at triggerPlaybackSec 1.0
     const batch2 = playback.getEvents(2);
     expect(batch2).toHaveLength(1);
 
