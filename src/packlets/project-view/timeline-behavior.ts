@@ -29,6 +29,7 @@ import type {
   Renderer,
 } from "../scrollable-canvas";
 import type { EditorController, TimelineRenderSpec } from "../editor-core";
+import { createWaveformRenderer } from "./waveform-renderer";
 
 // ---------------------------------------------------------------------------
 // Renderers
@@ -232,6 +233,7 @@ const rendererMap: Record<string, Renderer> = {
   playhead: createPlayheadRenderer(),
   "grid-line": createGridLineRenderer(),
   "selection-box": createSelectionBoxRenderer(),
+  waveform: createWaveformRenderer(),
 };
 
 function specToRenderObject(spec: TimelineRenderSpec): RenderObject {

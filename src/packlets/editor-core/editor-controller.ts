@@ -41,6 +41,7 @@ import { DragSlice } from "./slices/drag-slice";
 import { ViewCommandSlice } from "./slices/view-command-slice";
 import { EditorCommandSlice } from "./slices/editor-command-slice";
 import { SoundChannelSlice } from "./slices/sound-channel-slice";
+import { WaveformSlice } from "./slices/waveform-slice";
 import type { GameModeLayout } from "./lane-layouts";
 import { BEAT_5K_LAYOUT, BEAT_7K_LAYOUT } from "./lane-layouts";
 import { SetMetadataUserAction } from "./user-actions";
@@ -103,6 +104,10 @@ export class EditorController {
     return this.ctx.get(ColumnsSlice);
   }
 
+  get waveform(): WaveformSlice {
+    return this.ctx.get(WaveformSlice);
+  }
+
   get $lastPlacedEntityInfo() {
     return this.ctx.get(PointerInteractionSlice).$lastPlacedEntityInfo;
   }
@@ -141,6 +146,7 @@ export class EditorController {
     this.ctx.register(SoundColumnsSlice);
     this.ctx.register(DragSlice);
     this.ctx.register(SoundChannelSlice);
+    this.ctx.register(WaveformSlice);
     this.ctx.register(RenderSlice);
     this.ctx.register(PointerInteractionSlice);
     this.ctx.register(ViewCommandSlice);

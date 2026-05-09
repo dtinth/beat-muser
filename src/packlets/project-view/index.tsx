@@ -55,6 +55,7 @@ import {
 import type { ProjectFile } from "../project-format";
 import type { ProjectSource } from "../project-store/types";
 import { createProjectFileSystem } from "../file-system";
+import { createAudioEngine } from "../audio-engine";
 import { createTimelineBehaviorFactory } from "./timeline-behavior";
 import { globalCommandRegistry, CommandSet, KeyboardShortcutHandler } from "../command-registry";
 
@@ -728,6 +729,38 @@ export function ProjectViewPage() {
 
   const [controller] = useState(() => new EditorController({ project: loadedProject }));
   const [modalManager] = useState(() => new ModalManager());
+
+  useEffect(() => {
+    const engine = createAudioEngine({
+      fileSystem,
+      delegate: {
+        onWaveformStatus(path, status) {
+          controller.waveform.setWaveformStatus(path, status);
+        },
+        onWaveformReady(path, data) {
+          controller.waveform.setWaveformData(path, data);
+        },
+        onWaveformError(path, error) {
+          console.error(`Waveform error for ${path}:`, error);
+        },
+      },
+    });
+
+    const soundChannelSlice = controller.ctx.get(SoundChannelSlice);
+    const unsub = soundChannelSlice.$soundFilePaths.subscribe((paths) => {
+      engine.setFilePaths([...paths]);
+    });
+
+    const initialPaths = soundChannelSlice.$soundFilePaths.get();
+    if (initialPaths.length > 0) {
+      engine.setFilePaths([...initialPaths]);
+    }
+
+    return () => {
+      unsub();
+      engine.destroy();
+    };
+  }, [fileSystem, controller]);
 
   useEffect(() => {
     const commands = new CommandSet();
