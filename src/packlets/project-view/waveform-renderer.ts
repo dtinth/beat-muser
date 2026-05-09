@@ -30,25 +30,25 @@ export function createWaveformRenderer(): (data: unknown) => RenderHandle<Wavefo
 
 function drawWaveform(canvas: HTMLCanvasElement, data: WaveformRendererData): void {
   const { peak, rms, color } = data;
-  const pixelHeight = peak.length;
+  const rpLength = peak.length;
 
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
   const width = rect.width || canvas.offsetWidth || 100;
   canvas.width = width * dpr;
-  canvas.height = pixelHeight * dpr;
+  canvas.height = rpLength * dpr;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
   ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, width, pixelHeight);
+  ctx.clearRect(0, 0, width, rpLength);
 
   const centerX = width / 2;
   const maxBarHalfWidth = (width / 2) * 0.9;
 
-  for (let py = 0; py < pixelHeight; py++) {
-    const audioIdx = pixelHeight - 1 - py;
+  for (let py = 0; py < rpLength; py++) {
+    const audioIdx = rpLength - 1 - py;
     const rmsVal = Math.min(rms[audioIdx], 1);
     const peakVal = Math.min(peak[audioIdx], 1);
 
