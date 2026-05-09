@@ -784,6 +784,7 @@ export function ProjectViewPage() {
     const unsub1 = controller.outbox.on("playbackPlay", (playback, rate) => {
       const engine = audioEngineRef.current;
       if (!engine) return;
+      const timingEngine = controller.getTimingEngine();
       const stop = startAudioPlayback({
         playback,
         rate,
@@ -791,14 +792,27 @@ export function ProjectViewPage() {
         buffers: engine.buffers,
         masterGain: engine.masterGain,
         channelGains: new Map(),
+        onTick: (chartTimeSec) => {
+          const pulse = timingEngine.secondsToPulse(chartTimeSec);
+          controller.playback.setPlaybackPulse(pulse);
+          controller.$cursorPulse.set(pulse);
+
+          const scaleY = 0.2 * controller.$zoom.get();
+          const contentHeight = controller.getContentHeight();
+          const playheadContentY = contentHeight - pulse * scaleY;
+          const viewportHeight = controller.getViewportHeight();
+          const targetScrollY = playheadContentY - viewportHeight * 0.4;
+          controller.setScroll({ x: 0, y: Math.max(0, targetScrollY) });
+        },
       });
       stopPlaybackRef.current = stop;
     });
 
-    const unsub2 = controller.outbox.on("playbackStop", (_scrollY) => {
+    const unsub2 = controller.outbox.on("playbackStop", (scrollY) => {
       const s = stopPlaybackRef.current;
       if (s) s();
       stopPlaybackRef.current = null;
+      controller.setScroll({ x: 0, y: scrollY });
     });
 
     return () => {

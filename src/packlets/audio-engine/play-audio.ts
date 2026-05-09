@@ -11,6 +11,8 @@ export interface AudioPlaybackOptions {
   lookaheadSec?: number;
   /** Tick interval in milliseconds (default 25). */
   tickIntervalMs?: number;
+  /** Called on each tick with the current chart time in seconds. */
+  onTick?: (chartTimeSec: number) => void;
 }
 
 interface ActiveSource {
@@ -28,6 +30,7 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     channelGains,
     lookaheadSec = 0.2,
     tickIntervalMs = 25,
+    onTick,
   } = options;
 
   const startContextTime = audioContext.currentTime;
@@ -38,10 +41,12 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
   function scheduleEvents(): void {
     if (stopped) return;
     const currentContextTime = audioContext.currentTime;
-    const currentPlaybackTime = (currentContextTime - startContextTime) * rate;
-    const lookaheadPlaybackTime = currentPlaybackTime + lookaheadSec;
+    const currentChartTime = (currentContextTime - startContextTime) * rate;
+    const lookaheadChartTime = currentChartTime + lookaheadSec;
 
-    const events = playback.getEvents(lookaheadPlaybackTime);
+    const events = playback.getEvents(lookaheadChartTime);
+
+    onTick?.(currentChartTime);
 
     for (const event of events) {
       scheduleEvent(event);
