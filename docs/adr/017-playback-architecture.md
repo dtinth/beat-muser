@@ -1,6 +1,6 @@
 # Playback Architecture — Lookahead Scheduler with Playback Contract
 
-Sound event playback uses a lookahead scheduler pattern split across three layers: a `playback-contract` packlet defining shared interfaces, a `createPlayback` function in editor-core that produces scheduleable event lists in chart time, and an extended `audio-engine` that manages `AudioContext` scheduling, buffer caching, and rate conversion. The existing `AudioContext` (never destroyed) is shared between waveform decoding and playback.
+Sound event playback uses a lookahead scheduler pattern split across three layers: a `playback-contract` packlet defining shared interfaces, a `createPlayback` function in editor-core that produces scheduleable event lists in playback time (seconds relative to the moment play was pressed), and an extended `audio-engine` that manages `AudioContext` scheduling, buffer caching, and rate conversion. The existing `AudioContext` (never destroyed) is shared between waveform decoding and playback.
 
 ## Considered Options
 
