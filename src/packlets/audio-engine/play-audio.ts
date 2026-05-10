@@ -7,8 +7,8 @@ export interface AudioPlaybackOptions {
   buffers: Map<string, AudioBuffer>;
   masterGain: GainNode;
   channelGains: Map<string, GainNode>;
-  /** Maximum lookahead in playback seconds (default 0.2). */
-  lookaheadSec?: number;
+  /** Lookahead window size in playback seconds (default 0.2). */
+  lookaheadPlaybackSec?: number;
   /** Tick interval in milliseconds (default 25). */
   tickIntervalMs?: number;
 }
@@ -26,7 +26,7 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     buffers,
     masterGain,
     channelGains,
-    lookaheadSec = 0.2,
+    lookaheadPlaybackSec: window = 0.2,
     tickIntervalMs = 25,
   } = options;
 
@@ -65,7 +65,7 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     if (stopped) return;
     const currentContextTime = audioContext.currentTime;
     const currentPlaybackSec = (currentContextTime - startContextTime) * rate;
-    const lookaheadPlaybackSec = currentPlaybackSec + lookaheadSec;
+    const lookaheadPlaybackSec = currentPlaybackSec + window;
 
     const events = playback.getEvents(lookaheadPlaybackSec);
 
