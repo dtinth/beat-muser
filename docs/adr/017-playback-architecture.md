@@ -12,5 +12,5 @@ Sound event playback uses a lookahead scheduler pattern split across three layer
 ## Consequences
 
 - `playback-contract` is a neutral packlet imported by both `editor-core` and `audio-engine`.
-- `createPlayback` is pure and testable: given sound events + timing engine + cursor pulse, it returns a `Playback` with `getEvents(lookaheadChartTime)`.
-- Audio engine converts chart time → playback time (via rate) → context time for scheduling.
+- `createPlayback` is pure and testable: given sound events + timing engine + cursor pulse, it returns a `Playback` with `getEvents(lookaheadPlaybackSec)`.
+- Audio engine converts playback time to context time via `startContextTime + triggerPlaybackSec / rate` for scheduling, and sets `source.playbackRate = rate` so audio plays slower/faster accordingly.

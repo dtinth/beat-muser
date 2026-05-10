@@ -47,22 +47,22 @@ A separate packlet (`src/packlets/audio-engine/`) responsible for loading audio 
 The computation that determines, for each sound event on the timeline, how much of the referenced audio file is visible: the start offset (seconds into the sample, accounting for `continue` events that resume from prior position), and the trim point (pulse of the next event on the same lane).
 
 **Chart time**:
-A coordinate system for playback scheduling measured in real seconds from the start of playback. Independent of playback rate — the audio engine multiplies chart time by rate to convert to `AudioContext.currentTime`. `createPlayback` works exclusively in chart time.
+A coordinate system for playback scheduling measured in real seconds from the start of playback. Independent of playback rate — the audio engine divides chart time by rate to convert to `AudioContext.currentTime`. `createPlayback` works exclusively in chart time.
 
 **Playback contract**:
 A neutral packlet (`src/packlets/playback-contract/`) defining shared interfaces consumed by both editor-core and audio-engine. Decouples scheduling logic from audio I/O so both sides can be tested independently.
 
 **Playback**:
-An object produced by `createPlayback` that yields scheduled sound events via `getEvents(lookaheadChartTime)`. Think of it as a deque: each call returns events between the last window and the new lookahead time. Carries an `AbortSignal` for pause/stop.
+An object produced by `createPlayback` that yields scheduled sound events via `getEvents(lookaheadPlaybackSec)`. Think of it as a deque: each call returns events between the last window and the new lookahead time. Carries an `AbortSignal` for pause/stop.
 
 **Playback event**:
-A scheduled sound trigger with `triggerChartTime` (when), `fileName` (which file), `audioStartTime` and `audioEndTime` (what segment). `continue` chains are coalesced inside `Playback` so the audio engine never sees them.
+A scheduled sound trigger with `triggerPlaybackSec` (when), `fileName` (which file), `audioStartSec` and `audioEndSec` (what segment). `continue` chains are coalesced inside `Playback` so the audio engine never sees them.
 
 **Playback slice**:
 The {@link PlaybackSlice} in editor-core that holds transport state (`$transportState`: `stopped | playing | paused`) and the current playback position (`$playbackPulse`). Delegates to `createPlayback` for event scheduling logic.
 
 **Playback rate**:
-A speed multiplier applied to playback. At 1.0x, chart time and real time are the same. At 0.5x, real time elapses at half speed. Rate is carried alongside the `Playback` object when a play event is emitted; managed by the audio engine.
+A speed multiplier applied to playback. At 1.0x, playback time and context time are the same. At 0.5x, playback time elapses at half speed. Rate is passed as a parameter to `startAudioPlayback()` alongside the `Playback` object and applied both to scheduling math and `source.playbackRate`.
 
 ## Relationships
 
@@ -105,7 +105,7 @@ A speed multiplier applied to playback. At 1.0x, chart time and real time are th
 > **Domain expert:** "The waveform canvas simply isn't rendered — the DOM event-marker still shows with its label. Once waveform data arrives, the render slice regenerates specs and the canvas appears."
 
 > **Dev:** "During playback, how does the audio engine know when to schedule the next batch of sounds?"
-> **Domain expert:** "It runs a tick loop (~25ms interval). Each tick, it computes `currentChartTime = (contextTime - startTime) * rate`, adds a lookahead window (e.g. 200ms), and calls `playback.getEvents(lookaheadChartTime)` to get the next batch of **Playback events**. It converts each event's chart time to context time and schedules `AudioBufferSourceNode.start(time)`."
+> **Domain expert:** "It runs a tick loop (~25ms interval). Each tick, it computes `currentPlaybackSec = (currentContextTime - startContextTime) * rate`, adds a lookahead window (e.g. 200ms), and calls `playback.getEvents(lookaheadPlaybackSec)` to get the next batch of **Playback events**. It converts each event's playback time to context time via `startContextTime + triggerPlaybackSec / rate` and schedules `AudioBufferSourceNode.start(time)`."
 >
 > **Dev:** "What happens if the chart has a `continue` sound event — does the audio engine need to handle that?"
 > **Domain expert:** "No — `createPlayback` coalesces `continue` chains into a single **Playback event** with the correct `audioStartTime`. The audio engine just sees flat, independent events."
