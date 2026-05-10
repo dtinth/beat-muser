@@ -208,7 +208,7 @@ export class PointerInteractionSlice extends Slice {
     if (dragSlice.isActive()) {
       const currentPulse = this.snapToGrid(this.computePulseFromViewportY(viewportY));
       dragSlice.updateDrag(viewportY, currentPulse);
-      this.ctx.get(RenderSlice).refresh();
+      this.ctx.get(RenderSlice).requestRerender();
     } else if (this.ctx.get(BoxSelectionSlice).isActive()) {
       this.ctx
         .get(BoxSelectionSlice)

@@ -165,7 +165,7 @@ export class EditorController {
       if (this.playback.$transportState.get() !== "playing") {
         this.pointer.recomputeCursorPulse();
       }
-      this.render.refresh();
+      this.render.requestRerender();
     });
 
     this.ctx.get(ViewportSlice).onScrollRequest((point) => {
@@ -181,7 +181,7 @@ export class EditorController {
     });
 
     this.ctx.get(ToolSlice).onToolChanged(() => {
-      this.render.refresh();
+      this.render.requestRerender();
     });
 
     this.ctx.get(SnapSlice).onSnapChanged(() => {
@@ -191,7 +191,7 @@ export class EditorController {
     });
 
     this.ctx.get(ColumnsSlice).$columns.subscribe(() => {
-      this.render.refresh();
+      this.render.requestRerender();
     });
 
     this.ctx.get(ColumnsSlice).refreshColumns();

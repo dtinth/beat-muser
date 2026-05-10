@@ -43,23 +43,25 @@ interface WaveformSegment {
 export class RenderSlice extends Slice {
   static readonly sliceKey = "render";
 
-  $visibleRenderObjects = atom<TimelineRenderSpec[]>([]);
+  $rerenderRequestCount = atom(0);
+
+  $visibleRenderObjects: ReadableAtom<TimelineRenderSpec[]>;
 
   $waveformSlices!: ReadableAtom<WaveformSegment[]>;
 
   constructor(ctx: EditorContext) {
     super(ctx);
     ctx.get(ProjectSlice).entityManager.$mutationVersion.subscribe(() => {
-      this.refresh();
+      this.requestRerender();
     });
     ctx.get(SelectionSlice).$selection.subscribe(() => {
-      this.refresh();
+      this.requestRerender();
     });
     ctx.get(CursorSlice).$cursorPulse.subscribe(() => {
-      this.refresh();
+      this.requestRerender();
     });
     ctx.get(CursorSlice).$cursorViewportPos.subscribe(() => {
-      this.refresh();
+      this.requestRerender();
     });
 
     this.$waveformSlices = computed(
@@ -73,12 +75,14 @@ export class RenderSlice extends Slice {
     );
 
     this.$waveformSlices.subscribe(() => {
-      this.refresh();
+      this.requestRerender();
     });
+
+    this.$visibleRenderObjects = computed([this.$rerenderRequestCount], () => this.computeSpecs());
   }
 
-  refresh(): void {
-    this.$visibleRenderObjects.set(this.computeSpecs());
+  requestRerender(): void {
+    this.$rerenderRequestCount.set(this.$rerenderRequestCount.get() + 1);
   }
 
   private computeSpecs(): TimelineRenderSpec[] {
