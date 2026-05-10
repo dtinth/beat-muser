@@ -55,28 +55,52 @@ pulse    = timingEngine.secToPulse(chartSec)  // inverse
 
 ---
 
-## Playback rate conversion
+## Playback-related spaces
 
-Audio playback uses a rate multiplier to speed up or slow down without affecting
-pitch. The conversion between chart time and Web Audio `AudioContext.currentTime`
-is handled entirely within the `audio-engine` packlet:
+These spaces are introduced by the audio playback system (ADR 017). They connect
+chart time to the Web Audio API clock for sample-accurate event scheduling.
+
+### Audio context time space
+
+| Property    | Value                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| **Suffix**  | None — variables use `contextTime`, `startContextTime`, `currentContextTime`                               |
+| **Unit**    | Seconds                                                                                                    |
+| **Range**   | 0 – ∞                                                                                                      |
+| **Purpose** | `AudioContext.currentTime` — the Web Audio API's high-resolution clock used for sample-accurate scheduling |
 
 ```
-playbackSec = (contextTime - startContextTime) * rate
+startContextTime = audioContext.currentTime  // captured when play begins
+```
+
+### Playback time space
+
+| Property    | Value                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Suffix**  | `PlaybackSec` (e.g. `playbackSec`, `triggerPlaybackSec`, `lookaheadPlaybackSec`)                                                              |
+| **Unit**    | Seconds since play was pressed                                                                                                                |
+| **Range**   | 0 – chart duration                                                                                                                            |
+| **Purpose** | Elapsed playback time. The audio engine reports `currentPlaybackSec` on each tick; `createPlayback` uses it to determine which events to emit |
+
+### Playback time ↔ Audio context time conversion
+
+```
+playbackSec = (currentContextTime - startContextTime) * rate
 contextTime = startContextTime + triggerPlaybackSec / rate
 ```
 
-The rate is also set on each `AudioBufferSourceNode.playbackRate`, so audio
-plays slower/faster accordingly (pitch-shifted).
+| Variable             | Unit         | Meaning                                                 |
+| -------------------- | ------------ | ------------------------------------------------------- |
+| `currentContextTime` | seconds      | `AudioContext.currentTime` at the current tick          |
+| `startContextTime`   | seconds      | `currentTime` captured when play begins                 |
+| `playbackSec`        | Playback sec | Elapsed playback time (slower/faster depending on rate) |
+| `rate`               | unitless     | Speed multiplier (1.0 = normal, 0.5 = half-speed)       |
 
-| Variable           | Unit         | Meaning                                     |
-| ------------------ | ------------ | ------------------------------------------- |
-| `contextTime`      | seconds      | `AudioContext.currentTime`                  |
-| `startContextTime` | seconds      | `currentTime` captured when play begins     |
-| `playbackSec`      | Playback sec | Elapsed playback time (affected by rate)    |
-| `rate`             | unitless     | Speed multiplier (1.0 = normal, 0.5 = half) |
+At rate=0.5, an event at `triggerPlaybackSec=1.0` schedules at `contextTime = start + 2.0`,
+and the source's `playbackRate` is set to 0.5 — the audio plays at half speed
+(pitch-shifted relative to the source file).
 
-The audio engine calls `Playback.onPlaybackTimeChange(playbackSec)` on each tick
+The audio engine calls `Playback.onPlaybackTimeChange(currentPlaybackSec)` on each tick
 (~25ms). The `Playback` implementation (provided by `createPlayback`) converts
 `playbackSec` to a pulse via
 `timingEngine.secToPulse(cursorChartSec + playbackSec)` and notifies the editor
@@ -146,14 +170,15 @@ frame = floor(audioSec * 120)
 Every variable carries its space as a suffix. This makes it obvious at a glance
 which coordinate system a value belongs to.
 
-| Space          | Suffix     | Examples                                 |
-| -------------- | ---------- | ---------------------------------------- |
-| Timeline Y     | `Y`        | `segmentY`, `waveformBottomY`, `scrollY` |
-| Rendering      | `Rp`       | `rpStart`, `rpLength`, `renderingPos`    |
-| Pulse          | `Pulse`    | `eventPulse`, `trimPulse`, `cursorPulse` |
-| Chart time     | `ChartSec` | `eventChartSec`, `cumulativeChartSec`    |
-| Audio time     | `AudioSec` | `audioSec`, `sampleOffsetAudioSec`       |
-| Waveform frame | `Frame`    | `frameStart`, `frameEnd`, `framesPerSec` |
+| Space          | Suffix        | Examples                                                    |
+| -------------- | ------------- | ----------------------------------------------------------- |
+| Timeline Y     | `Y`           | `segmentY`, `waveformBottomY`, `scrollY`                    |
+| Rendering      | `Rp`          | `rpStart`, `rpLength`, `renderingPos`                       |
+| Pulse          | `Pulse`       | `eventPulse`, `trimPulse`, `cursorPulse`                    |
+| Chart time     | `ChartSec`    | `eventChartSec`, `cumulativeChartSec`                       |
+| Audio time     | `AudioSec`    | `audioSec`, `sampleOffsetAudioSec`                          |
+| Playback time  | `PlaybackSec` | `playbackSec`, `triggerPlaybackSec`, `lookaheadPlaybackSec` |
+| Waveform frame | `Frame`       | `frameStart`, `frameEnd`, `framesPerSec`                    |
 
 **Conversion functions** are named `toSpaceFromSpace`: `pulseToY(pulse)`,
 `yToPulse(y)`, `chartSecToAudioSec(sec)`, `audioSecToFrame(sec)`.
