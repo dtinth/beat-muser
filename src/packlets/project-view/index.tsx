@@ -40,6 +40,7 @@ import {
   TransportDisplay,
 } from "../toolbar";
 import { SidebarPanel } from "../sidebar-panel";
+import { perf } from "../perf";
 import { ScrollableCanvas } from "../scrollable-canvas";
 import {
   EditorController,
@@ -107,6 +108,75 @@ function EditableField({
       </Flex>
       <Text size="2">{value}</Text>
     </Flex>
+  );
+}
+
+function DebugPanel() {
+  const [events, setEvents] = useState(() => perf.$state.get().events);
+  const [counters, setCounters] = useState(() => perf.$state.get().counters);
+
+  useEffect(() => {
+    const unsub = perf.$state.subscribe((state) => {
+      setEvents([...state.events]);
+      setCounters({ ...state.counters });
+    });
+    return unsub;
+  }, []);
+
+  const statsByType = useMemo(() => {
+    const groups = new Map<string, number[]>();
+    for (const e of events) {
+      let list = groups.get(e.type);
+      if (!list) {
+        list = [];
+        groups.set(e.type, list);
+      }
+      list.push(e.duration);
+    }
+    const result: { type: string; count: number; min: number; avg: number; max: number }[] = [];
+    for (const [type, durations] of groups) {
+      const sorted = [...durations].sort((a, b) => a - b);
+      result.push({
+        type,
+        count: sorted.length,
+        min: sorted[0]!,
+        avg: sorted.reduce((a, b) => a + b, 0) / sorted.length,
+        max: sorted[sorted.length - 1]!,
+      });
+    }
+    return result.sort((a, b) => a.type.localeCompare(b.type));
+  }, [events]);
+
+  return (
+    <SidebarPanel
+      tabs={[
+        {
+          label: "Debug",
+          content: (
+            <Flex direction="column" style={{ gap: 8 }}>
+              <Text size="1" color="gray">
+                Frame {counters.renderNumber} / Reconcile {counters.reconcileNumber}
+              </Text>
+              <Flex direction="column" style={{ gap: 2 }}>
+                {statsByType.map((s) => (
+                  <Flex key={s.type} justify="between" align="center">
+                    <Text size="1" style={{ fontFamily: "monospace" }}>
+                      {s.type}
+                    </Text>
+                    <Text size="1" color="gray">
+                      {s.min.toFixed(2)} / {s.avg.toFixed(2)} / {s.max.toFixed(2)}ms
+                    </Text>
+                  </Flex>
+                ))}
+              </Flex>
+              <Text size="1" color="gray">
+                {events.length} events
+              </Text>
+            </Flex>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -503,6 +573,8 @@ function RightPanels({
           },
         ]}
       />
+
+      <DebugPanel />
     </Flex>
   );
 }

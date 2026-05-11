@@ -72,3 +72,5 @@ export function createPerf(): Perf {
     $state,
   };
 }
+
+export const perf = createPerf();

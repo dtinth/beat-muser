@@ -38,6 +38,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { perf } from "../perf";
 import type { Point } from "../geometry";
 import { RenderObjectReconciler } from "./reconciler";
 
@@ -274,6 +275,8 @@ function mountScrollableCanvas(
     pendingRaf = null;
     if (isDisposed) return;
 
+    perf.incrementCounter("reconcileNumber");
+
     try {
       // Size both layers so that onConnected and pending scroll have a
       // meaningful scrollable area to work with.
@@ -302,8 +305,12 @@ function mountScrollableCanvas(
       }
 
       isInGetVisibleObjects = true;
-      const visibleObjects = behaviorInstance.getVisibleObjects();
-      reconciler.reconcile(visibleObjects);
+      const visibleObjects = perf.measure("reconcile:getVisibleObjects", () =>
+        behaviorInstance.getVisibleObjects(),
+      );
+      perf.measure("reconcile:dom", () => {
+        reconciler.reconcile(visibleObjects);
+      });
     } finally {
       isInGetVisibleObjects = false;
     }
