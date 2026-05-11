@@ -6,16 +6,12 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { useStore } from "@nanostores/react";
 import { Dialog, Button, TextField, Text, Box, Flex } from "@radix-ui/themes";
 import type { ModalManager, ModalRequest, SelectItem } from "./index";
 
 export function ModalHost({ manager }: { manager: ModalManager }) {
-  const [stack, setStack] = useState<ModalRequest[]>([...manager.$stack.get()]);
-
-  useEffect(() => {
-    const unsub = manager.$stack.subscribe((value) => setStack([...value]));
-    return unsub;
-  }, [manager]);
+  const stack = useStore(manager.$stack);
 
   const active = stack[0];
 
