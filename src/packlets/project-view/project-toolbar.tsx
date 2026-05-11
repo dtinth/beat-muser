@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, type FC } from "react";
+import { useStore } from "@nanostores/react";
 import {
   MousePointer2,
   Pencil,
@@ -33,29 +34,44 @@ import {
 import { globalCommandRegistry } from "../command-registry";
 import type { EditorController } from "../editor-core";
 
-export const ProjectToolbar: FC<{ controller: EditorController }> = ({ controller }) => {
-  const [cursorPulse, setCursorPulse] = useState(controller.$cursorPulse.get());
-  useEffect(() => {
-    const unsub = controller.$cursorPulse.subscribe(setCursorPulse);
-    return unsub;
-  }, [controller]);
-
-  const [transportState, setTransportState] = useState(controller.playback.$transportState.get());
-  useEffect(() => {
-    const unsub = controller.playback.onStateChanged(() => {
-      setTransportState(controller.playback.$transportState.get());
-    });
-    return unsub;
-  }, [controller]);
-
-  const [playbackPulse, setPlaybackPulse] = useState(controller.playback.$playbackPulse.get());
-  useEffect(() => {
-    const unsub = controller.playback.$playbackPulse.subscribe(setPlaybackPulse);
-    return unsub;
-  }, [controller]);
+const TransportGroup: FC<{ controller: EditorController }> = ({ controller }) => {
+  const cursorPulse = useStore(controller.$cursorPulse);
+  const transportState = useStore(controller.playback.$transportState);
+  const playbackPulse = useStore(controller.playback.$playbackPulse);
 
   const displayPulse = transportState === "playing" ? playbackPulse : cursorPulse;
 
+  const engine = controller.getTimingEngine();
+  const timeStr = engine.formatTime(engine.pulseToSeconds(displayPulse));
+
+  const measureInfo = engine.getMeasureAtPulse(displayPulse);
+  const beatLength = 240;
+  const beat = Math.floor((displayPulse - measureInfo.measureStart) / beatLength) + 1;
+  const measureStr = `${measureInfo.measureIndex + 1}:${beat}`;
+
+  return (
+    <ToolbarGroup label="Transport">
+      <ToolbarButton
+        icon={<Play size={16} />}
+        label="Play"
+        onClick={() => controller.playChart(cursorPulse, controller.getScrollY())}
+      />
+      <ToolbarButton
+        icon={<Pause size={16} />}
+        label="Pause"
+        onClick={() => controller.pausePlayback()}
+      />
+      <ToolbarButton
+        icon={<StopCircle size={16} />}
+        label="Stop"
+        onClick={() => controller.stopPlayback()}
+      />
+      <TransportDisplay time={timeStr} pulse={String(displayPulse)} measure={measureStr} />
+    </ToolbarGroup>
+  );
+};
+
+export const ProjectToolbar: FC<{ controller: EditorController }> = ({ controller }) => {
   const [snap, setSnap] = useState(controller.$snap.get());
   useEffect(() => {
     const unsub = controller.$snap.subscribe(setSnap);
@@ -75,14 +91,6 @@ export const ProjectToolbar: FC<{ controller: EditorController }> = ({ controlle
   }, [controller]);
 
   const zoomPercent = `${Math.round(zoom * 100)}%`;
-
-  const engine = controller.getTimingEngine();
-  const timeStr = engine.formatTime(engine.pulseToSeconds(displayPulse));
-
-  const measureInfo = engine.getMeasureAtPulse(displayPulse);
-  const beatLength = 240;
-  const beat = Math.floor((displayPulse - measureInfo.measureStart) / beatLength) + 1;
-  const measureStr = `${measureInfo.measureIndex + 1}:${beat}`;
 
   return (
     <Toolbar>
@@ -129,24 +137,7 @@ export const ProjectToolbar: FC<{ controller: EditorController }> = ({ controlle
 
       <ToolbarDivider />
 
-      <ToolbarGroup label="Transport">
-        <ToolbarButton
-          icon={<Play size={16} />}
-          label="Play"
-          onClick={() => controller.playChart(cursorPulse, controller.getScrollY())}
-        />
-        <ToolbarButton
-          icon={<Pause size={16} />}
-          label="Pause"
-          onClick={() => controller.pausePlayback()}
-        />
-        <ToolbarButton
-          icon={<StopCircle size={16} />}
-          label="Stop"
-          onClick={() => controller.stopPlayback()}
-        />
-        <TransportDisplay time={timeStr} pulse={String(displayPulse)} measure={measureStr} />
-      </ToolbarGroup>
+      <TransportGroup controller={controller} />
 
       <ToolbarDivider />
 
