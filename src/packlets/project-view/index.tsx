@@ -993,31 +993,31 @@ export function ProjectViewPage() {
   const [timeSigNumerator, setTimeSigNumerator] = useState("");
   const [timeSigDenominator, setTimeSigDenominator] = useState("");
 
+  const lastPlacedEntityInfo = useStore(controller.$lastPlacedEntityInfo);
+
   useEffect(() => {
-    const unsub = controller.$lastPlacedEntityInfo.subscribe((info) => {
-      if (!info) return;
-      if (info.columnId === "bpm") {
-        const entity = controller.getEntityManager().get(info.entityId);
-        const bpm = entity
-          ? (controller.getEntityManager().getComponent(entity, BPM_CHANGE)?.bpm ?? 120)
-          : 120;
-        setBpmEditEntityId(info.entityId);
-        setBpmValue(String(bpm));
-        setBpmEditOpen(true);
-      } else if (info.columnId === "time-sig") {
-        const entity = controller.getEntityManager().get(info.entityId);
-        const ts = entity
-          ? controller.getEntityManager().getComponent(entity, TIME_SIGNATURE)
-          : undefined;
-        setTimeSigEditEntityId(info.entityId);
-        setTimeSigNumerator(String(ts?.numerator ?? 4));
-        setTimeSigDenominator(String(ts?.denominator ?? 4));
-        setTimeSigEditOpen(true);
-      }
-      controller.$lastPlacedEntityInfo.set(null);
-    });
-    return unsub;
-  }, [controller]);
+    const info = lastPlacedEntityInfo;
+    if (!info) return;
+    if (info.columnId === "bpm") {
+      const entity = controller.getEntityManager().get(info.entityId);
+      const bpm = entity
+        ? (controller.getEntityManager().getComponent(entity, BPM_CHANGE)?.bpm ?? 120)
+        : 120;
+      setBpmEditEntityId(info.entityId);
+      setBpmValue(String(bpm));
+      setBpmEditOpen(true);
+    } else if (info.columnId === "time-sig") {
+      const entity = controller.getEntityManager().get(info.entityId);
+      const ts = entity
+        ? controller.getEntityManager().getComponent(entity, TIME_SIGNATURE)
+        : undefined;
+      setTimeSigEditEntityId(info.entityId);
+      setTimeSigNumerator(String(ts?.numerator ?? 4));
+      setTimeSigDenominator(String(ts?.denominator ?? 4));
+      setTimeSigEditOpen(true);
+    }
+    controller.$lastPlacedEntityInfo.set(null);
+  }, [lastPlacedEntityInfo, controller]);
 
   const handleBpmConfirm = () => {
     if (!bpmEditEntityId) return;
