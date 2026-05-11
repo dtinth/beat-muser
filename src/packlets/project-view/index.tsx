@@ -167,8 +167,8 @@ function RightPanels({
   const [soundChannels, setSoundChannels] = useState(() =>
     controller.ctx.get(SoundChannelSlice).$soundChannels.get(),
   );
-  const [selectedSoundChannelId, setSelectedSoundChannelId] = useState(() =>
-    controller.ctx.get(SoundChannelSlice).$selectedSoundChannelId.get(),
+  const selectedSoundChannelId = useStore(
+    controller.ctx.get(SoundChannelSlice).$selectedSoundChannelId,
   );
   const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(new Set());
 
@@ -185,15 +185,11 @@ function RightPanels({
     const unsubSoundChannels = controller.ctx
       .get(SoundChannelSlice)
       .$soundChannels.subscribe((v) => setSoundChannels([...v]));
-    const unsubSelectedChannel = controller.ctx
-      .get(SoundChannelSlice)
-      .$selectedSoundChannelId.subscribe((v) => setSelectedSoundChannelId(v));
     return () => {
       unsubHidden();
       unsubMutations();
       unsubSoundGroups();
       unsubSoundChannels();
-      unsubSelectedChannel();
     };
   }, [controller]);
 
