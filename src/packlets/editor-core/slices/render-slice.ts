@@ -27,6 +27,7 @@ import { computeWaveformOffsets, type SoundEventInput } from "../waveform-slicer
 import { computeWaveformSegments } from "../waveform-segments";
 import { SOUND_GROUP } from "../components";
 import { ZoomSlice } from "./zoom-slice";
+import { perf } from "../../perf";
 
 interface WaveformSegment {
   key: string;
@@ -86,6 +87,7 @@ export class RenderSlice extends Slice {
   }
 
   private computeSpecs(): TimelineRenderSpec[] {
+    perf.incrementCounter("renderNumber");
     const chartSlice = this.ctx.get(ChartSlice);
     const viewport = this.ctx.get(ViewportSlice);
     const columnsSlice = this.ctx.get(ColumnsSlice);
@@ -117,144 +119,86 @@ export class RenderSlice extends Slice {
       : new Set<string>();
 
     // --- Column backgrounds (scroll layer) ---
-    for (let i = 0; i < columns.length; i++) {
-      const col = columns[i]!;
+    perf.measure("computeSpecs:misc", () => {
+      for (let i = 0; i < columns.length; i++) {
+        const col = columns[i]!;
+        specs.push({
+          key: `column-bg-${col.id}`,
+          type: "column-bg",
+          x: col.x,
+          y: 0,
+          width: col.width,
+          height: contentHeight,
+          data: { backgroundColor: col.backgroundColor, showBorder: i > 0 },
+          testId: "timeline-column-bg",
+          zIndex: 0,
+        });
+      }
+
+      // --- Column titles (sticky layer) ---
+      for (const col of columns) {
+        specs.push({
+          key: `column-title-${col.id}`,
+          type: "column-title",
+          x: col.x,
+          y: 4,
+          width: col.width,
+          height: 16,
+          layer: "sticky",
+          data: { title: col.title },
+          testId: "timeline-column-title",
+        });
+      }
+
+      // --- Trailing border after last column ---
       specs.push({
-        key: `column-bg-${col.id}`,
-        type: "column-bg",
-        x: col.x,
+        key: "trailing-border",
+        type: "trailing-border",
+        x: timelineWidth - 1,
         y: 0,
-        width: col.width,
+        width: 1,
         height: contentHeight,
-        data: { backgroundColor: col.backgroundColor, showBorder: i > 0 },
-        testId: "timeline-column-bg",
+        data: {},
+        testId: "trailing-border",
         zIndex: 0,
       });
-    }
-
-    // --- Column titles (sticky layer) ---
-    for (const col of columns) {
-      specs.push({
-        key: `column-title-${col.id}`,
-        type: "column-title",
-        x: col.x,
-        y: 4,
-        width: col.width,
-        height: 16,
-        layer: "sticky",
-        data: { title: col.title },
-        testId: "timeline-column-title",
-      });
-    }
-
-    // --- Trailing border after last column ---
-    specs.push({
-      key: "trailing-border",
-      type: "trailing-border",
-      x: timelineWidth - 1,
-      y: 0,
-      width: 1,
-      height: contentHeight,
-      data: {},
-      testId: "trailing-border",
-      zIndex: 0,
-    });
+    }); // end computeSpecs:misc
 
     // --- Gameplay notes ---
-    for (const entity of entityManager.entitiesWithComponent(NOTE)) {
-      const event = entityManager.getComponent(entity, EVENT);
-      const note = entityManager.getComponent(entity, NOTE);
-      const levelRef = entityManager.getComponent(entity, LEVEL_REF);
-      if (!event || !note || !levelRef) continue;
-
-      const pulse = event.y;
-      if (pulse < pulseStart || pulse >= pulseEnd) continue;
-
-      const laneCol = columns.find(
-        (c) => c.levelId === levelRef.levelId && c.laneIndex === note.lane,
-      );
-      if (!laneCol) continue;
-
-      const colIndex = columns.indexOf(laneCol);
-      const isSelected =
-        selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex);
-      const isDragged = draggedEntityIds.has(entity.id);
-
-      specs.push({
-        key: `note-${entity.id}`,
-        type: "event-marker",
-        x: laneCol.x,
-        y: trackHeight - pulse * scaleY - 14,
-        width: laneCol.width,
-        height: 14,
-        data: {
-          text: "",
-          backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
-          textColor: "#fff",
-          selected: isSelected,
-        },
-        testId: "note",
-        entityId: entity.id,
-        zIndex: 2,
-        opacity: isDragging && isDragged ? 0.3 : undefined,
-      });
-
-      if (isDragging && isDragged) {
-        const ghostPulse = pulse + deltaPulse;
-        if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
-          specs.push({
-            key: `note-ghost-${entity.id}`,
-            type: "event-marker",
-            x: laneCol.x,
-            y: trackHeight - ghostPulse * scaleY - 14,
-            width: laneCol.width,
-            height: 14,
-            data: {
-              text: "",
-              backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
-              textColor: "#fff",
-              selected: true,
-            },
-            testId: "note-ghost",
-            zIndex: 3,
-            opacity: 0.5,
-          });
-        }
-      }
-    }
-
-    // --- Timing event markers ---
-    const bpmColumn = columns.find((c) => c.id === "bpm");
-    const tsColumn = columns.find((c) => c.id === "time-sig");
-    const bpmColIndex = bpmColumn ? columns.indexOf(bpmColumn) : -1;
-    const tsColIndex = tsColumn ? columns.indexOf(tsColumn) : -1;
-
-    if (bpmColumn) {
-      for (const entity of entityManager.entitiesWithComponent(BPM_CHANGE)) {
+    perf.measure("computeSpecs:events", () => {
+      for (const entity of entityManager.entitiesWithComponent(NOTE)) {
         const event = entityManager.getComponent(entity, EVENT);
-        const bpm = entityManager.getComponent(entity, BPM_CHANGE);
-        if (!event || !bpm) continue;
+        const note = entityManager.getComponent(entity, NOTE);
+        const levelRef = entityManager.getComponent(entity, LEVEL_REF);
+        if (!event || !note || !levelRef) continue;
+
         const pulse = event.y;
         if (pulse < pulseStart || pulse >= pulseEnd) continue;
 
+        const laneCol = columns.find(
+          (c) => c.levelId === levelRef.levelId && c.laneIndex === note.lane,
+        );
+        if (!laneCol) continue;
+
+        const colIndex = columns.indexOf(laneCol);
         const isSelected =
-          selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, bpmColIndex);
+          selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex);
         const isDragged = draggedEntityIds.has(entity.id);
 
         specs.push({
-          key: `bpm-${entity.id}`,
+          key: `note-${entity.id}`,
           type: "event-marker",
-          x: bpmColumn.x,
+          x: laneCol.x,
           y: trackHeight - pulse * scaleY - 14,
-          width: bpmColumn.width,
+          width: laneCol.width,
           height: 14,
           data: {
-            text: String(bpm.bpm),
-            backgroundColor: "var(--yellow-6)",
+            text: "",
+            backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
             textColor: "#fff",
             selected: isSelected,
           },
-          testId: "bpm-change-marker",
+          testId: "note",
           entityId: entity.id,
           zIndex: 2,
           opacity: isDragging && isDragged ? 0.3 : undefined,
@@ -264,53 +208,186 @@ export class RenderSlice extends Slice {
           const ghostPulse = pulse + deltaPulse;
           if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
             specs.push({
-              key: `bpm-ghost-${entity.id}`,
+              key: `note-ghost-${entity.id}`,
               type: "event-marker",
-              x: bpmColumn.x,
+              x: laneCol.x,
               y: trackHeight - ghostPulse * scaleY - 14,
-              width: bpmColumn.width,
+              width: laneCol.width,
               height: 14,
               data: {
-                text: String(bpm.bpm),
-                backgroundColor: "var(--yellow-6)",
+                text: "",
+                backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
                 textColor: "#fff",
                 selected: true,
               },
-              testId: "bpm-change-ghost",
+              testId: "note-ghost",
               zIndex: 3,
               opacity: 0.5,
             });
           }
         }
       }
-    }
 
-    if (tsColumn) {
-      for (const entity of entityManager.entitiesWithComponent(TIME_SIGNATURE)) {
+      // --- Timing event markers ---
+      const bpmColumn = columns.find((c) => c.id === "bpm");
+      const tsColumn = columns.find((c) => c.id === "time-sig");
+      const bpmColIndex = bpmColumn ? columns.indexOf(bpmColumn) : -1;
+      const tsColIndex = tsColumn ? columns.indexOf(tsColumn) : -1;
+
+      if (bpmColumn) {
+        for (const entity of entityManager.entitiesWithComponent(BPM_CHANGE)) {
+          const event = entityManager.getComponent(entity, EVENT);
+          const bpm = entityManager.getComponent(entity, BPM_CHANGE);
+          if (!event || !bpm) continue;
+          const pulse = event.y;
+          if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+          const isSelected =
+            selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, bpmColIndex);
+          const isDragged = draggedEntityIds.has(entity.id);
+
+          specs.push({
+            key: `bpm-${entity.id}`,
+            type: "event-marker",
+            x: bpmColumn.x,
+            y: trackHeight - pulse * scaleY - 14,
+            width: bpmColumn.width,
+            height: 14,
+            data: {
+              text: String(bpm.bpm),
+              backgroundColor: "var(--yellow-6)",
+              textColor: "#fff",
+              selected: isSelected,
+            },
+            testId: "bpm-change-marker",
+            entityId: entity.id,
+            zIndex: 2,
+            opacity: isDragging && isDragged ? 0.3 : undefined,
+          });
+
+          if (isDragging && isDragged) {
+            const ghostPulse = pulse + deltaPulse;
+            if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+              specs.push({
+                key: `bpm-ghost-${entity.id}`,
+                type: "event-marker",
+                x: bpmColumn.x,
+                y: trackHeight - ghostPulse * scaleY - 14,
+                width: bpmColumn.width,
+                height: 14,
+                data: {
+                  text: String(bpm.bpm),
+                  backgroundColor: "var(--yellow-6)",
+                  textColor: "#fff",
+                  selected: true,
+                },
+                testId: "bpm-change-ghost",
+                zIndex: 3,
+                opacity: 0.5,
+              });
+            }
+          }
+        }
+      }
+
+      if (tsColumn) {
+        for (const entity of entityManager.entitiesWithComponent(TIME_SIGNATURE)) {
+          const event = entityManager.getComponent(entity, EVENT);
+          const ts = entityManager.getComponent(entity, TIME_SIGNATURE);
+          if (!event || !ts) continue;
+          const pulse = event.y;
+          if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+          const isSelected =
+            selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, tsColIndex);
+          const isDragged = draggedEntityIds.has(entity.id);
+
+          specs.push({
+            key: `ts-${entity.id}`,
+            type: "event-marker",
+            x: tsColumn.x,
+            y: trackHeight - pulse * scaleY - 14,
+            width: tsColumn.width,
+            height: 14,
+            data: {
+              text: `${ts.numerator}/${ts.denominator}`,
+              backgroundColor: "var(--tomato-6)",
+              textColor: "#fff",
+              selected: isSelected,
+            },
+            testId: "time-sig-marker",
+            entityId: entity.id,
+            zIndex: 2,
+            opacity: isDragging && isDragged ? 0.3 : undefined,
+          });
+
+          if (isDragging && isDragged) {
+            const ghostPulse = pulse + deltaPulse;
+            if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+              specs.push({
+                key: `ts-ghost-${entity.id}`,
+                type: "event-marker",
+                x: tsColumn.x,
+                y: trackHeight - ghostPulse * scaleY - 14,
+                width: tsColumn.width,
+                height: 14,
+                data: {
+                  text: `${ts.numerator}/${ts.denominator}`,
+                  backgroundColor: "var(--tomato-6)",
+                  textColor: "#fff",
+                  selected: true,
+                },
+                testId: "time-sig-ghost",
+                zIndex: 3,
+                opacity: 0.5,
+              });
+            }
+          }
+        }
+      }
+
+      // --- Sound events ---
+      const selectedChartId = chartSlice.$selectedChartId.get();
+
+      for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
         const event = entityManager.getComponent(entity, EVENT);
-        const ts = entityManager.getComponent(entity, TIME_SIGNATURE);
-        if (!event || !ts) continue;
+        const soundEvent = entityManager.getComponent(entity, SOUND_EVENT);
+        const chartRef = entityManager.getComponent(entity, CHART_REF);
+        if (!event || !soundEvent || !chartRef || chartRef.chartId !== selectedChartId) continue;
+
         const pulse = event.y;
         if (pulse < pulseStart || pulse >= pulseEnd) continue;
 
+        const soundLaneCol = columns.find((c) => c.soundLane === soundEvent.soundLane);
+        if (!soundLaneCol) continue;
+
+        const colIndex = columns.indexOf(soundLaneCol);
+        const soundChannel = entityManager.get(soundEvent.soundChannelId);
+        const soundChannelPath = soundChannel
+          ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
+          : undefined;
+        const soundChannelName = soundChannelPath
+          ? (soundChannelPath.split("/").pop() ?? "?")
+          : "?";
+
         const isSelected =
-          selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, tsColIndex);
+          selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex);
         const isDragged = draggedEntityIds.has(entity.id);
 
         specs.push({
-          key: `ts-${entity.id}`,
+          key: `sound-${entity.id}`,
           type: "event-marker",
-          x: tsColumn.x,
+          x: soundLaneCol.x,
           y: trackHeight - pulse * scaleY - 14,
-          width: tsColumn.width,
+          width: soundLaneCol.width,
           height: 14,
           data: {
-            text: `${ts.numerator}/${ts.denominator}`,
-            backgroundColor: "var(--tomato-6)",
+            text: `${soundChannelName} [${soundEvent.command}]`,
+            backgroundColor: "var(--blue-6)",
             textColor: "#fff",
             selected: isSelected,
           },
-          testId: "time-sig-marker",
+          testId: "sound-event-marker",
           entityId: entity.id,
           zIndex: 2,
           opacity: isDragging && isDragged ? 0.3 : undefined,
@@ -320,229 +397,164 @@ export class RenderSlice extends Slice {
           const ghostPulse = pulse + deltaPulse;
           if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
             specs.push({
-              key: `ts-ghost-${entity.id}`,
+              key: `sound-ghost-${entity.id}`,
               type: "event-marker",
-              x: tsColumn.x,
+              x: soundLaneCol.x,
               y: trackHeight - ghostPulse * scaleY - 14,
-              width: tsColumn.width,
+              width: soundLaneCol.width,
               height: 14,
               data: {
-                text: `${ts.numerator}/${ts.denominator}`,
-                backgroundColor: "var(--tomato-6)",
+                text: `${soundChannelName} [${soundEvent.command}]`,
+                backgroundColor: "var(--blue-6)",
                 textColor: "#fff",
                 selected: true,
               },
-              testId: "time-sig-ghost",
+              testId: "sound-event-ghost",
               zIndex: 3,
               opacity: 0.5,
             });
           }
         }
       }
-    }
-
-    // --- Sound events ---
-    const selectedChartId = chartSlice.$selectedChartId.get();
-
-    for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
-      const event = entityManager.getComponent(entity, EVENT);
-      const soundEvent = entityManager.getComponent(entity, SOUND_EVENT);
-      const chartRef = entityManager.getComponent(entity, CHART_REF);
-      if (!event || !soundEvent || !chartRef || chartRef.chartId !== selectedChartId) continue;
-
-      const pulse = event.y;
-      if (pulse < pulseStart || pulse >= pulseEnd) continue;
-
-      const soundLaneCol = columns.find((c) => c.soundLane === soundEvent.soundLane);
-      if (!soundLaneCol) continue;
-
-      const colIndex = columns.indexOf(soundLaneCol);
-      const soundChannel = entityManager.get(soundEvent.soundChannelId);
-      const soundChannelPath = soundChannel
-        ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
-        : undefined;
-      const soundChannelName = soundChannelPath ? (soundChannelPath.split("/").pop() ?? "?") : "?";
-
-      const isSelected =
-        selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex);
-      const isDragged = draggedEntityIds.has(entity.id);
-
-      specs.push({
-        key: `sound-${entity.id}`,
-        type: "event-marker",
-        x: soundLaneCol.x,
-        y: trackHeight - pulse * scaleY - 14,
-        width: soundLaneCol.width,
-        height: 14,
-        data: {
-          text: `${soundChannelName} [${soundEvent.command}]`,
-          backgroundColor: "var(--blue-6)",
-          textColor: "#fff",
-          selected: isSelected,
-        },
-        testId: "sound-event-marker",
-        entityId: entity.id,
-        zIndex: 2,
-        opacity: isDragging && isDragged ? 0.3 : undefined,
-      });
-
-      if (isDragging && isDragged) {
-        const ghostPulse = pulse + deltaPulse;
-        if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
-          specs.push({
-            key: `sound-ghost-${entity.id}`,
-            type: "event-marker",
-            x: soundLaneCol.x,
-            y: trackHeight - ghostPulse * scaleY - 14,
-            width: soundLaneCol.width,
-            height: 14,
-            data: {
-              text: `${soundChannelName} [${soundEvent.command}]`,
-              backgroundColor: "var(--blue-6)",
-              textColor: "#fff",
-              selected: true,
-            },
-            testId: "sound-event-ghost",
-            zIndex: 3,
-            opacity: 0.5,
-          });
-        }
-      }
-    }
+    }); // end computeSpecs:events
 
     // --- Waveform segments (pre-computed, filtered by visibility) ---
-    for (const segment of this.$waveformSlices?.get() ?? []) {
-      if (segment.pulseEnd <= pulseStart || segment.pulseStart >= pulseEnd) continue;
-      const { peak, rms } = segment.getWaveformPixels();
-      specs.push({
-        key: segment.key,
-        type: "waveform",
-        x: segment.x,
-        y: segment.y,
-        width: segment.width,
-        height: segment.rpLength,
-        data: {
-          peak,
-          rms,
-          color: segment.color,
-        },
-        zIndex: 1,
-      });
-    }
-
-    // --- Playhead ---
-    const cursorPulse = cursor.$cursorPulse.get();
-    if (cursorPulse >= 0 && cursorPulse <= size) {
-      specs.push({
-        key: "playhead",
-        type: "playhead",
-        x: 0,
-        y: trackHeight - cursorPulse * scaleY - 1,
-        width: timelineWidth,
-        height: 1,
-        data: {},
-        testId: "playhead",
-        zIndex: 3,
-      });
-    }
-
-    if (rawPulseStart >= rawPulseEnd) return specs;
-
-    // --- Measure lines ---
-    const engine = timing.getTimingEngine();
-    const measureBoundaries = engine.getMeasureBoundaries({
-      start: rawPulseStart,
-      end: rawPulseEnd,
-    });
-    const measureSet = new Set(measureBoundaries);
-
-    const allBoundaries = engine.getMeasureBoundaries({
-      start: 0,
-      end: rawPulseEnd,
-    });
-
-    for (const pulse of measureBoundaries) {
-      const measureIndex = allBoundaries.indexOf(pulse);
-      specs.push({
-        key: `measure-${pulse}`,
-        type: "grid-line",
-        x: 0,
-        y: trackHeight - pulse * scaleY - 1,
-        width: timelineWidth,
-        height: 1,
-        data: {
-          color: "var(--gray-8)",
-          label: measureIndex >= 0 ? String(measureIndex + 1) : undefined,
-        },
-        testId: "measure-line",
-        zIndex: 1,
-      });
-    }
-
-    // --- Beat lines (1/4, exclude measure boundaries) ---
-    const beatPoints = engine
-      .getSnapPoints("1/4", { start: rawPulseStart, end: rawPulseEnd })
-      .filter((p) => !measureSet.has(p));
-    const beatSet = new Set(beatPoints);
-
-    for (const pulse of beatPoints) {
-      specs.push({
-        key: `beat-${pulse}`,
-        type: "grid-line",
-        x: 0,
-        y: trackHeight - pulse * scaleY - 1,
-        width: timelineWidth,
-        height: 1,
-        data: { color: "var(--gray-7)" },
-        testId: "beat-line",
-        zIndex: 1,
-      });
-    }
-
-    // --- Snap lines at current snap resolution (exclude measures and beats) ---
-    const snap = snapSlice.$snap.get();
-    const gridPoints = engine
-      .getSnapPoints(snap, { start: rawPulseStart, end: rawPulseEnd })
-      .filter((p) => !measureSet.has(p) && !beatSet.has(p));
-
-    for (const pulse of gridPoints) {
-      specs.push({
-        key: `grid-${pulse}`,
-        type: "grid-line",
-        x: 0,
-        y: trackHeight - pulse * scaleY - 1,
-        width: timelineWidth,
-        height: 1,
-        data: { color: "var(--gray-6)" },
-        testId: "snap-line",
-        zIndex: 1,
-      });
-    }
-
-    // --- Selection box (during drag) ---
-    const boxRect = boxSelection.getBoxRect();
-    if (boxRect) {
-      if (
-        boxRect.minCol >= 0 &&
-        boxRect.maxCol >= 0 &&
-        boxRect.minCol < columns.length &&
-        boxRect.maxCol < columns.length
-      ) {
-        const startCol = columns[boxRect.minCol]!;
-        const endCol = columns[boxRect.maxCol]!;
+    perf.measure("computeSpecs:waveforms", () => {
+      for (const segment of this.$waveformSlices?.get() ?? []) {
+        if (segment.pulseEnd <= pulseStart || segment.pulseStart >= pulseEnd) continue;
+        const { peak, rms } = segment.getWaveformPixels();
         specs.push({
-          key: "selection-box",
-          type: "selection-box",
-          x: startCol.x,
-          y: trackHeight - boxRect.maxPulse * scaleY,
-          width: endCol.x + endCol.width - startCol.x,
-          height: (boxRect.maxPulse - boxRect.minPulse) * scaleY,
-          data: {},
-          testId: "selection-box",
-          zIndex: 4,
+          key: segment.key,
+          type: "waveform",
+          x: segment.x,
+          y: segment.y,
+          width: segment.width,
+          height: segment.rpLength,
+          data: {
+            peak,
+            rms,
+            color: segment.color,
+          },
+          zIndex: 1,
         });
       }
-    }
+    }); // end computeSpecs:waveforms
+
+    // --- Playhead ---
+    perf.measure("computeSpecs:grid", () => {
+      const cursorPulse = cursor.$cursorPulse.get();
+      if (cursorPulse >= 0 && cursorPulse <= size) {
+        specs.push({
+          key: "playhead",
+          type: "playhead",
+          x: 0,
+          y: trackHeight - cursorPulse * scaleY - 1,
+          width: timelineWidth,
+          height: 1,
+          data: {},
+          testId: "playhead",
+          zIndex: 3,
+        });
+      }
+
+      if (rawPulseStart >= rawPulseEnd) return specs;
+
+      // --- Measure lines ---
+      const engine = timing.getTimingEngine();
+      const measureBoundaries = engine.getMeasureBoundaries({
+        start: rawPulseStart,
+        end: rawPulseEnd,
+      });
+      const measureSet = new Set(measureBoundaries);
+
+      const allBoundaries = engine.getMeasureBoundaries({
+        start: 0,
+        end: rawPulseEnd,
+      });
+
+      for (const pulse of measureBoundaries) {
+        const measureIndex = allBoundaries.indexOf(pulse);
+        specs.push({
+          key: `measure-${pulse}`,
+          type: "grid-line",
+          x: 0,
+          y: trackHeight - pulse * scaleY - 1,
+          width: timelineWidth,
+          height: 1,
+          data: {
+            color: "var(--gray-8)",
+            label: measureIndex >= 0 ? String(measureIndex + 1) : undefined,
+          },
+          testId: "measure-line",
+          zIndex: 1,
+        });
+      }
+
+      // --- Beat lines (1/4, exclude measure boundaries) ---
+      const beatPoints = engine
+        .getSnapPoints("1/4", { start: rawPulseStart, end: rawPulseEnd })
+        .filter((p) => !measureSet.has(p));
+      const beatSet = new Set(beatPoints);
+
+      for (const pulse of beatPoints) {
+        specs.push({
+          key: `beat-${pulse}`,
+          type: "grid-line",
+          x: 0,
+          y: trackHeight - pulse * scaleY - 1,
+          width: timelineWidth,
+          height: 1,
+          data: { color: "var(--gray-7)" },
+          testId: "beat-line",
+          zIndex: 1,
+        });
+      }
+
+      // --- Snap lines at current snap resolution (exclude measures and beats) ---
+      const snap = snapSlice.$snap.get();
+      const gridPoints = engine
+        .getSnapPoints(snap, { start: rawPulseStart, end: rawPulseEnd })
+        .filter((p) => !measureSet.has(p) && !beatSet.has(p));
+
+      for (const pulse of gridPoints) {
+        specs.push({
+          key: `grid-${pulse}`,
+          type: "grid-line",
+          x: 0,
+          y: trackHeight - pulse * scaleY - 1,
+          width: timelineWidth,
+          height: 1,
+          data: { color: "var(--gray-6)" },
+          testId: "snap-line",
+          zIndex: 1,
+        });
+      }
+
+      // --- Selection box (during drag) ---
+      const boxRect = boxSelection.getBoxRect();
+      if (boxRect) {
+        if (
+          boxRect.minCol >= 0 &&
+          boxRect.maxCol >= 0 &&
+          boxRect.minCol < columns.length &&
+          boxRect.maxCol < columns.length
+        ) {
+          const startCol = columns[boxRect.minCol]!;
+          const endCol = columns[boxRect.maxCol]!;
+          specs.push({
+            key: "selection-box",
+            type: "selection-box",
+            x: startCol.x,
+            y: trackHeight - boxRect.maxPulse * scaleY,
+            width: endCol.x + endCol.width - startCol.x,
+            height: (boxRect.maxPulse - boxRect.minPulse) * scaleY,
+            data: {},
+            testId: "selection-box",
+            zIndex: 4,
+          });
+        }
+      }
+    }); // end computeSpecs:grid
 
     return specs;
   }
