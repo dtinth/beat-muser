@@ -74,11 +74,7 @@ const TransportGroup: FC<{ controller: EditorController }> = ({ controller }) =>
 export const ProjectToolbar: FC<{ controller: EditorController }> = ({ controller }) => {
   const snap = useStore(controller.$snap);
 
-  const [zoom, setZoom] = useState(controller.$zoom.get());
-  useEffect(() => {
-    const unsub = controller.$zoom.subscribe(setZoom);
-    return unsub;
-  }, [controller]);
+  const zoom = useStore(controller.$zoom);
 
   const [activeTool, setActiveTool] = useState(controller.$activeTool.get());
   useEffect(() => {
