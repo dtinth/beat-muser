@@ -156,8 +156,12 @@ function RightPanels({
   controller: EditorController;
   modalManager: ModalManager;
 }) {
-  const [levels, setLevels] = useState(() =>
-    controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""),
+  const selectedChartId = useStore(controller.$selectedChartId);
+  const hiddenLevelIds = useStore(controller.$hiddenLevelIds);
+  const mutationVersion = useStore(controller.getEntityManager().$mutationVersion);
+  const levels = useMemo(
+    () => controller.getLevelsForChart(selectedChartId ?? ""),
+    [selectedChartId, hiddenLevelIds, mutationVersion, controller],
   );
   const selectedLevelId = useStore(controller.$selectedLevelId);
 
@@ -168,20 +172,6 @@ function RightPanels({
   );
   const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    const unsubHidden = controller.$hiddenLevelIds.subscribe(() => {
-      setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
-    });
-    const unsubMutations = controller.getEntityManager().$mutationVersion.subscribe(() => {
-      setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
-    });
-    return () => {
-      unsubHidden();
-      unsubMutations();
-    };
-  }, [controller]);
-
-  const chartId = controller.$selectedChartId.get();
   const selectedLevelEntity = selectedLevelId
     ? controller.getEntityManager().get(selectedLevelId)
     : undefined;
@@ -243,7 +233,7 @@ function RightPanels({
                     );
                   })}
                 </Flex>
-                {chartId && (
+                {selectedChartId && (
                   <Flex
                     justify="center"
                     align="center"
@@ -276,7 +266,7 @@ function RightPanels({
                           }
                           name = `${name} #${n}`;
                         }
-                        controller.addLevel(chartId, name, modeName);
+                        controller.addLevel(selectedChartId, name, modeName);
                       }
                     }}
                   >
