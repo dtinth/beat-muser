@@ -7,7 +7,7 @@
  * scroll event or cursor movement.
  */
 
-import { useState, useEffect, type FC } from "react";
+import { type FC } from "react";
 import { useStore } from "@nanostores/react";
 import {
   MousePointer2,
@@ -76,11 +76,7 @@ export const ProjectToolbar: FC<{ controller: EditorController }> = ({ controlle
 
   const zoom = useStore(controller.$zoom);
 
-  const [activeTool, setActiveTool] = useState(controller.$activeTool.get());
-  useEffect(() => {
-    const unsub = controller.$activeTool.subscribe(setActiveTool);
-    return unsub;
-  }, [controller]);
+  const activeTool = useStore(controller.$activeTool);
 
   const zoomPercent = `${Math.round(zoom * 100)}%`;
 
