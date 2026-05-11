@@ -529,26 +529,13 @@ function LeftPanels({
 }) {
   const metadata = useStore(controller.ctx.get(ProjectSlice).$metadata);
 
-  const [charts, setCharts] = useState(() => controller.getCharts());
-  const [selectedChartId, setSelectedChartId] = useState(() => controller.$selectedChartId.get());
-  const [selectedChart, setSelectedChart] = useState(() =>
-    controller.getEntityManager().get(selectedChartId ?? ""),
+  const selectedChartId = useStore(controller.$selectedChartId);
+  const mutationVersion = useStore(controller.getEntityManager().$mutationVersion);
+  const charts = useMemo(() => controller.getCharts(), [mutationVersion, controller]);
+  const selectedChart = useMemo(
+    () => controller.getEntityManager().get(selectedChartId ?? ""),
+    [selectedChartId, mutationVersion, controller],
   );
-
-  useEffect(() => {
-    const unsubCharts = controller.getEntityManager().$mutationVersion.subscribe(() => {
-      setCharts(controller.getCharts());
-      setSelectedChart(controller.getEntityManager().get(controller.$selectedChartId.get() ?? ""));
-    });
-    const unsubSelected = controller.$selectedChartId.subscribe((id) => {
-      setSelectedChartId(id);
-      setSelectedChart(controller.getEntityManager().get(id ?? ""));
-    });
-    return () => {
-      unsubCharts();
-      unsubSelected();
-    };
-  }, [controller]);
 
   const chartComponent = selectedChart
     ? controller.getEntityManager().getComponent(selectedChart, CHART)
