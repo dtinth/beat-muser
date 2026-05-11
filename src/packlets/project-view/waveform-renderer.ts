@@ -17,11 +17,14 @@ export function createWaveformRenderer(): (data: unknown) => RenderHandle<Wavefo
     canvas.style.imageRendering = "auto";
 
     drawWaveform(canvas, d);
+    let last = d;
 
     return {
       dom: canvas,
       update(newData: unknown) {
         const nd = newData as WaveformRendererData;
+        if (nd.peak === last.peak && nd.rms === last.rms && nd.color === last.color) return;
+        last = nd;
         drawWaveform(canvas, nd);
       },
     };
