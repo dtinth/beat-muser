@@ -88,18 +88,10 @@ function EditableField({
 }
 
 function DebugContent() {
-  const { ref, inView } = useInView();
-  const [events, setEvents] = useState(() => perf.$state.get().events);
-  const [counters, setCounters] = useState(() => perf.$state.get().counters);
-
-  useEffect(() => {
-    if (!inView) return;
-    const unsub = perf.$state.subscribe((state) => {
-      setEvents([...state.events]);
-      setCounters({ ...state.counters });
-    });
-    return unsub;
-  }, [inView]);
+  const { ref } = useInView();
+  const state = useStore(perf.$state);
+  const events = state.events;
+  const counters = state.counters;
 
   const statsByType = useMemo(() => {
     const groups = new Map<string, number[]>();
