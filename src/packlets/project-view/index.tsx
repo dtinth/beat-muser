@@ -41,6 +41,7 @@ import {
 } from "../toolbar";
 import { SidebarPanel } from "../sidebar-panel";
 import { perf } from "../perf";
+import { useInView } from "react-intersection-observer";
 import { ScrollableCanvas } from "../scrollable-canvas";
 import {
   EditorController,
@@ -111,17 +112,19 @@ function EditableField({
   );
 }
 
-function DebugPanel() {
+function DebugContent() {
+  const { ref, inView } = useInView();
   const [events, setEvents] = useState(() => perf.$state.get().events);
   const [counters, setCounters] = useState(() => perf.$state.get().counters);
 
   useEffect(() => {
+    if (!inView) return;
     const unsub = perf.$state.subscribe((state) => {
       setEvents([...state.events]);
       setCounters({ ...state.counters });
     });
     return unsub;
-  }, []);
+  }, [inView]);
 
   const statsByType = useMemo(() => {
     const groups = new Map<string, number[]>();
@@ -148,35 +151,26 @@ function DebugPanel() {
   }, [events]);
 
   return (
-    <SidebarPanel
-      tabs={[
-        {
-          label: "Debug",
-          content: (
-            <Flex direction="column" style={{ gap: 8 }}>
-              <Text size="1" color="gray">
-                Frame {counters.renderNumber} / Reconcile {counters.reconcileNumber}
-              </Text>
-              <Flex direction="column" style={{ gap: 2 }}>
-                {statsByType.map((s) => (
-                  <Flex key={s.type} justify="between" align="center">
-                    <Text size="1" style={{ fontFamily: "monospace" }}>
-                      {s.type}
-                    </Text>
-                    <Text size="1" color="gray">
-                      {s.min.toFixed(2)} / {s.avg.toFixed(2)} / {s.max.toFixed(2)}ms
-                    </Text>
-                  </Flex>
-                ))}
-              </Flex>
-              <Text size="1" color="gray">
-                {events.length} events
-              </Text>
-            </Flex>
-          ),
-        },
-      ]}
-    />
+    <Flex ref={ref} direction="column" style={{ gap: 8 }}>
+      <Text size="1" color="gray">
+        Frame {counters.renderNumber} / Reconcile {counters.reconcileNumber}
+      </Text>
+      <Flex direction="column" style={{ gap: 2 }}>
+        {statsByType.map((s) => (
+          <Flex key={s.type} justify="between" align="center">
+            <Text size="1" style={{ fontFamily: "monospace" }}>
+              {s.type}
+            </Text>
+            <Text size="1" color="gray">
+              {s.min.toFixed(2)} / {s.avg.toFixed(2)} / {s.max.toFixed(2)}ms
+            </Text>
+          </Flex>
+        ))}
+      </Flex>
+      <Text size="1" color="gray">
+        {events.length} events
+      </Text>
+    </Flex>
   );
 }
 
@@ -571,10 +565,12 @@ function RightPanels({
               </Flex>
             ),
           },
+          {
+            label: "Debug",
+            content: <DebugContent />,
+          },
         ]}
       />
-
-      <DebugPanel />
     </Flex>
   );
 }
