@@ -549,14 +549,7 @@ function LeftPanels({
   modalManager: ModalManager;
   controller: EditorController;
 }) {
-  const [metadata, setMetadata] = useState(() => controller.getMetadata());
-
-  useEffect(() => {
-    const unsub = controller.ctx.get(ProjectSlice).$metadata.subscribe((newMetadata) => {
-      setMetadata(newMetadata);
-    });
-    return () => unsub();
-  }, [controller]);
+  const metadata = useStore(controller.ctx.get(ProjectSlice).$metadata);
 
   const [charts, setCharts] = useState(() => controller.getCharts());
   const [selectedChartId, setSelectedChartId] = useState(() => controller.$selectedChartId.get());
