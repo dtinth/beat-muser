@@ -162,9 +162,7 @@ function RightPanels({
   const selectedLevelId = useStore(controller.$selectedLevelId);
 
   const soundGroups = useStore(controller.ctx.get(SoundChannelSlice).$soundGroups);
-  const [soundChannels, setSoundChannels] = useState(() =>
-    controller.ctx.get(SoundChannelSlice).$soundChannels.get(),
-  );
+  const soundChannels = useStore(controller.ctx.get(SoundChannelSlice).$soundChannels);
   const selectedSoundChannelId = useStore(
     controller.ctx.get(SoundChannelSlice).$selectedSoundChannelId,
   );
@@ -177,13 +175,9 @@ function RightPanels({
     const unsubMutations = controller.getEntityManager().$mutationVersion.subscribe(() => {
       setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
     });
-    const unsubSoundChannels = controller.ctx
-      .get(SoundChannelSlice)
-      .$soundChannels.subscribe((v) => setSoundChannels([...v]));
     return () => {
       unsubHidden();
       unsubMutations();
-      unsubSoundChannels();
     };
   }, [controller]);
 
