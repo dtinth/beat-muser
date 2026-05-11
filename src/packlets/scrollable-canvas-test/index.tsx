@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useStore } from "@nanostores/react";
 import { atom } from "nanostores";
 import { ScrollableCanvas } from "../scrollable-canvas";
 import type {
@@ -286,14 +287,12 @@ function Controls({
   controller: ScrollableCanvasTestController;
   onCountNodes: () => void;
 }) {
-  const [scrollInfo, setScrollInfo] = useState(controller.$scrollInfo.get());
+  const scrollInfo = useStore(controller.$scrollInfo);
   const [domNodeCount, setDomNodeCount] = useState(controller.$domNodeCount.get());
 
   useEffect(() => {
-    const unsubInfo = controller.$scrollInfo.subscribe((v) => setScrollInfo(v));
     const unsubCount = controller.$domNodeCount.subscribe((v) => setDomNodeCount(v));
     return () => {
-      unsubInfo();
       unsubCount();
     };
   }, [controller]);
