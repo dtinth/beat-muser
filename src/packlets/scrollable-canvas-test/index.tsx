@@ -10,7 +10,7 @@
  * at the bottom.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { atom } from "nanostores";
 import { ScrollableCanvas } from "../scrollable-canvas";
@@ -288,14 +288,7 @@ function Controls({
   onCountNodes: () => void;
 }) {
   const scrollInfo = useStore(controller.$scrollInfo);
-  const [domNodeCount, setDomNodeCount] = useState(controller.$domNodeCount.get());
-
-  useEffect(() => {
-    const unsubCount = controller.$domNodeCount.subscribe((v) => setDomNodeCount(v));
-    return () => {
-      unsubCount();
-    };
-  }, [controller]);
+  const domNodeCount = useStore(controller.$domNodeCount);
 
   return (
     <Flex direction="column" style={{ gap: 8 }}>
