@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useStore } from "@nanostores/react";
 import { useParams, useRouteError, useLoaderData } from "react-router";
 import { Pencil, Plus, Eye, EyeOff, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import { Flex, Text, Dialog, Button, TextField } from "@radix-ui/themes";
@@ -158,7 +159,7 @@ function RightPanels({
   const [levels, setLevels] = useState(() =>
     controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""),
   );
-  const [selectedLevelId, setSelectedLevelId] = useState(() => controller.$selectedLevelId.get());
+  const selectedLevelId = useStore(controller.$selectedLevelId);
 
   const [soundGroups, setSoundGroups] = useState(() =>
     controller.ctx.get(SoundChannelSlice).$soundGroups.get(),
@@ -175,9 +176,6 @@ function RightPanels({
     const unsubHidden = controller.$hiddenLevelIds.subscribe(() => {
       setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
     });
-    const unsubSelected = controller.$selectedLevelId.subscribe((id) => {
-      setSelectedLevelId(id);
-    });
     const unsubMutations = controller.getEntityManager().$mutationVersion.subscribe(() => {
       setLevels(controller.getLevelsForChart(controller.$selectedChartId.get() ?? ""));
     });
@@ -192,7 +190,6 @@ function RightPanels({
       .$selectedSoundChannelId.subscribe((v) => setSelectedSoundChannelId(v));
     return () => {
       unsubHidden();
-      unsubSelected();
       unsubMutations();
       unsubSoundGroups();
       unsubSoundChannels();
