@@ -233,18 +233,16 @@ export class PointerInteractionSlice extends Slice {
 
       this.lastCompatibleColumnIndex = startColumnIndex;
 
-      this.ctx
-        .get(DragSlice)
-        .startDrag(
-          point.y,
-          Array.from(dragSelection),
-          originalPulses,
-          startPulse,
-          point.x,
-          originalColumnIndices,
-          startColumnIndex,
-          affinity,
-        );
+      this.ctx.get(DragSlice).startDrag({
+        viewportY: point.y,
+        entityIds: Array.from(dragSelection),
+        originalPulses,
+        startPulse,
+        viewportX: point.x,
+        originalColumnIndices,
+        startColumnIndex,
+        affinity,
+      });
     } else {
       const colIndex = this.getColumnIndexFromViewportX(point.x);
       const pulse = this.computePulseFromViewportY(point.y);
@@ -295,7 +293,13 @@ export class PointerInteractionSlice extends Slice {
         }
       }
 
-      dragSlice.updateDrag(viewportY, currentPulse, viewportX, currentColumnIndex, maxColumnIndex);
+      dragSlice.updateDrag({
+        viewportY,
+        pulse: currentPulse,
+        viewportX,
+        columnIndex: currentColumnIndex,
+        maxColumnIndex,
+      });
       this.ctx.get(RenderSlice).requestRerender();
     } else if (this.ctx.get(BoxSelectionSlice).isActive()) {
       this.ctx
