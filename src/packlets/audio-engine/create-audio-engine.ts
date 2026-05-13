@@ -81,7 +81,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions) {
 
     for (const newPath of newPaths) {
       if (!currentPaths.has(newPath)) {
-        limit(() => loadFile(newPath));
+        void limit(() => loadFile(newPath));
       }
     }
 
@@ -99,7 +99,7 @@ export function createAudioEngine(options: CreateAudioEngineOptions) {
     }
     channelGains.clear();
     masterGain.disconnect();
-    audioContext.close();
+    void audioContext.close();
   }
 
   return {
