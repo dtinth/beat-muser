@@ -14,13 +14,10 @@ import { HistorySlice } from "./history-slice";
 import { TimingSlice } from "./timing-slice";
 import { DragSlice } from "./drag-slice";
 import { PlaybackSlice } from "./playback-slice";
-import { EVENT, NOTE, LEVEL_REF, SOUND_EVENT, KEYSOUND, CHART_REF } from "../components";
+import { EVENT, KEYSOUND, CHART_REF } from "../components";
 import { Point, Rect } from "../../geometry";
-import {
-  EraseUserAction,
-  PlaceEntityUserAction,
-  BatchEditEntitiesUserAction,
-} from "../user-actions";
+import { EraseUserAction, PlaceEntityUserAction } from "../user-actions";
+import { EditBatchBuilder } from "../edit-batch-builder";
 import {
   computeGameplayFlatList,
   computeSoundFlatList,
@@ -327,37 +324,27 @@ export class PointerInteractionSlice extends Slice {
     if (wasDragging && (delta !== 0 || deltaColumnIndex !== 0)) {
       const em = this.ctx.get(ProjectSlice).entityManager;
       const columns = this.ctx.get(ColumnsSlice).$columns.get();
-      const editMap = new Map<
-        string,
-        {
-          entityId: string;
-          oldComponents: Record<string, unknown>;
-          newComponents: Record<string, unknown>;
-        }
-      >();
+      const batch = new EditBatchBuilder(em);
 
       for (const [entityId, originalPulse] of originalPulses) {
-        const entity = em.get(entityId);
-        if (!entity) continue;
-        const newComponents = structuredClone(entity.components);
-        const event = newComponents[EVENT.key] as { y: number };
-        event.y = originalPulse + delta;
+        if (!em.get(entityId)) continue;
+        batch.setPulse(entityId, originalPulse + delta);
 
         if (deltaColumnIndex !== 0 && originalColumnIndices.has(entityId)) {
+          const entity = em.get(entityId)!;
           const newIndex = originalColumnIndices.get(entityId)! + deltaColumnIndex;
           if (affinity === "gameplay") {
-            const gameplayFlatList = computeGameplayFlatList(columns);
-            if (newIndex >= 0 && newIndex < gameplayFlatList.length) {
-              const entry = gameplayFlatList[newIndex]!;
-              (newComponents[NOTE.key] as { lane: number }).lane = entry.laneIndex;
-              (newComponents[LEVEL_REF.key] as { levelId: string }).levelId = entry.levelId;
+            const flatList = computeGameplayFlatList(columns);
+            if (newIndex >= 0 && newIndex < flatList.length) {
+              const entry = flatList[newIndex]!;
+              batch.setNoteColumn(entityId, entry.levelId, entry.laneIndex);
             }
           } else if (affinity === "sound") {
-            const soundFlatList = computeSoundFlatList(columns);
-            if (newIndex >= 0 && newIndex < soundFlatList.length) {
-              const entry = soundFlatList[newIndex]!;
+            const flatList = computeSoundFlatList(columns);
+            if (newIndex >= 0 && newIndex < flatList.length) {
+              const entry = flatList[newIndex]!;
               const oldSoundLane = getSoundLane(entity)!;
-              (newComponents[SOUND_EVENT.key] as { soundLane: number }).soundLane = entry.soundLane;
+              batch.setSoundLane(entityId, entry.soundLane);
 
               if (oldSoundLane !== entry.soundLane) {
                 const oldPulse = getPulse(entity)!;
@@ -370,45 +357,22 @@ export class PointerInteractionSlice extends Slice {
                       soundLane: number;
                     };
                     if (ks.soundLane !== oldSoundLane) continue;
-                    const notePulse = getPulse(noteEntity);
-                    if (notePulse !== oldPulse) continue;
-                    const noteChartRef = noteEntity.components[CHART_REF.key] as
+                    if (getPulse(noteEntity) !== oldPulse) continue;
+                    const nr = noteEntity.components[CHART_REF.key] as
                       | { chartId: string }
                       | undefined;
-                    if (noteChartRef?.chartId !== chartRef.chartId) continue;
-
-                    if (editMap.has(noteEntity.id)) {
-                      const existing = editMap.get(noteEntity.id)!;
-                      (existing.newComponents[KEYSOUND.key] as { soundLane: number }).soundLane =
-                        entry.soundLane;
-                    } else {
-                      const ksNewComponents = structuredClone(noteEntity.components);
-                      (ksNewComponents[KEYSOUND.key] as { soundLane: number }).soundLane =
-                        entry.soundLane;
-                      editMap.set(noteEntity.id, {
-                        entityId: noteEntity.id,
-                        oldComponents: structuredClone(noteEntity.components),
-                        newComponents: ksNewComponents,
-                      });
-                    }
+                    if (nr?.chartId !== chartRef.chartId) continue;
+                    batch.setKeysoundLane(noteEntity.id, entry.soundLane);
                   }
                 }
               }
             }
           }
         }
-
-        editMap.set(entityId, {
-          entityId,
-          oldComponents: structuredClone(entity.components),
-          newComponents,
-        });
       }
 
-      if (editMap.size > 0) {
-        this.ctx
-          .get(HistorySlice)
-          .applyAction(new BatchEditEntitiesUserAction(this.ctx, [...editMap.values()]));
+      if (batch.getModifiedEntityIds().size > 0) {
+        this.ctx.get(HistorySlice).applyAction(batch.toUserAction(this.ctx));
       }
     }
 
