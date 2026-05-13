@@ -333,11 +333,14 @@ export class PointerInteractionSlice extends Slice {
     if (wasDragging && (delta !== 0 || deltaColumnIndex !== 0)) {
       const em = this.ctx.get(ProjectSlice).entityManager;
       const columns = this.ctx.get(ColumnsSlice).$columns.get();
-      const edits: {
-        entityId: string;
-        oldComponents: Record<string, unknown>;
-        newComponents: Record<string, unknown>;
-      }[] = [];
+      const editMap = new Map<
+        string,
+        {
+          entityId: string;
+          oldComponents: Record<string, unknown>;
+          newComponents: Record<string, unknown>;
+        }
+      >();
 
       for (const [entityId, originalPulse] of originalPulses) {
         const entity = em.get(entityId);
@@ -369,11 +372,6 @@ export class PointerInteractionSlice extends Slice {
                   | { chartId: string }
                   | undefined;
                 if (chartRef) {
-                  const keysoundEdits: {
-                    entityId: string;
-                    oldComponents: Record<string, unknown>;
-                    newComponents: Record<string, unknown>;
-                  }[] = [];
                   for (const noteEntity of em.entitiesWithComponent(KEYSOUND)) {
                     const ks = noteEntity.components[KEYSOUND.key] as {
                       soundLane: number;
@@ -386,17 +384,20 @@ export class PointerInteractionSlice extends Slice {
                       | undefined;
                     if (noteChartRef?.chartId !== chartRef.chartId) continue;
 
-                    const ksNewComponents = structuredClone(noteEntity.components);
-                    (ksNewComponents[KEYSOUND.key] as { soundLane: number }).soundLane =
-                      entry.soundLane;
-                    keysoundEdits.push({
-                      entityId: noteEntity.id,
-                      oldComponents: structuredClone(noteEntity.components),
-                      newComponents: ksNewComponents,
-                    });
-                  }
-                  for (const ke of keysoundEdits) {
-                    edits.push(ke);
+                    if (editMap.has(noteEntity.id)) {
+                      const existing = editMap.get(noteEntity.id)!;
+                      (existing.newComponents[KEYSOUND.key] as { soundLane: number }).soundLane =
+                        entry.soundLane;
+                    } else {
+                      const ksNewComponents = structuredClone(noteEntity.components);
+                      (ksNewComponents[KEYSOUND.key] as { soundLane: number }).soundLane =
+                        entry.soundLane;
+                      editMap.set(noteEntity.id, {
+                        entityId: noteEntity.id,
+                        oldComponents: structuredClone(noteEntity.components),
+                        newComponents: ksNewComponents,
+                      });
+                    }
                   }
                 }
               }
@@ -404,11 +405,17 @@ export class PointerInteractionSlice extends Slice {
           }
         }
 
-        edits.push({ entityId, oldComponents: structuredClone(entity.components), newComponents });
+        editMap.set(entityId, {
+          entityId,
+          oldComponents: structuredClone(entity.components),
+          newComponents,
+        });
       }
 
-      if (edits.length > 0) {
-        this.ctx.get(HistorySlice).applyAction(new BatchEditEntitiesUserAction(this.ctx, edits));
+      if (editMap.size > 0) {
+        this.ctx
+          .get(HistorySlice)
+          .applyAction(new BatchEditEntitiesUserAction(this.ctx, [...editMap.values()]));
       }
     }
 
