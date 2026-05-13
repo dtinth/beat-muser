@@ -110,6 +110,31 @@ A speed multiplier applied to playback. At 1.0x, playback time and context time 
 > **Dev:** "What happens if the chart has a `continue` sound event — does the audio engine need to handle that?"
 > **Domain expert:** "No — `createPlayback` coalesces `continue` chains into a single **Playback event** with the correct `audioStartTime`. The audio engine just sees flat, independent events."
 
+## Resolved design — Horizontal column dragging
+
+When dragging events on the timeline, the current {link DragSlice} handles vertical (pulse) movement. A horizontal (column) component has been designed but not yet implemented. Key design points:
+
+**Column flat list**:
+An intermediate mapping of all gameplay columns (level+lane pairs) into a flat indexed list, used to compute relative horizontal offsets during drag. Sound lane columns form their own flat list by sound lane index. Computed from visible levels and their game mode layouts. Only gameplay and sound columns participate; timing columns and spacers are excluded.
+
+**Anchor entity**:
+The entity the user clicks on to start a drag. Its flat-list index establishes the reference point (column index 0 in offset space). Other selected entities track their offset from the anchor.
+
+**Delta column index**:
+The horizontal offset component of a drag. Calculated as: cursor's target flat-list index — anchor entity's original flat-list index. Clamped so the entire selection's horizontal range stays within the flat list bounds. Applied as a uniform offset to all entities sharing the anchor's drag affinity. DragSlice stores this as a single integer alongside `deltaPulse`.
+
+**Drag affinity**:
+The column category of the anchor entity: `"gameplay"` (for notes) or `"sound"` (for sound events). During a multi-selection drag, only entities matching the anchor's affinity move horizontally; all other selected entities move vertically only. Timing events (BPM, time signature) have no drag affinity and never move horizontally.
+
+**Ghost rendering for horizontal drags**:
+Ghost preview during a drag shows the entity in its target column (original flat-list index + delta column index). Originals stay in place at 30% opacity; ghosts render at 50% opacity in the target column at the same Y position (optionally + vertical delta for combined moves).
+
+**Horizontal drag thresholds**:
+The 5px drag threshold uses Euclidean distance (sqrt(dx² + dy²)) to enter dragging mode, enabling pure horizontal lane changes without vertical movement.
+
+**Commit on pointer up**:
+When dragging commits, each entity's components are updated: notes get new `NOTE.lane` + `LEVEL_REF.levelId`, sound events get new `SOUND_EVENT.soundLane`. Additionally, if a sound event is dragged to a different sound lane, any notes with `KEYSOUND.soundLane` matching the old lane at the same pulse position are updated to the new lane index.
+
 ## Flagged ambiguities
 
 - "Mode" was used ambiguously to mean both game mode and tool mode (select/pencil/erase/pan). Resolved: "game mode" always refers to lane layouts; "tool" refers to the active editor tool.
