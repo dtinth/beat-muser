@@ -27,6 +27,7 @@ import {
   findGameplayFlatIndex,
   findSoundFlatIndex,
 } from "./column-flat-list";
+import { getPulse, getNoteColumn, getSoundLane, getDragAffinity } from "../entity-accessors";
 
 export class PointerInteractionSlice extends Slice {
   static readonly sliceKey = "pointer-interaction";
@@ -186,37 +187,27 @@ export class PointerInteractionSlice extends Slice {
       const originalPulses = new Map<string, number>();
       for (const entityId of dragSelection) {
         const entity = em.get(entityId);
-        if (entity) {
-          const event = entity.components[EVENT.key];
-          if (event) {
-            originalPulses.set(entityId, (event as { y: number }).y);
-          }
-        }
+        if (!entity) continue;
+        const pulse = getPulse(entity);
+        if (pulse !== undefined) originalPulses.set(entityId, pulse);
       }
       const hitEntity = em.get(hit);
-      const hitEvent = hitEntity?.components[EVENT.key] as { y: number } | undefined;
-      const startPulse = hitEvent?.y ?? this.snapToGrid(this.computePulseFromViewportY(point.y));
+      const startPulse =
+        getPulse(hitEntity!) ?? this.snapToGrid(this.computePulseFromViewportY(point.y));
 
       // ---------- horizontal dragging support ----------
       const columns = this.ctx.get(ColumnsSlice).$columns.get();
       const gameplayFlatList = computeGameplayFlatList(columns);
       const soundFlatList = computeSoundFlatList(columns);
 
-      let affinity: "gameplay" | "sound" | null = null;
+      const affinity = hitEntity ? getDragAffinity(hitEntity) : null;
       let startColumnIndex = 0;
-
-      if (hitEntity) {
-        const note = hitEntity.components[NOTE.key] as { lane: number } | undefined;
-        const levelRef = hitEntity.components[LEVEL_REF.key] as { levelId: string } | undefined;
-        const se = hitEntity.components[SOUND_EVENT.key] as { soundLane: number } | undefined;
-        if (note && levelRef) {
-          affinity = "gameplay";
-          startColumnIndex =
-            findGameplayFlatIndex(gameplayFlatList, levelRef.levelId, note.lane) ?? 0;
-        } else if (se) {
-          affinity = "sound";
-          startColumnIndex = findSoundFlatIndex(soundFlatList, se.soundLane) ?? 0;
-        }
+      if (affinity === "gameplay") {
+        const col = getNoteColumn(hitEntity!)!;
+        startColumnIndex = findGameplayFlatIndex(gameplayFlatList, col.levelId, col.laneIndex) ?? 0;
+      } else if (affinity === "sound") {
+        const lane = getSoundLane(hitEntity!)!;
+        startColumnIndex = findSoundFlatIndex(soundFlatList, lane) ?? 0;
       }
 
       const originalColumnIndices = new Map<string, number>();
@@ -225,16 +216,15 @@ export class PointerInteractionSlice extends Slice {
           const entity = em.get(entityId);
           if (!entity) continue;
           if (affinity === "gameplay") {
-            const n = entity.components[NOTE.key] as { lane: number } | undefined;
-            const lr = entity.components[LEVEL_REF.key] as { levelId: string } | undefined;
-            if (n && lr) {
-              const idx = findGameplayFlatIndex(gameplayFlatList, lr.levelId, n.lane);
+            const col = getNoteColumn(entity);
+            if (col) {
+              const idx = findGameplayFlatIndex(gameplayFlatList, col.levelId, col.laneIndex);
               if (idx !== undefined) originalColumnIndices.set(entityId, idx);
             }
           } else if (affinity === "sound") {
-            const se = entity.components[SOUND_EVENT.key] as { soundLane: number } | undefined;
-            if (se) {
-              const idx = findSoundFlatIndex(soundFlatList, se.soundLane);
+            const lane = getSoundLane(entity);
+            if (lane !== null) {
+              const idx = findSoundFlatIndex(soundFlatList, lane);
               if (idx !== undefined) originalColumnIndices.set(entityId, idx);
             }
           }
@@ -362,12 +352,11 @@ export class PointerInteractionSlice extends Slice {
             const soundFlatList = computeSoundFlatList(columns);
             if (newIndex >= 0 && newIndex < soundFlatList.length) {
               const entry = soundFlatList[newIndex]!;
-              const oldSoundLane = (entity.components[SOUND_EVENT.key] as { soundLane: number })
-                .soundLane;
+              const oldSoundLane = getSoundLane(entity)!;
               (newComponents[SOUND_EVENT.key] as { soundLane: number }).soundLane = entry.soundLane;
 
               if (oldSoundLane !== entry.soundLane) {
-                const oldPulse = (entity.components[EVENT.key] as { y: number }).y;
+                const oldPulse = getPulse(entity)!;
                 const chartRef = entity.components[CHART_REF.key] as
                   | { chartId: string }
                   | undefined;
@@ -377,7 +366,7 @@ export class PointerInteractionSlice extends Slice {
                       soundLane: number;
                     };
                     if (ks.soundLane !== oldSoundLane) continue;
-                    const notePulse = (noteEntity.components[EVENT.key] as { y: number }).y;
+                    const notePulse = getPulse(noteEntity);
                     if (notePulse !== oldPulse) continue;
                     const noteChartRef = noteEntity.components[CHART_REF.key] as
                       | { chartId: string }
