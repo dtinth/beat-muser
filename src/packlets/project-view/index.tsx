@@ -28,6 +28,7 @@ import {
   SoundChannelSlice,
   EditEntityUserAction,
   ProjectSlice,
+  PPQN,
 } from "../editor-core";
 import type { ProjectFile } from "../project-format";
 import type { ProjectSource } from "../project-store/types";
@@ -654,6 +655,23 @@ function LeftPanels({
                     );
                   }}
                   validate={(v) => (v.trim() === "" ? "Name is required" : undefined)}
+                />
+                <EditableField
+                  label="Length"
+                  value={String(chartComponent ? controller.getChartSizeQuarterNotes() : 0)}
+                  modalManager={modalManager}
+                  onEdit={(v) => {
+                    const num = parseInt(v, 10);
+                    if (Number.isNaN(num) || num < 1 || !selectedChart) return;
+                    controller.setChartSize(num * PPQN);
+                  }}
+                  validate={(v) => {
+                    const num = parseInt(v, 10);
+                    if (Number.isNaN(num) || num < 1) return "Must be a positive integer";
+                    const min = Math.ceil(controller.getMaxEventPulse() / PPQN);
+                    if (num < min) return `Minimum is ${min} quarter note${min === 1 ? "" : "s"}`;
+                    return undefined;
+                  }}
                 />
                 <EditableField
                   label="Sound Lanes"

@@ -415,6 +415,18 @@ export class EditorController {
     return this.ctx.get(ChartSlice).getCharts();
   }
 
+  getChartSizeQuarterNotes(): number {
+    return this.ctx.get(ChartSlice).getChartSizeQuarterNotes();
+  }
+
+  getMaxEventPulse(): number {
+    return this.ctx.get(ChartSlice).getMaxEventPulse();
+  }
+
+  setChartSize(pulses: number): void {
+    this.ctx.get(ChartSlice).setChartSize(pulses);
+  }
+
   getGameModes(): GameModeLayout[] {
     return this.ctx.get(GameModeRegistrySlice).getAllModes();
   }

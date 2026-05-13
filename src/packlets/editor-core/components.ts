@@ -37,7 +37,7 @@ export const CHART = new EntityComponentType(
       size: Type.Optional(
         Type.Number({
           description:
-            "Length of the chart in pulses. Default is 15360 (16 measures of 4/4 at 240 PPQN). Auto-extends when notes are placed past the end.",
+            "Length of the chart in pulses. Default is 15360 (64 quarter notes). Auto-extends when events are placed near or past the end.",
         }),
       ),
       soundLanes: Type.Optional(

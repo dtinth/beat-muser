@@ -20,6 +20,12 @@ A playable difficulty within a chart. Each level references a game mode by ident
 **Column definition**:
 A timeline column, which may be a gameplay lane, timing lane, sound lane, or spacer. Generated dynamically by column provider slices and assembled by {@link ColumnsSlice}.
 
+**Quarter note**:
+The unit used to display and edit chart length in the sidebar. Equal to 240 pulses (PPQN). Independent of time signature — always beats = pulses / 240.
+
+**Chart length**:
+The `size` field on a **Chart** entity, stored in pulses. Displayed and edited in **Quarter notes** in the Chart Info panel. Default is 15360 pulses (64 quarter notes = 16 measures of 4/4). Silently clamped to a minimum of `ceil(maxEventPulse / 240)` to prevent shrinking below the last event. Auto-extends reactively when events are placed past the end: within 4 quarter notes → grows by 16 quarter notes; beyond → rounds up to the nearest 16-quarter-note boundary.
+
 **Sound group**:
 A project-global grouping for related sound channels (e.g., "Drums", "Vocals"). Carries a display name and optional color. Every **Sound channel** belongs to exactly one group; groups are created before channels.
 
@@ -80,15 +86,9 @@ A speed multiplier applied to playback. At 1.0x, playback time and context time 
 - The **Playback slice** produces a **Playback** object from sound events + timing engine
 - The **Audio engine** consumes a **Playback** object via the **Playback contract** to schedule audio
 - **Playback events** are derived from **Sound events** with `continue` chains coalesced
-
-- A **Chart** contains one or more **Levels**
-- A **Level** references exactly one **Game mode** by identifier
-- A **Game mode** contains one or more **Lane definitions**
-- The **Game mode registry** holds zero or more **Game modes**
-- **Column definitions** are derived from visible **Levels** + their referenced **Game mode** layouts
-- A **Project** contains zero or more **Sound groups**
-- A **Sound group** contains one or more **Sound channels**
-- A **Sound event** references exactly one **Sound channel**
+- A **Chart** has a **Chart length** in pulses (the `size` field), displayed and edited as **Quarter notes**
+- The **Chart length** minimum is determined by the last **Event**'s pulse on that chart
+- The **Chart length** auto-extends when events exceed it, using the **Quarter note** unit for its thresholds
 
 ## Example dialogue
 
