@@ -22,7 +22,7 @@ We considered and rejected alternatives:
 
 A **column flat list** is computed from all gameplay columns (level+lane pairs) and sound columns respectively. Each gameplay visible level contributes its game mode's lanes in order. Sound columns contribute their indices. Timing columns and spacers are excluded.
 
-```
+```text
 Gameplay flat list: [ (level1,8), (level1,1), (level1,2), ..., (level2,8), (level2,1), ... ]
 Sound flat list:    [ 0, 1, 2, ..., N-1 ]
 ```
@@ -55,7 +55,7 @@ For example: a selection containing both a note and a sound event. If the anchor
 
 The DragSlice is extended to store both Y and X drag state:
 
-```
+```text
 state:
   mode: "idle" | "pending" | "dragging"
   startViewportX, startViewportY

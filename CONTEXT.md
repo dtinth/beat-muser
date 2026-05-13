@@ -112,7 +112,7 @@ A speed multiplier applied to playback. At 1.0x, playback time and context time 
 
 ## Resolved design — Horizontal column dragging
 
-When dragging events on the timeline, the current {link DragSlice} handles vertical (pulse) movement. A horizontal (column) component has been designed but not yet implemented. Key design points:
+When dragging events on the timeline, the {@link DragSlice} handles vertical (pulse) movement. The horizontal (column) component allows entities to move between gameplay lanes and sound lanes. Key design points:
 
 **Column flat list**:
 An intermediate mapping of all gameplay columns (level+lane pairs) into a flat indexed list, used to compute relative horizontal offsets during drag. Sound lane columns form their own flat list by sound lane index. Computed from visible levels and their game mode layouts. Only gameplay and sound columns participate; timing columns and spacers are excluded.

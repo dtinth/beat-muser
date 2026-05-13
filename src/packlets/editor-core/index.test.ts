@@ -1316,6 +1316,8 @@ describe("EditorController", () => {
       const targetCol = columns.find((c) => c.levelId === levelEntity!.id && c.laneIndex === 3);
       expect(targetCol).toBeDefined();
 
+      // A small vertical offset ensures the drag threshold is crossed reliably,
+      // as snap-to-grid can produce small pulse deltas from the note center.
       editor.pointerMove({
         x: targetCol!.x + targetCol!.width / 2,
         y: Rect.center(fromRect).y + 10,
