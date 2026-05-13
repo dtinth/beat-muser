@@ -696,7 +696,7 @@ export class RenderSlice extends Slice {
           width: soundLaneCol.width - 8,
           rpLength: segment.rpLength,
           color: groupColor || "#fff",
-          getWaveformPixels: segment.getWaveformPixels,
+          getWaveformPixels: () => segment.getWaveformPixels(),
         });
       }
     }
