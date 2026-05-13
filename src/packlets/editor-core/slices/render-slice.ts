@@ -21,13 +21,36 @@ import {
   SOUND_CHANNEL,
 } from "../components";
 import type { TimelineRenderSpec } from "../types";
+import type { TimelineColumn } from "../types";
 import { DragSlice } from "./drag-slice";
+import {
+  computeGameplayFlatList,
+  computeSoundFlatList,
+  type GameplayFlatEntry,
+  type SoundFlatEntry,
+} from "./column-flat-list";
 import { WaveformSlice } from "./waveform-slice";
 import { computeWaveformOffsets, type SoundEventInput } from "../waveform-slicer";
 import { computeWaveformSegments } from "../waveform-segments";
 import { SOUND_GROUP } from "../components";
 import { ZoomSlice } from "./zoom-slice";
 import { perf } from "../../perf";
+
+function getGhostTargetColumn(
+  entityId: string,
+  originalColumn: TimelineColumn,
+  originalColumnIndices: Map<string, number>,
+  deltaColumnIndex: number,
+  flatList: readonly (GameplayFlatEntry | SoundFlatEntry)[],
+  columns: readonly TimelineColumn[],
+): TimelineColumn {
+  const originalIdx = originalColumnIndices.get(entityId);
+  if (originalIdx === undefined || deltaColumnIndex === 0) return originalColumn;
+  const newIdx = originalIdx + deltaColumnIndex;
+  if (newIdx < 0 || newIdx >= flatList.length) return originalColumn;
+  const entry = flatList[newIdx]!;
+  return columns[entry.columnIndex] ?? originalColumn;
+}
 
 interface WaveformSegment {
   key: string;
@@ -114,9 +137,14 @@ export class RenderSlice extends Slice {
     const dragSlice = this.ctx.get(DragSlice);
     const isDragging = dragSlice.isDragging();
     const deltaPulse = dragSlice.getDeltaPulse();
+    const deltaColumnIndex = dragSlice.getDeltaColumnIndex();
     const draggedEntityIds = isDragging
       ? new Set(dragSlice.getOriginalPulses().keys())
       : new Set<string>();
+    const originalColumnIndices = dragSlice.getOriginalColumnIndices();
+
+    const gameplayFlatList = computeGameplayFlatList(columns);
+    const soundFlatList = computeSoundFlatList(columns);
 
     // --- Column backgrounds (scroll layer) ---
     perf.measure("computeSpecs:misc", () => {
@@ -207,16 +235,24 @@ export class RenderSlice extends Slice {
         if (isDragging && isDragged) {
           const ghostPulse = pulse + deltaPulse;
           if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+            const ghostCol = getGhostTargetColumn(
+              entity.id,
+              laneCol,
+              originalColumnIndices,
+              deltaColumnIndex,
+              gameplayFlatList,
+              columns,
+            );
             specs.push({
               key: `note-ghost-${entity.id}`,
               type: "event-marker",
-              x: laneCol.x,
+              x: ghostCol.x,
               y: trackHeight - ghostPulse * scaleY - 14,
-              width: laneCol.width,
+              width: ghostCol.width,
               height: 14,
               data: {
                 text: "",
-                backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
+                backgroundColor: ghostCol.noteColor ?? "var(--accent-9)",
                 textColor: "#fff",
                 selected: true,
               },
@@ -268,12 +304,20 @@ export class RenderSlice extends Slice {
           if (isDragging && isDragged) {
             const ghostPulse = pulse + deltaPulse;
             if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+              const ghostCol = getGhostTargetColumn(
+                entity.id,
+                bpmColumn,
+                originalColumnIndices,
+                deltaColumnIndex,
+                gameplayFlatList,
+                columns,
+              );
               specs.push({
                 key: `bpm-ghost-${entity.id}`,
                 type: "event-marker",
-                x: bpmColumn.x,
+                x: ghostCol.x,
                 y: trackHeight - ghostPulse * scaleY - 14,
-                width: bpmColumn.width,
+                width: ghostCol.width,
                 height: 14,
                 data: {
                   text: String(bpm.bpm),
@@ -324,12 +368,20 @@ export class RenderSlice extends Slice {
           if (isDragging && isDragged) {
             const ghostPulse = pulse + deltaPulse;
             if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+              const ghostCol = getGhostTargetColumn(
+                entity.id,
+                tsColumn,
+                originalColumnIndices,
+                deltaColumnIndex,
+                gameplayFlatList,
+                columns,
+              );
               specs.push({
                 key: `ts-ghost-${entity.id}`,
                 type: "event-marker",
-                x: tsColumn.x,
+                x: ghostCol.x,
                 y: trackHeight - ghostPulse * scaleY - 14,
-                width: tsColumn.width,
+                width: ghostCol.width,
                 height: 14,
                 data: {
                   text: `${ts.numerator}/${ts.denominator}`,
@@ -396,12 +448,20 @@ export class RenderSlice extends Slice {
         if (isDragging && isDragged) {
           const ghostPulse = pulse + deltaPulse;
           if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+            const ghostCol = getGhostTargetColumn(
+              entity.id,
+              soundLaneCol,
+              originalColumnIndices,
+              deltaColumnIndex,
+              soundFlatList,
+              columns,
+            );
             specs.push({
               key: `sound-ghost-${entity.id}`,
               type: "event-marker",
-              x: soundLaneCol.x,
+              x: ghostCol.x,
               y: trackHeight - ghostPulse * scaleY - 14,
-              width: soundLaneCol.width,
+              width: ghostCol.width,
               height: 14,
               data: {
                 text: `${soundChannelName} [${soundEvent.command}]`,

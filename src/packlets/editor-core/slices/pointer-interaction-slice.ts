@@ -14,18 +14,26 @@ import { HistorySlice } from "./history-slice";
 import { TimingSlice } from "./timing-slice";
 import { DragSlice } from "./drag-slice";
 import { PlaybackSlice } from "./playback-slice";
-import { EVENT } from "../components";
+import { EVENT, NOTE, LEVEL_REF, SOUND_EVENT, KEYSOUND, CHART_REF } from "../components";
 import { Point, Rect } from "../../geometry";
 import {
   EraseUserAction,
   PlaceEntityUserAction,
   BatchEditEntitiesUserAction,
 } from "../user-actions";
+import {
+  computeGameplayFlatList,
+  computeSoundFlatList,
+  findGameplayFlatIndex,
+  findSoundFlatIndex,
+} from "./column-flat-list";
 
 export class PointerInteractionSlice extends Slice {
   static readonly sliceKey = "pointer-interaction";
 
   $lastPlacedEntityInfo = atom<{ entityId: string; columnId: string } | null>(null);
+
+  private lastCompatibleColumnIndex: number | null = null;
 
   constructor(ctx: EditorContext) {
     super(ctx);
@@ -188,9 +196,65 @@ export class PointerInteractionSlice extends Slice {
       const hitEntity = em.get(hit);
       const hitEvent = hitEntity?.components[EVENT.key] as { y: number } | undefined;
       const startPulse = hitEvent?.y ?? this.snapToGrid(this.computePulseFromViewportY(point.y));
+
+      // ---------- horizontal dragging support ----------
+      const columns = this.ctx.get(ColumnsSlice).$columns.get();
+      const gameplayFlatList = computeGameplayFlatList(columns);
+      const soundFlatList = computeSoundFlatList(columns);
+
+      let affinity: "gameplay" | "sound" | null = null;
+      let startColumnIndex = 0;
+
+      if (hitEntity) {
+        const note = hitEntity.components[NOTE.key] as { lane: number } | undefined;
+        const levelRef = hitEntity.components[LEVEL_REF.key] as { levelId: string } | undefined;
+        const se = hitEntity.components[SOUND_EVENT.key] as { soundLane: number } | undefined;
+        if (note && levelRef) {
+          affinity = "gameplay";
+          startColumnIndex =
+            findGameplayFlatIndex(gameplayFlatList, levelRef.levelId, note.lane) ?? 0;
+        } else if (se) {
+          affinity = "sound";
+          startColumnIndex = findSoundFlatIndex(soundFlatList, se.soundLane) ?? 0;
+        }
+      }
+
+      const originalColumnIndices = new Map<string, number>();
+      if (affinity) {
+        for (const entityId of dragSelection) {
+          const entity = em.get(entityId);
+          if (!entity) continue;
+          if (affinity === "gameplay") {
+            const n = entity.components[NOTE.key] as { lane: number } | undefined;
+            const lr = entity.components[LEVEL_REF.key] as { levelId: string } | undefined;
+            if (n && lr) {
+              const idx = findGameplayFlatIndex(gameplayFlatList, lr.levelId, n.lane);
+              if (idx !== undefined) originalColumnIndices.set(entityId, idx);
+            }
+          } else if (affinity === "sound") {
+            const se = entity.components[SOUND_EVENT.key] as { soundLane: number } | undefined;
+            if (se) {
+              const idx = findSoundFlatIndex(soundFlatList, se.soundLane);
+              if (idx !== undefined) originalColumnIndices.set(entityId, idx);
+            }
+          }
+        }
+      }
+
+      this.lastCompatibleColumnIndex = startColumnIndex;
+
       this.ctx
         .get(DragSlice)
-        .startDrag(point.y, Array.from(dragSelection), originalPulses, startPulse);
+        .startDrag(
+          point.y,
+          Array.from(dragSelection),
+          originalPulses,
+          startPulse,
+          point.x,
+          originalColumnIndices,
+          startColumnIndex,
+          affinity,
+        );
     } else {
       const colIndex = this.getColumnIndexFromViewportX(point.x);
       const pulse = this.computePulseFromViewportY(point.y);
@@ -207,7 +271,41 @@ export class PointerInteractionSlice extends Slice {
 
     if (dragSlice.isActive()) {
       const currentPulse = this.snapToGrid(this.computePulseFromViewportY(viewportY));
-      dragSlice.updateDrag(viewportY, currentPulse);
+
+      let currentColumnIndex: number | undefined;
+      let maxColumnIndex: number | undefined;
+      const affinity = dragSlice.getAffinity()!;
+      const columns = this.ctx.get(ColumnsSlice).$columns.get();
+      const colIdx = this.getColumnIndexFromViewportX(viewportX);
+      const targetCol = columns[colIdx];
+
+      if (affinity === "gameplay") {
+        const flatList = computeGameplayFlatList(columns);
+        maxColumnIndex = flatList.length - 1;
+        if (targetCol && targetCol.levelId !== undefined && targetCol.laneIndex !== undefined) {
+          const idx = findGameplayFlatIndex(flatList, targetCol.levelId, targetCol.laneIndex);
+          if (idx !== undefined) {
+            currentColumnIndex = idx;
+            this.lastCompatibleColumnIndex = idx;
+          }
+        } else if (this.lastCompatibleColumnIndex !== null) {
+          currentColumnIndex = this.lastCompatibleColumnIndex;
+        }
+      } else if (affinity === "sound") {
+        const flatList = computeSoundFlatList(columns);
+        maxColumnIndex = flatList.length - 1;
+        if (targetCol && targetCol.soundLane !== undefined) {
+          const idx = findSoundFlatIndex(flatList, targetCol.soundLane);
+          if (idx !== undefined) {
+            currentColumnIndex = idx;
+            this.lastCompatibleColumnIndex = idx;
+          }
+        } else if (this.lastCompatibleColumnIndex !== null) {
+          currentColumnIndex = this.lastCompatibleColumnIndex;
+        }
+      }
+
+      dragSlice.updateDrag(viewportY, currentPulse, viewportX, currentColumnIndex, maxColumnIndex);
       this.ctx.get(RenderSlice).requestRerender();
     } else if (this.ctx.get(BoxSelectionSlice).isActive()) {
       this.ctx
@@ -227,10 +325,14 @@ export class PointerInteractionSlice extends Slice {
     const delta = dragSlice.getDeltaPulse();
     const originalPulses = dragSlice.getOriginalPulses();
     const wasDragging = dragSlice.isDragging();
+    const deltaColumnIndex = dragSlice.getDeltaColumnIndex();
+    const originalColumnIndices = dragSlice.getOriginalColumnIndices();
+    const affinity = dragSlice.getAffinity();
     dragSlice.endDrag();
 
-    if (wasDragging && delta !== 0) {
+    if (wasDragging && (delta !== 0 || deltaColumnIndex !== 0)) {
       const em = this.ctx.get(ProjectSlice).entityManager;
+      const columns = this.ctx.get(ColumnsSlice).$columns.get();
       const edits: {
         entityId: string;
         oldComponents: Record<string, unknown>;
@@ -243,6 +345,65 @@ export class PointerInteractionSlice extends Slice {
         const newComponents = structuredClone(entity.components);
         const event = newComponents[EVENT.key] as { y: number };
         event.y = originalPulse + delta;
+
+        if (deltaColumnIndex !== 0 && originalColumnIndices.has(entityId)) {
+          const newIndex = originalColumnIndices.get(entityId)! + deltaColumnIndex;
+          if (affinity === "gameplay") {
+            const gameplayFlatList = computeGameplayFlatList(columns);
+            if (newIndex >= 0 && newIndex < gameplayFlatList.length) {
+              const entry = gameplayFlatList[newIndex]!;
+              (newComponents[NOTE.key] as { lane: number }).lane = entry.laneIndex;
+              (newComponents[LEVEL_REF.key] as { levelId: string }).levelId = entry.levelId;
+            }
+          } else if (affinity === "sound") {
+            const soundFlatList = computeSoundFlatList(columns);
+            if (newIndex >= 0 && newIndex < soundFlatList.length) {
+              const entry = soundFlatList[newIndex]!;
+              const oldSoundLane = (entity.components[SOUND_EVENT.key] as { soundLane: number })
+                .soundLane;
+              (newComponents[SOUND_EVENT.key] as { soundLane: number }).soundLane = entry.soundLane;
+
+              if (oldSoundLane !== entry.soundLane) {
+                const oldPulse = (entity.components[EVENT.key] as { y: number }).y;
+                const chartRef = entity.components[CHART_REF.key] as
+                  | { chartId: string }
+                  | undefined;
+                if (chartRef) {
+                  const keysoundEdits: {
+                    entityId: string;
+                    oldComponents: Record<string, unknown>;
+                    newComponents: Record<string, unknown>;
+                  }[] = [];
+                  for (const noteEntity of em.entitiesWithComponent(KEYSOUND)) {
+                    const ks = noteEntity.components[KEYSOUND.key] as {
+                      soundLane: number;
+                    };
+                    if (ks.soundLane !== oldSoundLane) continue;
+                    const notePulse = (noteEntity.components[EVENT.key] as { y: number }).y;
+                    if (notePulse !== oldPulse) continue;
+                    const noteChartRef = noteEntity.components[CHART_REF.key] as
+                      | { chartId: string }
+                      | undefined;
+                    if (noteChartRef?.chartId !== chartRef.chartId) continue;
+
+                    const ksNewComponents = structuredClone(noteEntity.components);
+                    (ksNewComponents[KEYSOUND.key] as { soundLane: number }).soundLane =
+                      entry.soundLane;
+                    keysoundEdits.push({
+                      entityId: noteEntity.id,
+                      oldComponents: structuredClone(noteEntity.components),
+                      newComponents: ksNewComponents,
+                    });
+                  }
+                  for (const ke of keysoundEdits) {
+                    edits.push(ke);
+                  }
+                }
+              }
+            }
+          }
+        }
+
         edits.push({ entityId, oldComponents: structuredClone(entity.components), newComponents });
       }
 

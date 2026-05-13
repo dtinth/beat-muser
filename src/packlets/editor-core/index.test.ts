@@ -1289,6 +1289,125 @@ describe("EditorController", () => {
       editor.pointerUp();
     });
   });
+  describe("horizontal dragging", () => {
+    test("dragging a note to a different lane (same level)", () => {
+      let noteEntity: Entity;
+      let levelEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            levelEntity = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, levelEntity.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      const fromRect = editor.eventRect(noteEntity!.id);
+      editor.pointerDown(Rect.center(fromRect));
+      editor.selection.shouldContain(noteEntity!.id);
+
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const targetCol = columns.find((c) => c.levelId === levelEntity!.id && c.laneIndex === 3);
+      expect(targetCol).toBeDefined();
+
+      editor.pointerMove({
+        x: targetCol!.x + targetCol!.width / 2,
+        y: Rect.center(fromRect).y + 10,
+      });
+      editor.pointerUp();
+
+      const em = editor.instance.getEntityManager();
+      const updated = em.get(noteEntity!.id);
+      expect((updated!.components[NOTE.key] as { lane: number }).lane).toBe(3);
+      expect((updated!.components[LEVEL_REF.key] as { levelId: string }).levelId).toBe(
+        levelEntity!.id,
+      );
+    });
+
+    test("dragging a note to a different level", () => {
+      let noteEntity: Entity;
+      let level1: Entity;
+      let level2: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            level1 = p.addLevel(chart.id, "Easy", "beat-7k");
+            level2 = p.addLevel(chart.id, "Hard", "beat-5k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, level1.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      const fromRect = editor.eventRect(noteEntity!.id);
+      editor.pointerDown(Rect.center(fromRect));
+      editor.selection.shouldContain(noteEntity!.id);
+
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const targetCol = columns.find((c) => c.levelId === level2!.id && c.laneIndex === 3);
+      expect(targetCol).toBeDefined();
+
+      editor.pointerMove({
+        x: targetCol!.x + targetCol!.width / 2,
+        y: Rect.center(fromRect).y + 10,
+      });
+      editor.pointerUp();
+
+      const em = editor.instance.getEntityManager();
+      const updated = em.get(noteEntity!.id);
+      expect((updated!.components[NOTE.key] as { lane: number }).lane).toBe(3);
+      expect((updated!.components[LEVEL_REF.key] as { levelId: string }).levelId).toBe(level2!.id);
+    });
+
+    test("ghost renders in target column during horizontal drag", () => {
+      let noteEntity: Entity;
+      let levelEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            levelEntity = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, levelEntity.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const targetCol = columns.find((c) => c.levelId === levelEntity!.id && c.laneIndex === 3);
+      expect(targetCol).toBeDefined();
+
+      const fromRect = editor.eventRect(noteEntity!.id);
+      editor.pointerMove({
+        x: targetCol!.x + targetCol!.width / 2,
+        y: Rect.center(fromRect).y + 10,
+      });
+
+      const specs = editor.instance.$visibleRenderObjects.get();
+      const ghost = specs.find((s) => s.key === `note-ghost-${noteEntity!.id}`);
+      expect(ghost).toBeDefined();
+      expect(ghost!.x).toBe(targetCol!.x);
+
+      editor.pointerUp();
+    });
+  });
 
   describe("sound channel management", () => {
     test("can add a sound group with custom name", () => {
