@@ -5,8 +5,9 @@
  */
 
 import type { Point } from "../geometry";
-import type { Entity } from "../entity-manager";
+import type { Entity, EntityManager } from "../entity-manager";
 import type { Playback } from "../playback-contract";
+import type { EditBatchBuilder } from "./edit-batch-builder";
 
 export interface EditorControllerOptions {
   project: import("../project-format").ProjectFile;
@@ -21,7 +22,10 @@ export interface ColumnDefinition {
   laneIndex?: number;
   soundLane?: number;
   noteColor?: string;
+  affinity?: "gameplay" | "sound";
   placementHandler?: (pulse: number) => Entity | null;
+  containsEntity?: (entity: Entity) => boolean;
+  moveEntityTo?: (batch: EditBatchBuilder, em: EntityManager, entity: Entity) => void;
 }
 
 export interface TimelineColumn extends ColumnDefinition {

@@ -23,12 +23,7 @@ import {
 import type { TimelineRenderSpec } from "../types";
 import type { TimelineColumn } from "../types";
 import { DragSlice } from "./drag-slice";
-import {
-  computeGameplayFlatList,
-  computeSoundFlatList,
-  type GameplayFlatEntry,
-  type SoundFlatEntry,
-} from "./column-flat-list";
+import { buildFlatList } from "./column-flat-list";
 import { WaveformSlice } from "./waveform-slice";
 import { computeWaveformOffsets, type SoundEventInput } from "../waveform-slicer";
 import { computeWaveformSegments } from "../waveform-segments";
@@ -41,15 +36,13 @@ function getGhostTargetColumn(
   originalColumn: TimelineColumn,
   originalColumnIndices: Map<string, number>,
   deltaColumnIndex: number,
-  flatList: readonly (GameplayFlatEntry | SoundFlatEntry)[],
-  columns: readonly TimelineColumn[],
+  flatList: readonly TimelineColumn[],
 ): TimelineColumn {
   const originalIdx = originalColumnIndices.get(entityId);
   if (originalIdx === undefined || deltaColumnIndex === 0) return originalColumn;
   const newIdx = originalIdx + deltaColumnIndex;
   if (newIdx < 0 || newIdx >= flatList.length) return originalColumn;
-  const entry = flatList[newIdx]!;
-  return columns[entry.columnIndex] ?? originalColumn;
+  return flatList[newIdx] ?? originalColumn;
 }
 
 interface WaveformSegment {
@@ -143,8 +136,10 @@ export class RenderSlice extends Slice {
       : new Set<string>();
     const originalColumnIndices = dragSlice.getOriginalColumnIndices();
 
-    const gameplayFlatList = computeGameplayFlatList(columns);
-    const soundFlatList = computeSoundFlatList(columns);
+    const gameplayAnchor = columns.find((c) => c.affinity === "gameplay");
+    const soundAnchor = columns.find((c) => c.affinity === "sound");
+    const gameplayFlatList = gameplayAnchor ? buildFlatList(columns, gameplayAnchor) : [];
+    const soundFlatList = soundAnchor ? buildFlatList(columns, soundAnchor) : [];
 
     // --- Column backgrounds (scroll layer) ---
     perf.measure("computeSpecs:misc", () => {
@@ -241,7 +236,6 @@ export class RenderSlice extends Slice {
               originalColumnIndices,
               deltaColumnIndex,
               gameplayFlatList,
-              columns,
             );
             specs.push({
               key: `note-ghost-${entity.id}`,
@@ -310,7 +304,6 @@ export class RenderSlice extends Slice {
                 originalColumnIndices,
                 deltaColumnIndex,
                 gameplayFlatList,
-                columns,
               );
               specs.push({
                 key: `bpm-ghost-${entity.id}`,
@@ -374,7 +367,6 @@ export class RenderSlice extends Slice {
                 originalColumnIndices,
                 deltaColumnIndex,
                 gameplayFlatList,
-                columns,
               );
               specs.push({
                 key: `ts-ghost-${entity.id}`,
@@ -454,7 +446,6 @@ export class RenderSlice extends Slice {
               originalColumnIndices,
               deltaColumnIndex,
               soundFlatList,
-              columns,
             );
             specs.push({
               key: `sound-ghost-${entity.id}`,

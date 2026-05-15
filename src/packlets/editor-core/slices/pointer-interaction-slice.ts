@@ -14,17 +14,13 @@ import { HistorySlice } from "./history-slice";
 import { TimingSlice } from "./timing-slice";
 import { DragSlice } from "./drag-slice";
 import { PlaybackSlice } from "./playback-slice";
-import { EVENT, KEYSOUND, CHART_REF } from "../components";
+import { EVENT } from "../components";
 import { Point, Rect } from "../../geometry";
 import { EraseUserAction, PlaceEntityUserAction } from "../user-actions";
 import { EditBatchBuilder } from "../edit-batch-builder";
-import {
-  computeGameplayFlatList,
-  computeSoundFlatList,
-  findGameplayFlatIndex,
-  findSoundFlatIndex,
-} from "./column-flat-list";
-import { getPulse, getNoteColumn, getSoundLane, getDragAffinity } from "../entity-accessors";
+import { buildFlatList, findFlatIndex } from "./column-flat-list";
+import type { TimelineColumn } from "../types";
+import { getPulse } from "../entity-accessors";
 
 export class PointerInteractionSlice extends Slice {
   static readonly sliceKey = "pointer-interaction";
@@ -32,6 +28,7 @@ export class PointerInteractionSlice extends Slice {
   $lastPlacedEntityInfo = atom<{ entityId: string; columnId: string } | null>(null);
 
   private lastCompatibleColumnIndex: number | null = null;
+  private dragFlatList: TimelineColumn[] = [];
 
   constructor(ctx: EditorContext) {
     super(ctx);
@@ -194,40 +191,22 @@ export class PointerInteractionSlice extends Slice {
 
       // ---------- horizontal dragging support ----------
       const columns = this.ctx.get(ColumnsSlice).$columns.get();
-      const gameplayFlatList = computeGameplayFlatList(columns);
-      const soundFlatList = computeSoundFlatList(columns);
-
-      const affinity = hitEntity ? getDragAffinity(hitEntity) : null;
-      let startColumnIndex = 0;
-      if (affinity === "gameplay") {
-        const col = getNoteColumn(hitEntity!)!;
-        startColumnIndex = findGameplayFlatIndex(gameplayFlatList, col.levelId, col.laneIndex) ?? 0;
-      } else if (affinity === "sound") {
-        const lane = getSoundLane(hitEntity!)!;
-        startColumnIndex = findSoundFlatIndex(soundFlatList, lane) ?? 0;
-      }
+      const anchorColumn = columns.find((c) => c.containsEntity?.(hitEntity!));
+      const flatList = anchorColumn ? buildFlatList(columns, anchorColumn) : [];
+      const startColumnIndex = anchorColumn ? (findFlatIndex(flatList, anchorColumn.id) ?? 0) : 0;
 
       const originalColumnIndices = new Map<string, number>();
-      if (affinity) {
-        for (const entityId of dragSelection) {
-          const entity = em.get(entityId);
-          if (!entity) continue;
-          if (affinity === "gameplay") {
-            const col = getNoteColumn(entity);
-            if (col) {
-              const idx = findGameplayFlatIndex(gameplayFlatList, col.levelId, col.laneIndex);
-              if (idx !== undefined) originalColumnIndices.set(entityId, idx);
-            }
-          } else if (affinity === "sound") {
-            const lane = getSoundLane(entity);
-            if (lane !== null) {
-              const idx = findSoundFlatIndex(soundFlatList, lane);
-              if (idx !== undefined) originalColumnIndices.set(entityId, idx);
-            }
-          }
+      for (const entityId of dragSelection) {
+        const entity = em.get(entityId);
+        if (!entity) continue;
+        const col = flatList.find((c) => c.containsEntity?.(entity));
+        if (col) {
+          const idx = findFlatIndex(flatList, col.id);
+          if (idx !== undefined) originalColumnIndices.set(entityId, idx);
         }
       }
 
+      this.dragFlatList = flatList;
       this.lastCompatibleColumnIndex = startColumnIndex;
 
       this.ctx.get(DragSlice).startDrag({
@@ -238,7 +217,6 @@ export class PointerInteractionSlice extends Slice {
         viewportX: point.x,
         originalColumnIndices,
         startColumnIndex,
-        affinity,
       });
     } else {
       const colIndex = this.getColumnIndexFromViewportX(point.x);
@@ -259,32 +237,17 @@ export class PointerInteractionSlice extends Slice {
 
       let currentColumnIndex: number | undefined;
       let maxColumnIndex: number | undefined;
-      const affinity = dragSlice.getAffinity()!;
       const columns = this.ctx.get(ColumnsSlice).$columns.get();
       const colIdx = this.getColumnIndexFromViewportX(viewportX);
       const targetCol = columns[colIdx];
+      const flatList = this.dragFlatList;
 
-      if (affinity === "gameplay") {
-        const flatList = computeGameplayFlatList(columns);
+      if (flatList.length > 0) {
         maxColumnIndex = flatList.length - 1;
-        if (targetCol && targetCol.levelId !== undefined && targetCol.laneIndex !== undefined) {
-          const idx = findGameplayFlatIndex(flatList, targetCol.levelId, targetCol.laneIndex);
-          if (idx !== undefined) {
-            currentColumnIndex = idx;
-            this.lastCompatibleColumnIndex = idx;
-          }
-        } else if (this.lastCompatibleColumnIndex !== null) {
-          currentColumnIndex = this.lastCompatibleColumnIndex;
-        }
-      } else if (affinity === "sound") {
-        const flatList = computeSoundFlatList(columns);
-        maxColumnIndex = flatList.length - 1;
-        if (targetCol && targetCol.soundLane !== undefined) {
-          const idx = findSoundFlatIndex(flatList, targetCol.soundLane);
-          if (idx !== undefined) {
-            currentColumnIndex = idx;
-            this.lastCompatibleColumnIndex = idx;
-          }
+        const idx = findFlatIndex(flatList, targetCol?.id ?? "");
+        if (idx !== undefined) {
+          currentColumnIndex = idx;
+          this.lastCompatibleColumnIndex = idx;
         } else if (this.lastCompatibleColumnIndex !== null) {
           currentColumnIndex = this.lastCompatibleColumnIndex;
         }
@@ -318,55 +281,23 @@ export class PointerInteractionSlice extends Slice {
     const wasDragging = dragSlice.isDragging();
     const deltaColumnIndex = dragSlice.getDeltaColumnIndex();
     const originalColumnIndices = dragSlice.getOriginalColumnIndices();
-    const affinity = dragSlice.getAffinity();
+    const flatList = this.dragFlatList;
     dragSlice.endDrag();
+    this.dragFlatList = [];
 
     if (wasDragging && (delta !== 0 || deltaColumnIndex !== 0)) {
       const em = this.ctx.get(ProjectSlice).entityManager;
-      const columns = this.ctx.get(ColumnsSlice).$columns.get();
       const batch = new EditBatchBuilder(em);
 
       for (const [entityId, originalPulse] of originalPulses) {
-        if (!em.get(entityId)) continue;
+        const entity = em.get(entityId);
+        if (!entity) continue;
         batch.setPulse(entityId, originalPulse + delta);
 
         if (deltaColumnIndex !== 0 && originalColumnIndices.has(entityId)) {
-          const entity = em.get(entityId)!;
           const newIndex = originalColumnIndices.get(entityId)! + deltaColumnIndex;
-          if (affinity === "gameplay") {
-            const flatList = computeGameplayFlatList(columns);
-            if (newIndex >= 0 && newIndex < flatList.length) {
-              const entry = flatList[newIndex]!;
-              batch.setNoteColumn(entityId, entry.levelId, entry.laneIndex);
-            }
-          } else if (affinity === "sound") {
-            const flatList = computeSoundFlatList(columns);
-            if (newIndex >= 0 && newIndex < flatList.length) {
-              const entry = flatList[newIndex]!;
-              const oldSoundLane = getSoundLane(entity)!;
-              batch.setSoundLane(entityId, entry.soundLane);
-
-              if (oldSoundLane !== entry.soundLane) {
-                const oldPulse = getPulse(entity)!;
-                const chartRef = entity.components[CHART_REF.key] as
-                  | { chartId: string }
-                  | undefined;
-                if (chartRef) {
-                  for (const noteEntity of em.entitiesWithComponent(KEYSOUND)) {
-                    const ks = noteEntity.components[KEYSOUND.key] as {
-                      soundLane: number;
-                    };
-                    if (ks.soundLane !== oldSoundLane) continue;
-                    if (getPulse(noteEntity) !== oldPulse) continue;
-                    const nr = noteEntity.components[CHART_REF.key] as
-                      | { chartId: string }
-                      | undefined;
-                    if (nr?.chartId !== chartRef.chartId) continue;
-                    batch.setKeysoundLane(noteEntity.id, entry.soundLane);
-                  }
-                }
-              }
-            }
+          if (newIndex >= 0 && newIndex < flatList.length) {
+            flatList[newIndex]!.moveEntityTo?.(batch, em, entity);
           }
         }
       }
