@@ -4,6 +4,7 @@ interface WaveformRendererData {
   peak: Float32Array;
   rms: Float32Array;
   color: string;
+  width: number;
 }
 
 export function createWaveformRenderer(): (data: unknown) => RenderHandle<WaveformRendererData> {
@@ -23,7 +24,13 @@ export function createWaveformRenderer(): (data: unknown) => RenderHandle<Wavefo
       dom: canvas,
       update(newData: unknown) {
         const nd = newData as WaveformRendererData;
-        if (nd.peak === last.peak && nd.rms === last.rms && nd.color === last.color) return;
+        if (
+          nd.peak === last.peak &&
+          nd.rms === last.rms &&
+          nd.color === last.color &&
+          nd.width === last.width
+        )
+          return;
         last = nd;
         drawWaveform(canvas, nd);
       },
@@ -32,12 +39,10 @@ export function createWaveformRenderer(): (data: unknown) => RenderHandle<Wavefo
 }
 
 function drawWaveform(canvas: HTMLCanvasElement, data: WaveformRendererData): void {
-  const { peak, rms, color } = data;
+  const { peak, rms, color, width } = data;
   const rpLength = peak.length;
 
   const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  const width = rect.width || canvas.offsetWidth || 100;
   canvas.width = width * dpr;
   canvas.height = rpLength * dpr;
 

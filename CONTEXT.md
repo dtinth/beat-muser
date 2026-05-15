@@ -135,6 +135,43 @@ The 5px drag threshold uses Euclidean distance (sqrt(dx² + dy²)) to enter drag
 **Commit on pointer up**:
 When dragging commits, each entity's pulse is updated via {@link EditBatchBuilder.setPulse}. For horizontal moves, the target column's `moveEntityTo` closure is called, which applies column-specific edits: notes get new `NOTE.lane` + `LEVEL_REF.levelId`, sound events get new `SOUND_EVENT.soundLane` and trigger a **Keysound cascade** to update any `KEYSOUND` references at the same pulse. The `{@link PointerInteractionSlice}` delegates both pulse and column mutations to the batch builder without branching on column type.
 
+## Resolved design — Clipboard (copy/paste/cut)
+
+**Clipboard entry**: A serializable JSON object stored via the browser Clipboard API with `text/plain` MIME type. Discriminated by a `$schema` field; paste silently no-ops if absent.
+
+```json
+{
+  "$schema": "https://beat-muser.pages.dev/schemas/beat-muser-clipboard.schema.json",
+  "e": [
+    {
+      "EVENT": { "y": 480, "chartId": "abc" },
+      "NOTE": { "lane": 2 },
+      "LEVEL_REF": { "levelId": "beat-7k" }
+    }
+  ]
+}
+```
+
+- `e` is an array of **component maps** (the entity's `components` record). No `id` or `version` — those are generated fresh via `uuidv7()` on paste.
+- Component fields like `chartRef.chartId` and `levelRef.levelId` are preserved as-is from the source. Column validation (see **Column mismatch**) determines whether the entity can be pasted into the target chart — these IDs are not rewritten.
+- All selectable entity types (notes, sound events, BPM changes, time signatures) are copyable.
+
+**Paste positioning**: The earliest entity in the clipboard (by `EVENT.y`) anchors to the current **cursor pulse**. All other entities preserve their relative pulse offset.
+
+**Column mismatch**: Entities whose column (lane/sound lane) doesn't exist in the target chart are silently skipped. Others paste normally.
+
+**Post-paste selection**: All newly pasted entities are selected.
+
+**Cut**: Copy to clipboard then delete the selection via the existing `DeleteUserAction`. Single undo step.
+
+**Undo**: One paste = one undo step. Copied entities get new UUIDs; the `PasteEntitiesUserAction` stores them for undo (undo deletes, redo re-inserts).
+
+**Keyboard shortcuts**: `$mod+C` (copy), `$mod+X` (cut), `$mod+V` (paste). Copy is read-only (no undo entry).
+
+**Architecture**: A `{@link ClipperSlice}` in editor-core holds serialization/deserialization and Clipboard API interaction. `EditorController` exposes thin wrappers (`copySelection()`, `paste()`, `cutSelection()`). Commands registered in `project-view` call these methods.
+
+**Copy during playback**: Allowed — read-only, no special restrictions. Cut and paste during playback: allowed. Mutating the project (cut/paste/delete) is permitted during playback with no additional restrictions beyond those applied to all editing operations.
+
 ## Flagged ambiguities
 
 - "Mode" was used ambiguously to mean both game mode and tool mode (select/pencil/erase/pan). Resolved: "game mode" always refers to lane layouts; "tool" refers to the active editor tool.

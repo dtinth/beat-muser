@@ -176,6 +176,18 @@ export class EditorTester {
     this.instance.deleteSelection();
   }
 
+  async copySelection() {
+    await this.instance.copySelection();
+  }
+
+  async paste() {
+    await this.instance.paste();
+  }
+
+  async cutSelection() {
+    await this.instance.cutSelection();
+  }
+
   undo() {
     this.instance.undo();
   }

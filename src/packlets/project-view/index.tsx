@@ -859,6 +859,24 @@ export function ProjectViewPage() {
       execute: () => controller.deleteSelection(),
     });
     commands.add({
+      id: "copy",
+      title: "Copy",
+      shortcut: "$mod+KeyC",
+      execute: () => void controller.copySelection(),
+    });
+    commands.add({
+      id: "cut",
+      title: "Cut",
+      shortcut: "$mod+KeyX",
+      execute: () => void controller.cutSelection(),
+    });
+    commands.add({
+      id: "paste",
+      title: "Paste",
+      shortcut: "$mod+KeyV",
+      execute: () => void controller.paste(),
+    });
+    commands.add({
       id: "undo",
       title: "Undo",
       shortcut: "$mod+KeyZ",

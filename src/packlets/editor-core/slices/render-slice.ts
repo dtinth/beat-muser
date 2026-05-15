@@ -66,6 +66,9 @@ export class RenderSlice extends Slice {
 
   $waveformSlices!: ReadableAtom<WaveformSegment[]>;
 
+  private _lastWaveformFingerprint = "";
+  private _cachedWaveformSlices: WaveformSegment[] = [];
+
   constructor(ctx: EditorContext) {
     super(ctx);
     ctx.get(ProjectSlice).entityManager.$mutationVersion.subscribe(() => {
@@ -485,6 +488,7 @@ export class RenderSlice extends Slice {
             peak,
             rms,
             color: segment.color,
+            width: segment.width,
           },
           zIndex: 1,
         });
@@ -615,18 +619,31 @@ export class RenderSlice extends Slice {
     const viewport = this.ctx.get(ViewportSlice);
     const waveformSlice = this.ctx.get(WaveformSlice);
     const columnsSlice = this.ctx.get(ColumnsSlice);
-    const timing = this.ctx.get(TimingSlice);
     const entityManager = this.ctx.get(ProjectSlice).entityManager;
 
     const selectedChartId = chartSlice.$selectedChartId.get();
     if (!selectedChartId) return [];
 
     const scaleY = viewport.getScaleY();
-    const trackHeight = viewport.getTrackHeight();
     const size = chartSlice.getChartSize();
-    const columns = columnsSlice.$columns.get();
     const waveformMap = waveformSlice.$waveformData.get();
+
+    let fp = `${selectedChartId}|${scaleY}|${size}|${waveformMap.size}`;
+    for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
+      const e = entityManager.getComponent(entity, EVENT);
+      const se = entityManager.getComponent(entity, SOUND_EVENT);
+      const cr = entityManager.getComponent(entity, CHART_REF);
+      if (!e || !se || !cr || cr.chartId !== selectedChartId) continue;
+      fp += `|${entity.id}:${e.y}:${se.soundLane}:${se.soundChannelId}`;
+    }
+
+    if (fp === this._lastWaveformFingerprint) return this._cachedWaveformSlices;
+    this._lastWaveformFingerprint = fp;
+
+    const timing = this.ctx.get(TimingSlice);
     const timingEngine = timing.getTimingEngine();
+    const trackHeight = viewport.getTrackHeight();
+    const columns = columnsSlice.$columns.get();
 
     const channelDurations = new Map<string, { durationSec: number }>();
     const soundEventInputs: SoundEventInput[] = [];
@@ -752,6 +769,8 @@ export class RenderSlice extends Slice {
       }
     }
 
+    this._lastWaveformFingerprint = fp;
+    this._cachedWaveformSlices = slices;
     return slices;
   }
 }

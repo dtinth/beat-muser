@@ -35,6 +35,7 @@ export * from "./slices/waveform-slice";
 export * from "./slices/playback-slice";
 export * from "./slices/view-command-slice";
 export * from "./slices/editor-command-slice";
+export * from "./slices/clipper-slice";
 export * from "./waveform-slicer";
 export * from "./waveform-segments";
 export * from "./create-playback";
