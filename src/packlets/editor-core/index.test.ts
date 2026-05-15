@@ -24,6 +24,8 @@ import {
   ViewportSlice,
   ColumnsSlice,
   HistorySlice,
+  ClipperSlice,
+  CLIPBOARD_SCHEMA,
 } from "./index";
 import { Rect } from "../geometry";
 import type { Entity } from "../entity-manager";
@@ -1801,6 +1803,185 @@ describe("EditorController", () => {
         const label = `segment at y=${prev.y.toFixed(1)} h=${prev.rpLength.toFixed(1)} → next at y=${curr.y.toFixed(1)}`;
         expect(Math.abs(gap), label).toBeLessThan(1);
       }
+    });
+  });
+
+  describe("clipboard", () => {
+    test("copy serializes selected entities into clipboard format", () => {
+      let bpmEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmEntity = c.bpmChange(120, 140);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmEntity!.id)));
+      editor.selection.shouldContain(bpmEntity!.id);
+
+      const clipper = editor.instance.ctx.get(ClipperSlice);
+      const entry = clipper.getClipboardEntry();
+      expect(entry).not.toBeNull();
+      expect(entry!.$schema).toBe(CLIPBOARD_SCHEMA);
+      expect(entry!.e).toHaveLength(1);
+      expect(entry!.e[0]).toHaveProperty("event");
+      expect(entry!.e[0]).toHaveProperty("bpmChange");
+      expect(entry!.e[0]).toHaveProperty("chartRef");
+    });
+
+    test("paste creates entities at cursor pulse with relative offsets preserved", () => {
+      let bpmA: Entity;
+      let bpmB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmA = c.bpmChange(120, 140);
+                bpmB = c.bpmChange(360, 180);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmA!.id)));
+      editor.pointerDown(Rect.center(editor.eventRect(bpmB!.id)), { shiftKey: true });
+      editor.selection.shouldContain(bpmA!.id);
+      editor.selection.shouldContain(bpmB!.id);
+
+      const clipper = editor.instance.ctx.get(ClipperSlice);
+      const entry = clipper.getClipboardEntry();
+      expect(entry).not.toBeNull();
+
+      editor.instance.$cursorPulse.set(600);
+      clipper.pasteFromEntry(entry!);
+
+      // Two new entities should be created at pulses 600 and 840 (offset 480 from 120)
+      const em = editor.instance.getEntityManager();
+      const allBpmEvents = em
+        .entitiesWithComponent(BPM_CHANGE)
+        .filter((e) => em.getComponent(e, EVENT)!.y >= 600);
+      expect(allBpmEvents).toHaveLength(2);
+
+      const pulses = allBpmEvents.map((e) => em.getComponent(e, EVENT)!.y).sort((a, b) => a - b);
+      expect(pulses[0]).toBe(600);
+      expect(pulses[1]).toBe(840);
+
+      // Pasted entities should be selected
+      expect(editor.instance.ctx.get(SelectionSlice).$selection.get().size).toBe(2);
+    });
+
+    test("paste skips entities whose column does not exist in target chart", () => {
+      let level5kId = "";
+      let chartId = "";
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            chartId = chart.id;
+            const level7k = p.addLevel(chart.id, "7K", "beat-7k");
+            const level5k = p.addLevel(chart.id, "5K", "beat-5k");
+            level5kId = level5k.id;
+            p.addChart(
+              "Hard",
+              (c) => {
+                c.note(240, 6, level7k.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      // Manually build a clipboard entry with notes on lanes 1 (valid) and 6 (invalid)
+      const entry = {
+        $schema: CLIPBOARD_SCHEMA,
+        e: [
+          {
+            event: { y: 120 },
+            note: { lane: 1 },
+            levelRef: { levelId: level5kId },
+            chartRef: { chartId: chartId },
+          },
+          {
+            event: { y: 240 },
+            note: { lane: 6 },
+            levelRef: { levelId: level5kId },
+            chartRef: { chartId: chartId },
+          },
+        ],
+      };
+
+      editor.instance.$cursorPulse.set(600);
+      const clipper = editor.instance.ctx.get(ClipperSlice);
+      clipper.pasteFromEntry(entry);
+
+      const em = editor.instance.getEntityManager();
+      const newNotes = em
+        .entitiesWithComponent(NOTE)
+        .filter((e) => em.getComponent(e, EVENT)!.y >= 600);
+      // Only lane 1 note should be pasted (beat-5k has lanes 0-4, lane 6 is out of range)
+      expect(newNotes).toHaveLength(1);
+    });
+
+    test("cut copies selection to clipboard and deletes entities in one undo step", async () => {
+      let bpmEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmEntity = c.bpmChange(120, 140);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(bpmEntity!.id)));
+      editor.selection.shouldContain(bpmEntity!.id);
+
+      const clipper = editor.instance.ctx.get(ClipperSlice);
+
+      // Save clipboard entry before cut (selection still intact)
+      const entry = clipper.getClipboardEntry();
+      expect(entry).not.toBeNull();
+      expect(entry!.e).toHaveLength(1);
+
+      // Verify cut is exactly one undo step
+      const undoCountBefore = editor.instance.ctx.get(HistorySlice).$history.get().undo.length;
+      await clipper.cutSelection();
+      const undoCountAfter = editor.instance.ctx.get(HistorySlice).$history.get().undo.length;
+      expect(undoCountAfter).toBe(undoCountBefore + 1);
+
+      // Entity should be deleted
+      const em = editor.instance.getEntityManager();
+      const deleted = em.get(bpmEntity!.id);
+      expect(deleted).toBeDefined();
+      expect(Object.keys(deleted!.components)).toHaveLength(0);
+
+      // Undo should restore the original entity (single undo step)
+      editor.undo();
+      const restored = em.get(bpmEntity!.id);
+      expect(restored).toBeDefined();
+      expect(Object.keys(restored!.components)).toEqual(["event", "bpmChange", "chartRef"]);
+      editor.selection.shouldContain(bpmEntity!.id);
+
+      // Paste should work independently using the saved entry
+      editor.instance.$cursorPulse.set(600);
+      clipper.pasteFromEntry(entry!);
+      const pasted = em
+        .entitiesWithComponent(BPM_CHANGE)
+        .filter((e) => em.getComponent(e, EVENT)!.y === 600);
+      expect(pasted).toHaveLength(1);
     });
   });
 });

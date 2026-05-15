@@ -319,3 +319,32 @@ export class SetMetadataUserAction implements UserAction {
     this.ctx.get(ProjectSlice).$metadata.set(structuredClone(this.oldMetadata));
   }
 }
+
+export class PasteEntitiesUserAction implements UserAction {
+  title = "Paste entities";
+  private ctx: EditorContext;
+  private entities: Entity[];
+  private previousSelection: Set<string>;
+
+  constructor(ctx: EditorContext, entities: Entity[], previousSelection: Set<string>) {
+    this.ctx = ctx;
+    this.entities = entities;
+    this.previousSelection = previousSelection;
+  }
+
+  do(): void {
+    const em = this.ctx.get(ProjectSlice).entityManager;
+    for (const entity of this.entities) {
+      em.insert(entity);
+    }
+    this.ctx.get(SelectionSlice).$selection.set(new Set(this.entities.map((e) => e.id)));
+  }
+
+  undo(): void {
+    const em = this.ctx.get(ProjectSlice).entityManager;
+    for (const entity of this.entities) {
+      em.delete(entity.id);
+    }
+    this.ctx.get(SelectionSlice).$selection.set(new Set(this.previousSelection));
+  }
+}

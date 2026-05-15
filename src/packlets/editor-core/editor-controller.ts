@@ -40,6 +40,7 @@ import { PointerInteractionSlice } from "./slices/pointer-interaction-slice";
 import { DragSlice } from "./slices/drag-slice";
 import { ViewCommandSlice } from "./slices/view-command-slice";
 import { EditorCommandSlice } from "./slices/editor-command-slice";
+import { ClipperSlice } from "./slices/clipper-slice";
 import { SoundChannelSlice } from "./slices/sound-channel-slice";
 import { WaveformSlice } from "./slices/waveform-slice";
 import { PlaybackSlice } from "./slices/playback-slice";
@@ -160,6 +161,7 @@ export class EditorController {
     this.ctx.register(PointerInteractionSlice);
     this.ctx.register(ViewCommandSlice);
     this.ctx.register(EditorCommandSlice);
+    this.ctx.register(ClipperSlice);
 
     this.ctx.get(ViewportSlice).onViewportChanged(() => {
       if (this.playback.$transportState.get() !== "playing") {
@@ -366,6 +368,18 @@ export class EditorController {
 
   deleteSelection(): void {
     this.ctx.get(EditorCommandSlice).deleteSelection();
+  }
+
+  async copySelection(): Promise<void> {
+    await this.ctx.get(ClipperSlice).copySelection();
+  }
+
+  async paste(): Promise<void> {
+    await this.ctx.get(ClipperSlice).paste();
+  }
+
+  async cutSelection(): Promise<void> {
+    await this.ctx.get(ClipperSlice).cutSelection();
   }
 
   undo(): void {
