@@ -39,7 +39,7 @@
 
 import { useEffect, useRef } from "react";
 import { perf } from "../perf";
-import type { Point } from "../geometry";
+import type { Dimension, Point, Rect } from "../geometry";
 import { RenderObjectReconciler } from "./reconciler";
 
 // ---------------------------------------------------------------------------
@@ -68,12 +68,8 @@ export type Renderer<T = unknown> = (data: T) => RenderHandle<T>;
  * `key` must be unique across all objects returned by `getVisibleObjects()`.
  * The `data` field is passed to the renderer's `update` method.
  */
-export interface RenderObject {
+export interface RenderObject extends Rect {
   key: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
   renderer: Renderer;
   data: unknown;
   /** Optional test ID applied as `data-testid` for debugging/testing. */
@@ -103,8 +99,8 @@ export interface RenderObject {
  * scroll state and methods for coordinate conversion and refresh scheduling.
  */
 export interface ScrollableCanvasContext {
-  viewportToContent(x: number, y: number): { x: number; y: number };
-  contentToViewport(x: number, y: number): { x: number; y: number };
+  viewportToContent(x: number, y: number): Point;
+  contentToViewport(x: number, y: number): Point;
   refresh(): void;
   setScroll(point: Point): void;
   readonly scrollLeft: number;
@@ -118,7 +114,7 @@ export interface ScrollableCanvasContext {
  * events. Created by a factory function passed as the `behavior` prop.
  */
 export interface ScrollableCanvasBehavior {
-  getContentSize(): { width: number; height: number };
+  getContentSize(): Dimension;
   getVisibleObjects(): RenderObject[];
   onConnected?(): void;
   onScroll?(
@@ -127,7 +123,7 @@ export interface ScrollableCanvasBehavior {
     viewportWidth: number,
     viewportHeight: number,
   ): void;
-  onPointerEvent?(event: PointerEvent, contentX: number, contentY: number): void;
+  onPointerEvent?(event: PointerEvent, contentPoint: Point): void;
   [Symbol.dispose]?: () => void;
 }
 
@@ -334,7 +330,7 @@ function mountScrollableCanvas(
     const viewportY = e.clientY - rect.top;
     const contentX = viewportX + container.scrollLeft;
     const contentY = viewportY + container.scrollTop;
-    behaviorInstance.onPointerEvent?.(e, contentX, contentY);
+    behaviorInstance.onPointerEvent?.(e, { x: contentX, y: contentY });
   }
 
   container.addEventListener("scroll", handleScroll, { passive: true });

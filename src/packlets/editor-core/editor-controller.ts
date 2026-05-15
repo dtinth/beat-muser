@@ -336,8 +336,8 @@ export class EditorController {
     this.pointer.handlePointerDown(point, shiftKey);
   }
 
-  handlePointerMove(viewportX: number, viewportY: number): void {
-    this.pointer.handlePointerMove(viewportX, viewportY);
+  handlePointerMove(point: Point): void {
+    this.pointer.handlePointerMove(point);
   }
 
   handlePointerUp(): void {

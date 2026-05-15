@@ -45,14 +45,12 @@ export class PointerInteractionSlice extends Slice {
     for (const spec of specs) {
       if (!spec.entityId) continue;
 
-      const hitRect = Rect.expand(
-        { x: spec.x, y: spec.y, width: spec.width, height: spec.height },
-        HIT_TOLERANCE,
-      );
-      if (!Rect.contains(hitRect, { x: contentX, y: contentY })) continue;
+      const hitRect = Rect.expand(spec, HIT_TOLERANCE);
+      const contentPoint = { x: contentX, y: contentY };
+      if (!Rect.contains(hitRect, contentPoint)) continue;
 
-      const center = Rect.center({ x: spec.x, y: spec.y, width: spec.width, height: spec.height });
-      const distance = Point.distance({ x: contentX, y: contentY }, center);
+      const center = Rect.center(spec);
+      const distance = Point.distance(contentPoint, center);
 
       if (distance < bestDistance) {
         bestDistance = distance;
@@ -201,24 +199,24 @@ export class PointerInteractionSlice extends Slice {
     }
   }
 
-  handlePointerMove(viewportX: number, viewportY: number): void {
+  handlePointerMove(point: Point): void {
     const dragSlice = this.ctx.get(DragSlice);
     const playbackSlice = this.ctx.get(PlaybackSlice);
 
     if (dragSlice.isActive()) {
-      const currentPulse = this.snapToGrid(this.computePulseFromViewportY(viewportY));
-      dragSlice.updateDrag(viewportY, currentPulse);
+      const currentPulse = this.snapToGrid(this.computePulseFromViewportY(point.y));
+      dragSlice.updateDrag(point.y, currentPulse);
       this.ctx.get(RenderSlice).requestRerender();
     } else if (this.ctx.get(BoxSelectionSlice).isActive()) {
       this.ctx
         .get(BoxSelectionSlice)
         .update(
-          this.getColumnIndexFromViewportX(viewportX),
-          this.computePulseFromViewportY(viewportY),
+          this.getColumnIndexFromViewportX(point.x),
+          this.computePulseFromViewportY(point.y),
         );
     }
     if (playbackSlice.$transportState.get() === "playing") return;
-    this.ctx.get(CursorSlice).$cursorViewportPos.set({ x: viewportX, y: viewportY });
+    this.ctx.get(CursorSlice).$cursorViewportPos.set(point);
     this.recomputeCursorPulse();
   }
 

@@ -4,7 +4,7 @@
  * Shared type definitions and constants for the editor core packlet.
  */
 
-import type { Point } from "../geometry";
+import type { Point, Rect } from "../geometry";
 import type { Entity } from "../entity-manager";
 import type { Playback } from "../playback-contract";
 
@@ -36,13 +36,9 @@ export interface LevelInfo {
   visible: boolean;
 }
 
-export interface TimelineRenderSpec {
+export interface TimelineRenderSpec extends Rect {
   key: string;
   type: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
   data: Record<string, unknown>;
   testId?: string;
   layer?: "scroll" | "sticky";

@@ -293,11 +293,11 @@ export function createTimelineBehaviorFactory(
         controller.setScroll({ x: scrollLeft, y: scrollTop });
       },
 
-      onPointerEvent(event, contentX, contentY) {
-        const viewportX = contentX - ctx.scrollLeft;
-        const viewportY = contentY - ctx.scrollTop;
+      onPointerEvent(event, contentPoint) {
+        const viewportX = contentPoint.x - ctx.scrollLeft;
+        const viewportY = contentPoint.y - ctx.scrollTop;
         if (event.type === "pointermove") {
-          controller.handlePointerMove(viewportX, viewportY);
+          controller.handlePointerMove({ x: viewportX, y: viewportY });
         }
         if (event.type === "pointerdown") {
           controller.handlePointerDown({ x: viewportX, y: viewportY }, event.shiftKey);
