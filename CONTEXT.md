@@ -115,16 +115,16 @@ A speed multiplier applied to playback. At 1.0x, playback time and context time 
 When dragging events on the timeline, the {@link DragSlice} handles vertical (pulse) movement. The horizontal (column) component allows entities to move between gameplay lanes and sound lanes. Key design points:
 
 **Column flat list**:
-An intermediate mapping of all gameplay columns (level+lane pairs) into a flat indexed list, used to compute relative horizontal offsets during drag. Sound lane columns form their own flat list by sound lane index. Computed from visible levels and their game mode layouts. Only gameplay and sound columns participate; timing columns and spacers are excluded.
+A filtered list of {@link TimelineColumn} objects sharing the same **Drag affinity** as the anchor column. Computed at drag start via {@link buildFlatList} by filtering columns whose `affinity` property matches the anchor column's. Only columns with `affinity` set (`"gameplay"` or `"sound"`) participate; timing columns and spacers have no affinity and are excluded.
 
-**Anchor entity**:
-The entity the user clicks on to start a drag. Its flat-list index establishes the reference point (column index 0 in offset space). Other selected entities track their offset from the anchor.
-
-**Delta column index**:
-The horizontal offset component of a drag. Calculated as: cursor's target flat-list index — anchor entity's original flat-list index. Clamped so the entire selection's horizontal range stays within the flat list bounds. Applied as a uniform offset to all entities sharing the anchor's drag affinity. DragSlice stores this as a single integer alongside `deltaPulse`.
+**Anchor column**:
+The column the user clicked on to start a drag. Its position in the flat list establishes the reference point (column index 0 in offset space). Other selected entities track their offset from the entity's parent column index.
 
 **Drag affinity**:
-The column category of the anchor entity: `"gameplay"` (for notes) or `"sound"` (for sound events). During a multi-selection drag, only entities matching the anchor's affinity move horizontally; all other selected entities move vertically only. Timing events (BPM, time signature) have no drag affinity and never move horizontally.
+A property of {@link ColumnDefinition} (`"gameplay"` or `"sound"`) set by column providers. Used to build the flat list by filtering to same-affinity columns. Timing events (BPM, time signature) sit on columns with no affinity and never move horizontally. `{@link DragSlice}` stores `originalColumnIndices` (a `Map<entityId, columnIndex>`) but no longer stores an affinity string — horizontal movement is implicitly gated by whether `originalColumnIndices` is non-empty.
+
+**Delta column index**:
+The horizontal offset component of a drag. Calculated as: cursor's target flat-list index — anchor column's original flat-list index. Clamped so the entire selection's horizontal range stays within the flat list bounds. Applied as a uniform offset to all entities. DragSlice stores this as a single integer alongside `deltaPulse`.
 
 **Ghost rendering for horizontal drags**:
 Ghost preview during a drag shows the entity in its target column (original flat-list index + delta column index). Originals stay in place at 30% opacity; ghosts render at 50% opacity in the target column at the same Y position (optionally + vertical delta for combined moves).
@@ -133,7 +133,7 @@ Ghost preview during a drag shows the entity in its target column (original flat
 The 5px drag threshold uses Euclidean distance (sqrt(dx² + dy²)) to enter dragging mode, enabling pure horizontal lane changes without vertical movement.
 
 **Commit on pointer up**:
-When dragging commits, each entity's components are updated: notes get new `NOTE.lane` + `LEVEL_REF.levelId`, sound events get new `SOUND_EVENT.soundLane`. Additionally, if a sound event is dragged to a different sound lane, any notes with `KEYSOUND.soundLane` matching the old lane at the same pulse position are updated to the new lane index.
+When dragging commits, each entity's pulse is updated via {@link EditBatchBuilder.setPulse}. For horizontal moves, the target column's `moveEntityTo` closure is called, which applies column-specific edits: notes get new `NOTE.lane` + `LEVEL_REF.levelId`, sound events get new `SOUND_EVENT.soundLane` and trigger a **Keysound cascade** to update any `KEYSOUND` references at the same pulse. The `{@link PointerInteractionSlice}` delegates both pulse and column mutations to the batch builder without branching on column type.
 
 ## Flagged ambiguities
 

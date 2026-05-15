@@ -20,7 +20,6 @@ function startDrag(
     viewportX: undefined,
     originalColumnIndices: undefined,
     startColumnIndex: undefined,
-    affinity: undefined,
     ...overrides,
   });
 }
@@ -48,7 +47,6 @@ describe("DragSlice", () => {
       expect(slice.getOriginalPulses()).toEqual(originalPulses);
       expect(slice.getDeltaPulse()).toBe(0);
       expect(slice.getDeltaColumnIndex()).toBe(0);
-      expect(slice.getAffinity()).toBeNull();
     });
 
     test("enters dragging mode on Y movement >= 5px", () => {
@@ -67,7 +65,7 @@ describe("DragSlice", () => {
   });
 
   describe("horizontal dragging", () => {
-    test("tracks column indices and affinity", () => {
+    test("tracks column indices", () => {
       const slice = makeDragSlice();
       const originalColumnIndices = new Map([
         ["e1", 0],
@@ -84,10 +82,8 @@ describe("DragSlice", () => {
         viewportX: 300,
         originalColumnIndices,
         startColumnIndex: 0,
-        affinity: "gameplay",
       });
       expect(slice.getOriginalColumnIndices()).toEqual(originalColumnIndices);
-      expect(slice.getAffinity()).toBe("gameplay");
       expect(slice.getDeltaColumnIndex()).toBe(0);
     });
 
@@ -101,7 +97,6 @@ describe("DragSlice", () => {
         viewportX: 100,
         originalColumnIndices: new Map([["e1", 0]]),
         startColumnIndex: 0,
-        affinity: "gameplay",
       });
       // 3px right, 3px down: sqrt(18) ≈ 4.24 < 5
       updateDrag(slice, {
@@ -133,7 +128,6 @@ describe("DragSlice", () => {
         viewportX: 200,
         originalColumnIndices: new Map([["e1", 3]]),
         startColumnIndex: 3,
-        affinity: "gameplay",
       });
       updateDrag(slice, {
         viewportY: 400,
@@ -161,7 +155,6 @@ describe("DragSlice", () => {
           ["e2", 10],
         ]),
         startColumnIndex: 5,
-        affinity: "gameplay",
       });
       updateDrag(slice, {
         viewportY: 400,
@@ -189,7 +182,6 @@ describe("DragSlice", () => {
           ["e2", 5],
         ]),
         startColumnIndex: 7,
-        affinity: "gameplay",
       });
       updateDrag(slice, {
         viewportY: 400,
@@ -201,7 +193,7 @@ describe("DragSlice", () => {
       expect(slice.getDeltaColumnIndex()).toBe(-5);
     });
 
-    test("null affinity: column offset never changes", () => {
+    test("empty originalColumnIndices: column offset never changes", () => {
       const slice = makeDragSlice();
       startDrag(slice, {
         viewportY: 400,
@@ -253,7 +245,6 @@ describe("DragSlice", () => {
         viewportX: 200,
         originalColumnIndices: new Map([["e1", 0]]),
         startColumnIndex: 0,
-        affinity: "gameplay",
       });
       updateDrag(slice, {
         viewportY: 210,

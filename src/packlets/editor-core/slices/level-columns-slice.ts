@@ -7,6 +7,7 @@ import { GameModeRegistrySlice } from "./game-mode-registry-slice";
 import { EVENT, NOTE, LEVEL_REF, CHART_REF } from "../components";
 import { EntityBuilder } from "../../entity-manager";
 import type { ColumnDefinition } from "../types";
+import { getNoteColumn } from "../entity-accessors";
 
 export class LevelColumnsSlice extends Slice {
   static readonly sliceKey = "level-columns";
@@ -51,6 +52,11 @@ export class LevelColumnsSlice extends Slice {
           noteColor: lane.noteColor,
           levelId: level.id,
           laneIndex: lane.laneIndex,
+          affinity: "gameplay" as const,
+          containsEntity: (entity) => {
+            const col = getNoteColumn(entity);
+            return col?.levelId === level.id && col?.laneIndex === lane.laneIndex;
+          },
           placementHandler: (pulse) => {
             return new EntityBuilder()
               .with(EVENT, { y: pulse })
@@ -58,6 +64,9 @@ export class LevelColumnsSlice extends Slice {
               .with(LEVEL_REF, { levelId: level.id })
               .with(CHART_REF, { chartId })
               .build();
+          },
+          moveEntityTo: (batch, _em, entity) => {
+            batch.setNoteColumn(entity.id, level.id, lane.laneIndex);
           },
         });
       }

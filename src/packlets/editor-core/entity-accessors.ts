@@ -16,9 +16,3 @@ export function getSoundLane(entity: Entity): number | null {
     (entity.components[SOUND_EVENT.key] as { soundLane: number } | undefined)?.soundLane ?? null
   );
 }
-
-export function getDragAffinity(entity: Entity): "gameplay" | "sound" | null {
-  if (getNoteColumn(entity)) return "gameplay";
-  if (getSoundLane(entity) !== null) return "sound";
-  return null;
-}

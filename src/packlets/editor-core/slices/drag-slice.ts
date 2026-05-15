@@ -8,7 +8,6 @@ export interface StartDragParams {
   viewportX?: number;
   originalColumnIndices?: Map<string, number>;
   startColumnIndex?: number;
-  affinity?: "gameplay" | "sound" | null;
 }
 
 export interface UpdateDragParams {
@@ -32,7 +31,6 @@ export class DragSlice extends Slice {
     startColumnIndex: 0,
     deltaPulse: 0,
     deltaColumnIndex: 0,
-    affinity: null as "gameplay" | "sound" | null,
   };
 
   startDrag(params: StartDragParams): void {
@@ -46,7 +44,6 @@ export class DragSlice extends Slice {
       startColumnIndex: params.startColumnIndex ?? 0,
       deltaPulse: 0,
       deltaColumnIndex: 0,
-      affinity: params.affinity ?? null,
     };
   }
 
@@ -68,7 +65,7 @@ export class DragSlice extends Slice {
       }
       this.state.deltaPulse = Math.max(-minOriginalPulse, rawDelta);
 
-      if (this.state.affinity && params.columnIndex !== undefined) {
+      if (this.state.originalColumnIndices.size > 0 && params.columnIndex !== undefined) {
         const rawColumnDelta = params.columnIndex - this.state.startColumnIndex;
         let minOriginalColumnIndex = Infinity;
         let maxOriginalColumnIndex = -Infinity;
@@ -121,10 +118,6 @@ export class DragSlice extends Slice {
     return this.state.originalColumnIndices;
   }
 
-  getAffinity(): "gameplay" | "sound" | null {
-    return this.state.affinity;
-  }
-
   endDrag(): number | null {
     if (this.state.mode !== "dragging") {
       this.reset();
@@ -150,7 +143,6 @@ export class DragSlice extends Slice {
       startColumnIndex: 0,
       deltaPulse: 0,
       deltaColumnIndex: 0,
-      affinity: null,
     };
   }
 }
