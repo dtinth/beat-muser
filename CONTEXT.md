@@ -4,6 +4,42 @@ A rhythm game notechart/beatmap editor web app.
 
 ## Language
 
+**Extension**:
+A self-contained package that extends the editor with new game modes, entity components, commands, exporters, and timeline decorations. All extensions implement the `Extension` interface: a `manifest` and a `connect(host)` function. Built-in extensions (like beat mode) register game modes synchronously; downloaded extensions wrap a Web Worker behind the same API. Installed at the editor level.
+_Avoid_: plugin, addon, mod
+
+**Extension manifest** (`extension.json`):
+A JSON file declaring the extension's `id`, `name`, `version`, contributed `gameModes`, `components`, `commands`, and `exporters`. Purely declarative — no executable code. The single source of truth for what an extension contributes.
+_Avoid_: plugin manifest, config file
+
+**Extension worker** (`worker.js`):
+A Web Worker script that contains the extension's runtime logic. Receives entity data on mutation and returns decoration specs. Handles command execution via message passing. Communicates with the editor via JSON-RPC 2.0 over `postMessage` for request-response operations (e.g., reading entities, exporting files).
+
+**Extension host**:
+The editor-side API surface that extensions interact with via `connect(host)`. Provides methods like `registerGameMode()`. Created by `EditorController.createExtensionHost()` — the controller is extension-agnostic and never calls it internally.
+
+**Extension manager**:
+An orchestrator (`src/packlets/extensions/`) that manages extension lifecycle (register, unregister). Created in the app layer (`project-view`), receives the `ExtensionHost` from the controller, and registers built-in and user-installed extensions.
+
+**Entity component schema**:
+A declarative schema in the extension manifest describing a custom entity component (e.g. `fingerId`, `drag`). The editor uses these schemas to drive the inspector UI, clipboard handling, and schema validation. Data is stored as-is via `additionalProperties: true` on existing component objects.
+
+**Decoration spec**:
+A render description produced by the extension worker, expressed in pulse/lane coordinates. Types: `line` (connecting two points), `fill` (colored region), `label` (text overlay). Each point specifies an **anchor mode**. The editor converts pulse/lane to pixel coordinates, handles culling, and composites decorations into the timeline.
+_Avoid_: render object, overlay (without "decoration" qualifier)
+
+**Anchor mode**:
+Controls how a decoration's pulse coordinate maps to Y position. `bottom` = bottom of the event marker aligns with the pulse (default for event markers), `center` = vertical midpoint of the event object, `grid` = the grid line center. Used by decoration specs to correctly connect visual elements.
+
+**Exporter**:
+A declarative mapping in the extension manifest from a set of game modes to a command ID. When the project is saved and contains at least one level matching any of the listed game modes, the editor triggers the mapped command. The extension worker then reads entities via RPC and writes the exported file via `exportFile`.
+_Avoid_: export plugin, save hook
+
+**Extension registry**:
+The editor-level store of installed extension metadata and worker scripts. Persisted in IndexedDB. The **Extension manager** reads from the registry on editor load to connect all registered extensions. Separate from the game mode registry — it manages the full lifecycle (install, uninstall, update).
+
+## Language
+
 **Game mode**:
 A named configuration of gameplay lanes (e.g. beat-5k, beat-7k). Defines lane count, widths, colors, and indices. Game modes are registered at runtime via the {@link GameModeRegistrySlice}; the editor core does not hardcode them.
 _Avoid_: mode, layout (without "game mode" qualifier)
@@ -12,7 +48,7 @@ _Avoid_: mode, layout (without "game mode" qualifier)
 A single lane within a game mode: its index (stored in note entities), display name, pixel width, background color, and note color.
 
 **Game mode registry**:
-The {@link GameModeRegistrySlice} that holds all registered game modes. Editor core queries it to build timeline columns. Future plugins register modes here.
+The {@link GameModeRegistrySlice} that holds all registered game modes. Editor core queries it to build timeline columns. Extensions register modes here via their manifest.
 
 **Level**:
 A playable difficulty within a chart. Each level references a game mode by identifier (e.g. "beat-7k"). Multiple levels can coexist on the same chart with different modes.
@@ -89,10 +125,22 @@ A speed multiplier applied to playback. At 1.0x, playback time and context time 
 - A **Chart** has a **Chart length** in pulses (the `size` field), displayed and edited as **Quarter notes**
 - The **Chart length** minimum is determined by the last **Event**'s pulse on that chart
 - The **Chart length** auto-extends when events exceed it, using the **Quarter note** unit for its thresholds
+- An **Extension** contributes zero or more **Game modes** via the **Game mode registry**
+- An **Extension** declares zero or more **Entity component schemas**
+- An **Extension** declares zero or more **Commands** in its manifest
+- An **Extension** declares zero or more **Exporters**, each binding a **Command** to a set of **Game modes**
+- An **Extension** calls `registerGameMode()` on the **Extension host** in its `connect()` function
+- An **Extension manager** manages the lifecycle of all **Extensions**
+- The **Extension host** is created by `EditorController.createExtensionHost()` and wired to the **Game mode registry**
+- An **Extension** spawns an **Extension worker** on editor load (worker-based extensions only)
+- The **Extension worker** receives entity data on mutation and returns **Decoration specs**
+- The **Render slice** includes cached **Decoration specs** in the visible render objects
+- The **Extension worker** calls `readEntities` and `exportFile` via JSON-RPC during command execution
+- An **Exporter** triggers its bound **Command** when the project is saved and contains a matching **Level**
 
 ## Example dialogue
 
-> **Dev:** "If a plugin registers a new game mode after the timeline is already visible, do the columns update automatically?"
+> **Dev:** "If an extension registers a new game mode after the timeline is already visible, do the columns update automatically?"
 > **Domain expert:** "Yes — the {@link LevelColumnsSlice} subscribes to the {@link GameModeRegistrySlice}'s `$modes` atom, so registering a mode triggers a column refresh."
 
 > **Dev:** "Can I create a sound channel without assigning a file?"
@@ -172,6 +220,24 @@ When dragging commits, each entity's pulse is updated via {@link EditBatchBuilde
 
 **Copy during playback**: Allowed — read-only, no special restrictions. Cut and paste during playback: allowed. Mutating the project (cut/paste/delete) is permitted during playback with no additional restrictions beyond those applied to all editing operations.
 
+## Example dialogue
+
+> **Dev:** "When the user drags a note in touch mode, does the extension worker need to be notified in real time?"
+> **Domain expert:** "No — the worker only processes entity data. The editor handles all pointer interaction natively. After the drag commits and the entity is updated, the worker is sent the new entity list and recalculates decorations."
+
+> **Dev:** "What happens if the extension worker crashes?"
+> **Domain expert:** "The editor catches the `error` event on the worker. Decorations disappear silently. Commands fail with a toast. The extension remains installed but disabled until the user reloads the editor or re-installs."
+
+> **Dev:** "Can two extensions register the same game mode ID?"
+> **Domain expert:** "The second registration overwrites the first — same as ADR 014's `registerGameMode` behavior. A warning is logged."
+
+> **Dev:** "During export, does the worker receive all entities or only matching ones?"
+> **Domain expert:** "The `readEntities` RPC method returns all entities filtered to levels whose game mode matches the exporter's declared list. The worker never sees other project data."
+
+> **Dev:** "If a project uses game mode `touch-5k` and I haven't installed the touch extension, what does the user see?"
+> **Domain expert:** "The timeline column area shows a placeholder: 'Unknown game mode `touch-5k` — install the extension to edit this level.' The grid and cursor still work; gameplay columns are just absent."
+
 ## Flagged ambiguities
 
 - "Mode" was used ambiguously to mean both game mode and tool mode (select/pencil/erase/pan). Resolved: "game mode" always refers to lane layouts; "tool" refers to the active editor tool.
+- "Plugin" was used in ADR 014 and early discussions. Resolved: use **Extension** for the full system (package + worker). "Plugin" is ambiguous with browser extensions and VS Code's "extension" convention is more widely understood.

@@ -45,7 +45,7 @@ import { SoundChannelSlice } from "./slices/sound-channel-slice";
 import { WaveformSlice } from "./slices/waveform-slice";
 import { PlaybackSlice } from "./slices/playback-slice";
 import type { GameModeLayout } from "./lane-layouts";
-import { BEAT_5K_LAYOUT, BEAT_7K_LAYOUT } from "./lane-layouts";
+import type { ExtensionHost } from "../extensions";
 import { SetMetadataUserAction } from "./user-actions";
 import type { ProjectFile, ProjectMetadata } from "../project-format";
 import { createPlayback } from "./create-playback";
@@ -148,8 +148,6 @@ export class EditorController {
     this.ctx.register(TimingSlice);
     this.ctx.register(ColumnsSlice);
     this.ctx.register(GameModeRegistrySlice);
-    this.ctx.get(GameModeRegistrySlice).registerGameMode(BEAT_5K_LAYOUT);
-    this.ctx.get(GameModeRegistrySlice).registerGameMode(BEAT_7K_LAYOUT);
     this.ctx.register(TimingColumnsSlice);
     this.ctx.register(LevelColumnsSlice);
     this.ctx.register(SoundColumnsSlice);
@@ -443,6 +441,15 @@ export class EditorController {
 
   getGameModes(): GameModeLayout[] {
     return this.ctx.get(GameModeRegistrySlice).getAllModes();
+  }
+
+  createExtensionHost(): ExtensionHost {
+    const registry = this.ctx.get(GameModeRegistrySlice);
+    return {
+      registerGameMode(layout: GameModeLayout) {
+        registry.registerGameMode(layout);
+      },
+    };
   }
 
   addSoundGroup(name?: string): string {

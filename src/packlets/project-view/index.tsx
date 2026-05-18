@@ -17,6 +17,7 @@ import { SidebarPanel } from "../sidebar-panel";
 import { perf } from "../perf";
 import { useInView } from "react-intersection-observer";
 import { ScrollableCanvas } from "../scrollable-canvas";
+import { BUILT_IN_EXTENSIONS } from "../extensions";
 import {
   EditorController,
   BPM_CHANGE,
@@ -731,7 +732,14 @@ export function ProjectViewPage() {
   const error = useRouteError() as Error | undefined;
   const { showError, showSuccess } = useToast();
 
-  const [controller] = useState(() => new EditorController({ project: loadedProject }));
+  const [controller] = useState(() => {
+    const ctrl = new EditorController({ project: loadedProject });
+    const host = ctrl.createExtensionHost();
+    for (const ext of BUILT_IN_EXTENSIONS) {
+      ext.connect(host);
+    }
+    return ctrl;
+  });
   const [modalManager] = useState(() => new ModalManager());
   const audioEngineRef = useRef<ReturnType<typeof createAudioEngine> | null>(null);
   const stopPlaybackRef = useRef<(() => void) | null>(null);

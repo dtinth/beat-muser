@@ -18,6 +18,8 @@ import {
 import type { ProjectFile } from "../project-format";
 import { type Entity, EntityBuilder, entity } from "../entity-manager";
 import { createDemoProjectFile } from "../project-store";
+import type { Extension } from "../extensions";
+import { BUILT_IN_EXTENSIONS } from "../extensions";
 
 export { entity };
 import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, NOTE, LEVEL_REF, LEVEL } from "./components";
@@ -125,9 +127,16 @@ export class EditorTester {
   constructor(options?: {
     getProjectToLoad?: () => ProjectFile;
     viewport?: { width: number; height: number };
+    extensions?: Extension[];
   }) {
     const project = options?.getProjectToLoad?.() ?? createDemoProjectFile();
     this.instance = new EditorController({ project });
+
+    const host = this.instance.createExtensionHost();
+    const extensions = options?.extensions ?? [...BUILT_IN_EXTENSIONS];
+    for (const ext of extensions) {
+      ext.connect(host);
+    }
 
     const viewportWidth = options?.viewport?.width ?? 640;
     const viewportHeight = options?.viewport?.height ?? 480;
