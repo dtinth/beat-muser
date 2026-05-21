@@ -31,7 +31,7 @@ The manifest is purely declarative. It declares what the extension contributes t
 
 ```jsonc
 {
-  "$schema": "https://beat-muser.pages.dev/schemas/extension.schema.json",
+  "$schema": "https://dtinth.github.io/beat-muser/schemas/extension.schema.json",
   "id": "com.example.touch",
   "name": "Touch Mode",
   "version": "1.0.0",

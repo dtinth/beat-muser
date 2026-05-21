@@ -189,7 +189,7 @@ When dragging commits, each entity's pulse is updated via {@link EditBatchBuilde
 
 ```json
 {
-  "$schema": "https://beat-muser.pages.dev/schemas/beat-muser-clipboard.schema.json",
+  "$schema": "https://dtinth.github.io/beat-muser/schemas/beat-muser-clipboard.schema.json",
   "e": [
     {
       "EVENT": { "y": 480, "chartId": "abc" },

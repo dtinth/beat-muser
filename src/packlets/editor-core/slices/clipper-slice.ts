@@ -15,7 +15,7 @@ export interface ClipboardEntry {
 }
 
 export const CLIPBOARD_SCHEMA =
-  "https://beat-muser.pages.dev/schemas/beat-muser-clipboard.schema.json";
+  "https://dtinth.github.io/beat-muser/schemas/beat-muser-clipboard.schema.json";
 
 export class ClipperSlice extends Slice {
   static readonly sliceKey = "clipper";

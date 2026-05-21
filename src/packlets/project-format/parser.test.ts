@@ -60,11 +60,11 @@ describe("parseProjectFile", () => {
   it("parses a project with $schema field", () => {
     const result = parseProjectFile(
       makeProject({
-        $schema: "https://beat-muser.pages.dev/schemas/beat-muser-project.schema.json",
+        $schema: "https://dtinth.github.io/beat-muser/schemas/beat-muser-project.schema.json",
       }),
     );
     expect(result.$schema).toBe(
-      "https://beat-muser.pages.dev/schemas/beat-muser-project.schema.json",
+      "https://dtinth.github.io/beat-muser/schemas/beat-muser-project.schema.json",
     );
   });
 

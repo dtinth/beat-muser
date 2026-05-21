@@ -116,7 +116,7 @@ export const ProjectMetadataSchema = Type.Object(
  * Structure:
  * ```json
  * {
- *   "$schema": "https://beat-muser.pages.dev/schemas/beat-muser-project.schema.json",
+ *   "$schema": "https://dtinth.github.io/beat-muser/schemas/beat-muser-project.schema.json",
  *   "schemaVersion": 2,
  *   "version": "01H...",
  *   "metadata": {
