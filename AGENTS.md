@@ -81,6 +81,7 @@ Event-based chart format (PPQN 240, default BPM 60) with versioned metadata, cha
 - Icon library: `lucide-react`
 - Toolbar buttons: `<Button variant="surface" size="1" color="gray">` at 32×32
 - `moduleDetection: "auto"` in `tsconfig.json` required for CSS module declarations
+- **Always include `.ts`/`.tsx` extensions in relative imports** — Node 24's native TypeScript runner requires them. Never use bare directory imports (e.g. `"../entity-manager"` → use `"../entity-manager/index.ts"`).
 
 ### Coordinate Space Naming
 

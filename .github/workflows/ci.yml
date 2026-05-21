@@ -101,6 +101,7 @@ jobs:
       - run: npx allure generate ci-reports/allure-results
       - run: node bin/generate-report-index.ts
       - run: node bin/generate-badges.ts
+      - run: tsx bin/build-schemas.ts
       - name: Generate build status badge
         run: |
           if [ "${{ needs.check.result }}" == "success" ] && [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.e2e.result }}" == "success" ]; then
