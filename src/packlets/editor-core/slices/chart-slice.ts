@@ -1,22 +1,22 @@
 import { atom } from "nanostores";
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
-import { ProjectSlice } from "./project-slice";
-import { HistorySlice } from "./history-slice";
-import { CHART, EVENT, CHART_REF } from "../components";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
+import { ProjectSlice } from "./project-slice.ts";
+import { HistorySlice } from "./history-slice.ts";
+import { CHART, EVENT, CHART_REF } from "../components.ts";
 import {
   DEFAULT_CHART_SIZE,
   PPQN,
   QUARTER_NOTE_EXTEND_SIZE,
   AUTO_EXTEND_THRESHOLD_QN,
-} from "../types";
-import { EntityBuilder } from "../../entity-manager";
-import type { Entity } from "../../entity-manager";
+} from "../types.ts";
+import { EntityBuilder } from "../../entity-manager/index.ts";
+import type { Entity } from "../../entity-manager/index.ts";
 import {
   InsertEntityUserAction,
   DeleteEntityUserAction,
   EditEntityUserAction,
-} from "../user-actions";
+} from "../user-actions.ts";
 
 export class ChartSlice extends Slice {
   static readonly sliceKey = "chart";

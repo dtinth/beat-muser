@@ -1,4 +1,4 @@
-import type { RenderHandle } from "../scrollable-canvas";
+import type { RenderHandle } from "../scrollable-canvas/index.tsx";
 
 interface WaveformRendererData {
   peak: Float32Array;

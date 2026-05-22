@@ -1,6 +1,6 @@
-import type { Playback, PlaybackEvent } from "../playback-contract";
-import type { TimingEngine } from "../timing-engine";
-import type { SoundEventInput } from "./waveform-slicer";
+import type { Playback, PlaybackEvent } from "../playback-contract/index.ts";
+import type { TimingEngine } from "../timing-engine/index.ts";
+import type { SoundEventInput } from "./waveform-slicer.ts";
 
 export interface CreatePlaybackOptions {
   soundEvents: SoundEventInput[];

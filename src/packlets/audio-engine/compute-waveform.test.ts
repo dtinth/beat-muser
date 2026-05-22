@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { computePeakAndRms } from "./compute-waveform";
+import { computePeakAndRms } from "./compute-waveform.ts";
 
 describe("computePeakAndRms", () => {
   test("silent audio produces all zeros", () => {

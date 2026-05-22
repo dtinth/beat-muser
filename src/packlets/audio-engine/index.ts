@@ -8,15 +8,15 @@
  * a {@link Playback} object (from the playback-contract packlet) and schedules
  * `AudioBufferSourceNode`s against the shared `AudioContext`.
  */
-export { computePeakAndRms } from "./compute-waveform";
-export { computeWaveformData } from "./compute-waveform-audio-buffer";
-export { createAudioEngine } from "./create-audio-engine";
-export { startAudioPlayback } from "./play-audio";
+export { computePeakAndRms } from "./compute-waveform.ts";
+export { computeWaveformData } from "./compute-waveform-audio-buffer.ts";
+export { createAudioEngine } from "./create-audio-engine.ts";
+export { startAudioPlayback } from "./play-audio.ts";
 export type {
   AudioEngineDelegate,
   AudioEngineFileSystem,
   WaveformData,
   WaveformStatus,
-} from "./types";
-export type { CreateAudioEngineOptions } from "./create-audio-engine";
-export type { AudioPlaybackOptions } from "./play-audio";
+} from "./types.ts";
+export type { CreateAudioEngineOptions } from "./create-audio-engine.ts";
+export type { AudioPlaybackOptions } from "./play-audio.ts";

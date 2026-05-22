@@ -1,13 +1,13 @@
 import { uuidv7 } from "uuidv7";
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
-import { SelectionSlice } from "./selection-slice";
-import { ProjectSlice } from "./project-slice";
-import { CursorSlice } from "./cursor-slice";
-import { HistorySlice } from "./history-slice";
-import { ColumnsSlice } from "./columns-slice";
-import { EditorCommandSlice } from "./editor-command-slice";
-import { PasteEntitiesUserAction } from "../user-actions";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
+import { SelectionSlice } from "./selection-slice.ts";
+import { ProjectSlice } from "./project-slice.ts";
+import { CursorSlice } from "./cursor-slice.ts";
+import { HistorySlice } from "./history-slice.ts";
+import { ColumnsSlice } from "./columns-slice.ts";
+import { EditorCommandSlice } from "./editor-command-slice.ts";
+import { PasteEntitiesUserAction } from "../user-actions.ts";
 
 export interface ClipboardEntry {
   $schema: string;

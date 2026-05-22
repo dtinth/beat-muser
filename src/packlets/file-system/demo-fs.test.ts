@@ -1,5 +1,5 @@
 import { test, expect } from "vite-plus/test";
-import { createFileSystemFromExample } from "./demo-fs";
+import { createFileSystemFromExample } from "./demo-fs.ts";
 
 test("lists files for demo1", async () => {
   const fs = createFileSystemFromExample("demo1");

@@ -27,9 +27,9 @@ import type {
   RenderObject,
   RenderHandle,
   Renderer,
-} from "../scrollable-canvas";
-import type { EditorController, TimelineRenderSpec } from "../editor-core";
-import { createWaveformRenderer } from "./waveform-renderer";
+} from "../scrollable-canvas/index.tsx";
+import type { EditorController, TimelineRenderSpec } from "../editor-core/index.ts";
+import { createWaveformRenderer } from "./waveform-renderer.ts";
 
 // ---------------------------------------------------------------------------
 // Renderers

@@ -1,6 +1,6 @@
 import { uuidv7 } from "uuidv7";
-import type { ProjectFile } from "../project-format";
-import type { Entity } from "../entity-manager";
+import type { ProjectFile } from "../project-format/index.ts";
+import type { Entity } from "../entity-manager/index.ts";
 
 export function createDemoProjectFile(): ProjectFile {
   const chartId = uuidv7();

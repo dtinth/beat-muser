@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "vite-plus/test";
-import { createTimingEngine } from "./index";
+import { createTimingEngine } from "./index.ts";
 
 // ---------------------------------------------------------------------------
 // getMeasureBoundaries

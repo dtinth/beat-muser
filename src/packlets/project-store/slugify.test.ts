@@ -1,5 +1,5 @@
 import { test, expect } from "vite-plus/test";
-import { slugify } from "./slugify";
+import { slugify } from "./slugify.ts";
 
 test("slugifies a simple name", () => {
   expect(slugify("My Project")).toBe("my-project");

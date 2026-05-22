@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
-import { entity } from "../entity-manager";
-import { EVENT, NOTE, LEVEL_REF, SOUND_EVENT } from "./components";
-import { getPulse, getNoteColumn, getSoundLane } from "./entity-accessors";
+import { entity } from "../entity-manager/index.ts";
+import { EVENT, NOTE, LEVEL_REF, SOUND_EVENT } from "./components.ts";
+import { getPulse, getNoteColumn, getSoundLane } from "./entity-accessors.ts";
 
 describe("entity-accessors", () => {
   test("getPulse returns event y from entity", () => {

@@ -1,7 +1,7 @@
 import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
 
 export class SnapSlice extends Slice {
   static readonly sliceKey = "snap";

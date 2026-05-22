@@ -1,6 +1,6 @@
 import { atom } from "nanostores";
-import { Slice } from "../slice";
-import type { GameModeLayout } from "../lane-layouts";
+import { Slice } from "../slice.ts";
+import type { GameModeLayout } from "../lane-layouts.ts";
 
 export class GameModeRegistrySlice extends Slice {
   static readonly sliceKey = "game-mode-registry";

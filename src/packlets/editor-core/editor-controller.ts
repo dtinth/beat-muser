@@ -7,50 +7,50 @@
 
 import { createNanoEvents } from "nanoevents";
 import type { Emitter } from "nanoevents";
-import { EntityManager } from "../entity-manager";
-import type { TimingEngine } from "../timing-engine";
-import { Point } from "../geometry";
+import { EntityManager } from "../entity-manager/index.ts";
+import type { TimingEngine } from "../timing-engine/index.ts";
+import { Point } from "../geometry/index.ts";
 import { uuidv7 } from "uuidv7";
 import {
   type EditorControllerOptions,
   type LevelInfo,
   type EditorOutboxEvents,
   type UserAction,
-} from "./types";
-import { EditorContext } from "./editor-context";
-import { SnapSlice } from "./slices/snap-slice";
-import { ZoomSlice } from "./slices/zoom-slice";
-import { ProjectSlice } from "./slices/project-slice";
-import { ChartSlice } from "./slices/chart-slice";
-import { LevelSlice } from "./slices/level-slice";
-import { ViewportSlice } from "./slices/viewport-slice";
-import { CursorSlice } from "./slices/cursor-slice";
-import { SelectionSlice } from "./slices/selection-slice";
-import { HistorySlice } from "./slices/history-slice";
-import { BoxSelectionSlice } from "./slices/box-selection-slice";
-import { ToolSlice } from "./slices/tool-slice";
-import { TimingSlice } from "./slices/timing-slice";
-import { ColumnsSlice } from "./slices/columns-slice";
-import { TimingColumnsSlice } from "./slices/timing-columns-slice";
-import { LevelColumnsSlice } from "./slices/level-columns-slice";
-import { SoundColumnsSlice } from "./slices/sound-columns-slice";
-import { GameModeRegistrySlice } from "./slices/game-mode-registry-slice";
-import { RenderSlice } from "./slices/render-slice";
-import { PointerInteractionSlice } from "./slices/pointer-interaction-slice";
-import { DragSlice } from "./slices/drag-slice";
-import { ViewCommandSlice } from "./slices/view-command-slice";
-import { EditorCommandSlice } from "./slices/editor-command-slice";
-import { ClipperSlice } from "./slices/clipper-slice";
-import { SoundChannelSlice } from "./slices/sound-channel-slice";
-import { WaveformSlice } from "./slices/waveform-slice";
-import { PlaybackSlice } from "./slices/playback-slice";
-import type { GameModeLayout } from "./lane-layouts";
-import type { ExtensionHost } from "../extensions";
-import { SetMetadataUserAction } from "./user-actions";
-import type { ProjectFile, ProjectMetadata } from "../project-format";
-import { createPlayback } from "./create-playback";
-import { SOUND_EVENT, CHART_REF, EVENT, SOUND_CHANNEL, CHART } from "./components";
-import { DEFAULT_CHART_SIZE } from "./types";
+} from "./types.ts";
+import { EditorContext } from "./editor-context.ts";
+import { SnapSlice } from "./slices/snap-slice.ts";
+import { ZoomSlice } from "./slices/zoom-slice.ts";
+import { ProjectSlice } from "./slices/project-slice.ts";
+import { ChartSlice } from "./slices/chart-slice.ts";
+import { LevelSlice } from "./slices/level-slice.ts";
+import { ViewportSlice } from "./slices/viewport-slice.ts";
+import { CursorSlice } from "./slices/cursor-slice.ts";
+import { SelectionSlice } from "./slices/selection-slice.ts";
+import { HistorySlice } from "./slices/history-slice.ts";
+import { BoxSelectionSlice } from "./slices/box-selection-slice.ts";
+import { ToolSlice } from "./slices/tool-slice.ts";
+import { TimingSlice } from "./slices/timing-slice.ts";
+import { ColumnsSlice } from "./slices/columns-slice.ts";
+import { TimingColumnsSlice } from "./slices/timing-columns-slice.ts";
+import { LevelColumnsSlice } from "./slices/level-columns-slice.ts";
+import { SoundColumnsSlice } from "./slices/sound-columns-slice.ts";
+import { GameModeRegistrySlice } from "./slices/game-mode-registry-slice.ts";
+import { RenderSlice } from "./slices/render-slice.ts";
+import { PointerInteractionSlice } from "./slices/pointer-interaction-slice.ts";
+import { DragSlice } from "./slices/drag-slice.ts";
+import { ViewCommandSlice } from "./slices/view-command-slice.ts";
+import { EditorCommandSlice } from "./slices/editor-command-slice.ts";
+import { ClipperSlice } from "./slices/clipper-slice.ts";
+import { SoundChannelSlice } from "./slices/sound-channel-slice.ts";
+import { WaveformSlice } from "./slices/waveform-slice.ts";
+import { PlaybackSlice } from "./slices/playback-slice.ts";
+import type { GameModeLayout } from "./lane-layouts.ts";
+import type { ExtensionHost } from "../extensions/index.ts";
+import { SetMetadataUserAction } from "./user-actions.ts";
+import type { ProjectFile, ProjectMetadata } from "../project-format/index.ts";
+import { createPlayback } from "./create-playback.ts";
+import { SOUND_EVENT, CHART_REF, EVENT, SOUND_CHANNEL, CHART } from "./components.ts";
+import { DEFAULT_CHART_SIZE } from "./types.ts";
 
 export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();

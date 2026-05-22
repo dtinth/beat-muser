@@ -8,7 +8,7 @@
  * snapshots.  DOM (or test) concerns are injected via `ReconcileCallbacks`.
  */
 
-import type { RenderHandle, RenderObject } from "./index";
+import type { RenderHandle, RenderObject } from "./index.tsx";
 
 export interface ReconcileCallbacks {
   onAdd(key: string, handle: RenderHandle, obj: RenderObject): void;

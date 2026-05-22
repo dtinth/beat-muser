@@ -1,7 +1,7 @@
 import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
-import { Slice } from "../slice";
-import type { Playback } from "../../playback-contract";
+import { Slice } from "../slice.ts";
+import type { Playback } from "../../playback-contract/index.ts";
 
 export type TransportState = "stopped" | "playing" | "paused";
 

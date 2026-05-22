@@ -8,8 +8,8 @@
 
 import { get, set } from "idb-keyval";
 import { uuidv7 } from "uuidv7";
-import type { Project, ProjectSource } from "./types";
-import { slugify } from "./slugify";
+import type { Project, ProjectSource } from "./types.ts";
+import { slugify } from "./slugify.ts";
 
 const PROJECTS_KEY = "projects";
 
@@ -89,4 +89,4 @@ export function createDemoProject(name: string): Project {
   };
 }
 
-export { createDemoProjectFile } from "./demo-project";
+export { createDemoProjectFile } from "./demo-project.ts";

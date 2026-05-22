@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
-import type { TimelineColumn } from "../types";
-import { buildFlatList, findFlatIndex } from "./column-flat-list";
+import type { TimelineColumn } from "../types.ts";
+import { buildFlatList, findFlatIndex } from "./column-flat-list.ts";
 
 describe("column-flat-list", () => {
   describe("buildFlatList", () => {

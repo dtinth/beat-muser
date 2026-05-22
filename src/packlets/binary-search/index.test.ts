@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vite-plus/test";
-import { bisectLeft, bisectRight, bisectRightBy } from "./index";
+import { bisectLeft, bisectRight, bisectRightBy } from "./index.ts";
 
 describe("bisectLeft", () => {
   it("finds the first element >= x", () => {

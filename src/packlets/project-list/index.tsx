@@ -19,10 +19,10 @@ import {
   IconButton,
   Dialog,
 } from "@radix-ui/themes";
-import { addProject, removeProject } from "../project-store";
-import { showDirectoryPicker } from "../file-system";
-import { useToast } from "../toast";
-import type { Project } from "../project-store/types";
+import { addProject, removeProject } from "../project-store/index.ts";
+import { showDirectoryPicker } from "../file-system/index.ts";
+import { useToast } from "../toast/index.tsx";
+import type { Project } from "../project-store/types.ts";
 
 export function ProjectListPage() {
   const projects = useLoaderData() as Project[];

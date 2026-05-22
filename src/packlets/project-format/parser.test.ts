@@ -11,8 +11,8 @@
  */
 
 import { describe, it, expect } from "vite-plus/test";
-import { parseProjectFile } from "./parser";
-import { ProjectFileSchema } from "./schema";
+import { parseProjectFile } from "./parser.ts";
+import { ProjectFileSchema } from "./schema.ts";
 import { Build } from "typebox/schema";
 import { Value } from "typebox/value";
 

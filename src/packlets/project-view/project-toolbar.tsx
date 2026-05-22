@@ -30,9 +30,9 @@ import {
   ToolbarButton,
   ToolbarDropdown,
   TransportDisplay,
-} from "../toolbar";
-import { globalCommandRegistry } from "../command-registry";
-import type { EditorController } from "../editor-core";
+} from "../toolbar/index.tsx";
+import { globalCommandRegistry } from "../command-registry/index.ts";
+import type { EditorController } from "../editor-core/index.ts";
 
 const TransportGroup: FC<{ controller: EditorController }> = ({ controller }) => {
   const cursorPulse = useStore(controller.$cursorPulse);

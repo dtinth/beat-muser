@@ -1,21 +1,21 @@
 import { createBrowserRouter, Outlet } from "react-router";
 import { Theme } from "@radix-ui/themes";
-import { AppHeader } from "./packlets/app-header";
-import { ProjectListPage } from "./packlets/project-list";
-import { ProjectViewPage } from "./packlets/project-view";
-import { ScrollableCanvasTestPage } from "./packlets/scrollable-canvas-test";
-import { ErrorPage } from "./packlets/error-page";
+import { AppHeader } from "./packlets/app-header/index.tsx";
+import { ProjectListPage } from "./packlets/project-list/index.tsx";
+import { ProjectViewPage } from "./packlets/project-view/index.tsx";
+import { ScrollableCanvasTestPage } from "./packlets/scrollable-canvas-test/index.tsx";
+import { ErrorPage } from "./packlets/error-page/index.tsx";
 import { uuidv7 } from "uuidv7";
-import type { ProjectSource } from "./packlets/project-store/types";
+import type { ProjectSource } from "./packlets/project-store/types.ts";
 import {
   listProjects,
   getProjectBySlug,
   DEMO_SLUG,
   createDemoProjectFile,
-} from "./packlets/project-store";
-import { createProjectFileSystem } from "./packlets/file-system";
-import { parseProjectFile } from "./packlets/project-format";
-import type { ProjectFile } from "./packlets/project-format";
+} from "./packlets/project-store/index.ts";
+import { createProjectFileSystem } from "./packlets/file-system/index.ts";
+import { parseProjectFile } from "./packlets/project-format/index.ts";
+import type { ProjectFile } from "./packlets/project-format/index.ts";
 
 export const router = createBrowserRouter([
   {

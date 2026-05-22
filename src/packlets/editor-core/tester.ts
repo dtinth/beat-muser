@@ -14,16 +14,24 @@ import {
   SelectionSlice,
   ChartSlice,
   ColumnsSlice,
-} from "./index";
-import type { ProjectFile } from "../project-format";
-import { type Entity, EntityBuilder, entity } from "../entity-manager";
-import { createDemoProjectFile } from "../project-store";
-import type { Extension } from "../extensions";
-import { BUILT_IN_EXTENSIONS } from "../extensions";
+} from "./index.ts";
+import type { ProjectFile } from "../project-format/index.ts";
+import { type Entity, EntityBuilder, entity } from "../entity-manager/index.ts";
+import { createDemoProjectFile } from "../project-store/index.ts";
+import type { Extension } from "../extensions/index.ts";
+import { BUILT_IN_EXTENSIONS } from "../extensions/index.ts";
 
 export { entity };
-import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF, NOTE, LEVEL_REF, LEVEL } from "./components";
-import { Rect, type Point as PointType } from "../geometry";
+import {
+  EVENT,
+  BPM_CHANGE,
+  TIME_SIGNATURE,
+  CHART_REF,
+  NOTE,
+  LEVEL_REF,
+  LEVEL,
+} from "./components.ts";
+import { Rect, type Point as PointType } from "../geometry/index.ts";
 
 export class ChartBuilder {
   private chartId: string;

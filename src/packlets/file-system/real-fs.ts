@@ -1,4 +1,4 @@
-import type { FileEntry, ProjectFileSystem } from "./types";
+import type { FileEntry, ProjectFileSystem } from "./types.ts";
 
 export function createFileSystemFromHandle(handle: FileSystemDirectoryHandle): ProjectFileSystem {
   async function getEntries(dir: FileSystemDirectoryHandle, prefix = ""): Promise<FileEntry[]> {

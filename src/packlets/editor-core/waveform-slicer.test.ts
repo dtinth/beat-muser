@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { computeWaveformOffsets } from "./waveform-slicer";
+import { computeWaveformOffsets } from "./waveform-slicer.ts";
 
 function pulseToSeconds(pulse: number): number {
   return (pulse / 240) * (60 / 120);

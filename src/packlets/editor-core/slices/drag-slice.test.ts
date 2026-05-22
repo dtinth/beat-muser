@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
-import { EditorContext } from "../editor-context";
-import { DragSlice, type StartDragParams, type UpdateDragParams } from "./drag-slice";
+import { EditorContext } from "../editor-context.ts";
+import { DragSlice, type StartDragParams, type UpdateDragParams } from "./drag-slice.ts";
 
 function makeDragSlice() {
   const ctx = new EditorContext();

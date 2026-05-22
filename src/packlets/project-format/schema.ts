@@ -83,7 +83,7 @@
  */
 
 import { Type } from "typebox";
-import { EntitySchema } from "../entity-manager";
+import { EntitySchema } from "../entity-manager/index.ts";
 
 // ---------------------------------------------------------------------------
 // Project Metadata & Root Schema

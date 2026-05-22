@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
-import { EditorContext } from "../editor-context";
-import { WaveformSlice, type WaveformData } from "./waveform-slice";
+import { EditorContext } from "../editor-context.ts";
+import { WaveformSlice, type WaveformData } from "./waveform-slice.ts";
 
 describe("WaveformSlice", () => {
   test("setWaveformData stores data by path", () => {

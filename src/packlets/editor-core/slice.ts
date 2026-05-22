@@ -1,4 +1,4 @@
-import type { EditorContext } from "./editor-context";
+import type { EditorContext } from "./editor-context.ts";
 
 export class Slice {
   static readonly sliceKey: string = "unknown";

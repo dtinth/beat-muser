@@ -1,5 +1,5 @@
 import { atom } from "nanostores";
-import { Slice } from "../slice";
+import { Slice } from "../slice.ts";
 
 export interface WaveformData {
   peak: Float32Array;

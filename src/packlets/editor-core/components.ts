@@ -9,7 +9,7 @@
  */
 
 import { Type } from "typebox";
-import { EntityComponentType } from "../entity-manager";
+import { EntityComponentType } from "../entity-manager/index.ts";
 
 export const EVENT = new EntityComponentType(
   "event",

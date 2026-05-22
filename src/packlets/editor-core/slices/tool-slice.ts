@@ -1,6 +1,6 @@
 import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
-import { Slice } from "../slice";
+import { Slice } from "../slice.ts";
 
 export class ToolSlice extends Slice {
   static readonly sliceKey = "tool";

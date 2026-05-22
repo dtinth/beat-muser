@@ -5,8 +5,8 @@
  */
 
 import { describe, expect, test, vi } from "vite-plus/test";
-import { RenderObjectReconciler } from "./reconciler";
-import type { RenderHandle, RenderObject } from "./index";
+import { RenderObjectReconciler } from "./reconciler.ts";
+import type { RenderHandle, RenderObject } from "./index.tsx";
 
 function makeRenderer() {
   return vi.fn(

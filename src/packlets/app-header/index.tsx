@@ -8,7 +8,7 @@
 
 import { Box, Flex, Heading, Link } from "@radix-ui/themes";
 import { useMatches, useNavigate } from "react-router";
-import type { Project } from "../project-store/types";
+import type { Project } from "../project-store/types.ts";
 
 /**
  * Returns the project data from the current route matches, if any.

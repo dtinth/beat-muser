@@ -38,9 +38,9 @@
  */
 
 import { useEffect, useRef } from "react";
-import { perf } from "../perf";
-import type { Point } from "../geometry";
-import { RenderObjectReconciler } from "./reconciler";
+import { perf } from "../perf/index.ts";
+import type { Point } from "../geometry/index.ts";
+import { RenderObjectReconciler } from "./reconciler.ts";
 
 // ---------------------------------------------------------------------------
 // Types

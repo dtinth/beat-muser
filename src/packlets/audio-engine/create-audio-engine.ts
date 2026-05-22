@@ -1,6 +1,6 @@
 import pLimit from "p-limit";
-import { computeWaveformData } from "./compute-waveform-audio-buffer";
-import type { AudioEngineDelegate, AudioEngineFileSystem } from "./types";
+import { computeWaveformData } from "./compute-waveform-audio-buffer.ts";
+import type { AudioEngineDelegate, AudioEngineFileSystem } from "./types.ts";
 
 export interface CreateAudioEngineOptions {
   fileSystem: AudioEngineFileSystem;

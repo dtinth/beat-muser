@@ -1,12 +1,12 @@
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
-import { ZoomSlice } from "./zoom-slice";
-import { ViewportSlice } from "./viewport-slice";
-import { CursorSlice } from "./cursor-slice";
-import { TimingSlice } from "./timing-slice";
-import { ChartSlice } from "./chart-slice";
-import { SnapSlice } from "./snap-slice";
-import { BASE_SCALE_Y, ZOOM_PRESETS } from "../types";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
+import { ZoomSlice } from "./zoom-slice.ts";
+import { ViewportSlice } from "./viewport-slice.ts";
+import { CursorSlice } from "./cursor-slice.ts";
+import { TimingSlice } from "./timing-slice.ts";
+import { ChartSlice } from "./chart-slice.ts";
+import { SnapSlice } from "./snap-slice.ts";
+import { BASE_SCALE_Y, ZOOM_PRESETS } from "../types.ts";
 
 export class ViewCommandSlice extends Slice {
   static readonly sliceKey = "viewCommand";

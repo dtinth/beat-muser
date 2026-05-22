@@ -1,6 +1,6 @@
 import { atom } from "nanostores";
-import { Slice } from "../slice";
-import { Point } from "../../geometry";
+import { Slice } from "../slice.ts";
+import { Point } from "../../geometry/index.ts";
 
 export class CursorSlice extends Slice {
   static readonly sliceKey = "cursor";

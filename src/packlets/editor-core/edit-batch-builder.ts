@@ -1,7 +1,7 @@
-import { type EntityManager } from "../entity-manager";
-import { EVENT, NOTE, LEVEL_REF, SOUND_EVENT, KEYSOUND } from "./components";
-import { BatchEditEntitiesUserAction } from "./user-actions";
-import type { EditorContext } from "./editor-context";
+import { type EntityManager } from "../entity-manager/index.ts";
+import { EVENT, NOTE, LEVEL_REF, SOUND_EVENT, KEYSOUND } from "./components.ts";
+import { BatchEditEntitiesUserAction } from "./user-actions.ts";
+import type { EditorContext } from "./editor-context.ts";
 
 export interface EditEntry {
   entityId: string;

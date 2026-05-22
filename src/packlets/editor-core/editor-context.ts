@@ -1,4 +1,4 @@
-import type { Slice } from "./slice";
+import type { Slice } from "./slice.ts";
 
 export class EditorContext {
   private slices = new Map<string, Slice>();

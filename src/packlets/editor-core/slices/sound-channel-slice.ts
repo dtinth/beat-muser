@@ -1,15 +1,15 @@
 import { atom } from "nanostores";
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
-import { ProjectSlice } from "./project-slice";
-import { HistorySlice } from "./history-slice";
-import { SOUND_GROUP, SOUND_CHANNEL } from "../components";
-import { EntityBuilder } from "../../entity-manager";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
+import { ProjectSlice } from "./project-slice.ts";
+import { HistorySlice } from "./history-slice.ts";
+import { SOUND_GROUP, SOUND_CHANNEL } from "../components.ts";
+import { EntityBuilder } from "../../entity-manager/index.ts";
 import {
   InsertEntityUserAction,
   DeleteEntityUserAction,
   DeleteEntitiesUserAction,
-} from "../user-actions";
+} from "../user-actions.ts";
 
 export interface SoundGroupInfo {
   id: string;

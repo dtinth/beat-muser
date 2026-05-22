@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
-import { createPlayback } from "./create-playback";
-import { createTimingEngine } from "../timing-engine";
-import type { PlaybackEvent } from "../playback-contract";
+import { createPlayback } from "./create-playback.ts";
+import { createTimingEngine } from "../timing-engine/index.ts";
+import type { PlaybackEvent } from "../playback-contract/index.ts";
 
 function makeChannel(
   channelId: string,

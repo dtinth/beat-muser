@@ -1,5 +1,5 @@
-import { computePeakAndRmsAsync } from "./compute-waveform";
-import type { WaveformData } from "./types";
+import { computePeakAndRmsAsync } from "./compute-waveform.ts";
+import type { WaveformData } from "./types.ts";
 
 const CHUNKS_PER_SECOND = 120;
 

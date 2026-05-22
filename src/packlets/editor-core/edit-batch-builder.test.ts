@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
-import { EntityManager, entity } from "../entity-manager";
-import { EVENT, NOTE, LEVEL_REF, SOUND_EVENT, KEYSOUND } from "./components";
-import { EditBatchBuilder } from "./edit-batch-builder";
+import { EntityManager, entity } from "../entity-manager/index.ts";
+import { EVENT, NOTE, LEVEL_REF, SOUND_EVENT, KEYSOUND } from "./components.ts";
+import { EditBatchBuilder } from "./edit-batch-builder.ts";
 
 function makeEm() {
   return new EntityManager();

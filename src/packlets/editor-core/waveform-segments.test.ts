@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { computeWaveformSegments } from "./waveform-segments";
+import { computeWaveformSegments } from "./waveform-segments.ts";
 
 describe("computeWaveformSegments", () => {
   function makeWaveformData(length = 120): { peak: Float32Array; rms: Float32Array } {

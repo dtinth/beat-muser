@@ -1,4 +1,4 @@
-import type { GameModeLayout, LaneDefinition } from "../editor-core/lane-layouts";
+import type { GameModeLayout, LaneDefinition } from "../editor-core/lane-layouts.ts";
 import type { Extension, ExtensionHost } from ".";
 
 const BEAT_5K_LANES: LaneDefinition[] = [

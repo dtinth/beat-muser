@@ -1,10 +1,10 @@
 import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
-import { Slice } from "../slice";
-import { ZoomSlice } from "./zoom-slice";
-import { ChartSlice } from "./chart-slice";
-import { Point, type Dimension } from "../../geometry";
-import { BASE_SCALE_Y, PADDING_BOTTOM } from "../types";
+import { Slice } from "../slice.ts";
+import { ZoomSlice } from "./zoom-slice.ts";
+import { ChartSlice } from "./chart-slice.ts";
+import { Point, type Dimension } from "../../geometry/index.ts";
+import { BASE_SCALE_Y, PADDING_BOTTOM } from "../types.ts";
 
 export class ViewportSlice extends Slice {
   static readonly sliceKey = "viewport";

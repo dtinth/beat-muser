@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Box, Text, TextField } from "@radix-ui/themes";
-import { CommandRegistry } from "./index";
+import { CommandRegistry } from "./index.ts";
 
 interface CommandPaletteProps {
   registry: CommandRegistry;

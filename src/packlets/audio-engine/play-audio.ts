@@ -1,4 +1,4 @@
-import type { Playback, PlaybackEvent } from "../playback-contract";
+import type { Playback, PlaybackEvent } from "../playback-contract/index.ts";
 
 export interface AudioPlaybackOptions {
   playback: Playback;

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { createPerf } from "./index";
+import { createPerf } from "./index.ts";
 
 describe("perf", () => {
   test("incrementCounter increments renderNumber", () => {

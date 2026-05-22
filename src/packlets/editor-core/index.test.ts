@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, test } from "vite-plus/test";
-import { EditorTester, makeProject, entity } from "./tester";
+import { EditorTester, makeProject, entity } from "./tester.ts";
 import {
   CHART,
   NOTE,
@@ -26,12 +26,12 @@ import {
   HistorySlice,
   ClipperSlice,
   CLIPBOARD_SCHEMA,
-} from "./index";
-import { Rect } from "../geometry";
-import type { Entity } from "../entity-manager";
-import { RenderSlice } from "./slices/render-slice";
-import type { WaveformData } from "./slices/waveform-slice";
-import { EditEntityUserAction } from "./user-actions";
+} from "./index.ts";
+import { Rect } from "../geometry/index.ts";
+import type { Entity } from "../entity-manager/index.ts";
+import { RenderSlice } from "./slices/render-slice.ts";
+import type { WaveformData } from "./slices/waveform-slice.ts";
+import { EditEntityUserAction } from "./user-actions.ts";
 
 const UUID_V7_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

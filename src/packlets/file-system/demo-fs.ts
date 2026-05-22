@@ -1,4 +1,4 @@
-import type { FileEntry, ProjectFileSystem } from "./types";
+import type { FileEntry, ProjectFileSystem } from "./types.ts";
 
 const demoModules = import.meta.glob("/examples/**/*", {
   query: "?raw",

@@ -1,7 +1,7 @@
 import { uuidv7 } from "uuidv7";
 import type { Static, TSchema } from "typebox";
-import { EntityComponentType } from "./index";
-import type { Entity } from "./index";
+import { EntityComponentType } from "./index.ts";
+import type { Entity } from "./index.ts";
 
 export class EntityBuilder {
   private components: Record<string, unknown> = {};

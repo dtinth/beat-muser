@@ -6,15 +6,15 @@
 
 import type { WritableAtom } from "nanostores";
 import { uuidv7 } from "uuidv7";
-import type { Entity } from "../entity-manager";
-import { LEVEL_REF } from "./components";
-import type { EditorContext } from "./editor-context";
-import { ProjectSlice } from "./slices/project-slice";
-import { SelectionSlice } from "./slices/selection-slice";
-import { LevelSlice } from "./slices/level-slice";
-import { ChartSlice } from "./slices/chart-slice";
-import type { UserAction } from "./types";
-import type { ProjectMetadata } from "../project-format";
+import type { Entity } from "../entity-manager/index.ts";
+import { LEVEL_REF } from "./components.ts";
+import type { EditorContext } from "./editor-context.ts";
+import { ProjectSlice } from "./slices/project-slice.ts";
+import { SelectionSlice } from "./slices/selection-slice.ts";
+import { LevelSlice } from "./slices/level-slice.ts";
+import { ChartSlice } from "./slices/chart-slice.ts";
+import type { UserAction } from "./types.ts";
+import type { ProjectMetadata } from "../project-format/index.ts";
 
 export class DeleteUserAction implements UserAction {
   title = "Delete selection";

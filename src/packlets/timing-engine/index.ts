@@ -22,7 +22,7 @@
  *   O(log n) lookup.
  */
 
-import { bisectLeft, bisectRight, bisectRightBy } from "../binary-search";
+import { bisectLeft, bisectRight, bisectRightBy } from "../binary-search/index.ts";
 
 const PPQN = 240;
 

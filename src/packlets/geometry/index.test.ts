@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vite-plus/test";
-import { Point, Rect } from "./index";
+import { Point, Rect } from "./index.ts";
 
 describe("Point", () => {
   test("distance between identical points is zero", () => {

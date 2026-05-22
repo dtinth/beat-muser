@@ -6,8 +6,8 @@
  */
 
 import { Errors } from "typebox/value";
-import { ProjectFileSchema } from "./schema";
-import type { ProjectFile } from "./types";
+import { ProjectFileSchema } from "./schema.ts";
+import type { ProjectFile } from "./types.ts";
 
 export function parseProjectFile(json: string): ProjectFile {
   const parsed = JSON.parse(json);

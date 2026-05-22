@@ -1,7 +1,7 @@
 import { atom } from "nanostores";
-import { Slice } from "../slice";
-import { HISTORY_LIMIT } from "../types";
-import type { UserAction } from "../types";
+import { Slice } from "../slice.ts";
+import { HISTORY_LIMIT } from "../types.ts";
+import type { UserAction } from "../types.ts";
 
 export class HistorySlice extends Slice {
   static readonly sliceKey = "history";

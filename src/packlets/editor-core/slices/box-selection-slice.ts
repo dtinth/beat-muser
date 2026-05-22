@@ -1,8 +1,8 @@
-import { Slice } from "../slice";
-import { SelectionSlice } from "./selection-slice";
-import { ColumnsSlice } from "./columns-slice";
-import { EVENT, BPM_CHANGE, TIME_SIGNATURE, NOTE, LEVEL_REF, SOUND_EVENT } from "../components";
-import type { Entity } from "../../entity-manager";
+import { Slice } from "../slice.ts";
+import { SelectionSlice } from "./selection-slice.ts";
+import { ColumnsSlice } from "./columns-slice.ts";
+import { EVENT, BPM_CHANGE, TIME_SIGNATURE, NOTE, LEVEL_REF, SOUND_EVENT } from "../components.ts";
+import type { Entity } from "../../entity-manager/index.ts";
 
 export class BoxSelectionSlice extends Slice {
   static readonly sliceKey = "box-selection";

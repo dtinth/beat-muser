@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, test, vi, beforeAll, afterEach } from "vite-plus/test";
-import { CommandRegistry, CommandSet, KeyboardShortcutHandler } from "./index";
+import { CommandRegistry, CommandSet, KeyboardShortcutHandler } from "./index.ts";
 
 // Polyfill KeyboardEvent for Node.js test environment (tinykeys uses instanceof)
 beforeAll(() => {

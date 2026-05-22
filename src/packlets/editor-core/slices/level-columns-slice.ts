@@ -1,13 +1,13 @@
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
-import { ColumnsSlice } from "./columns-slice";
-import { ChartSlice } from "./chart-slice";
-import { LevelSlice } from "./level-slice";
-import { GameModeRegistrySlice } from "./game-mode-registry-slice";
-import { EVENT, NOTE, LEVEL_REF, CHART_REF } from "../components";
-import { EntityBuilder } from "../../entity-manager";
-import type { ColumnDefinition } from "../types";
-import { getNoteColumn } from "../entity-accessors";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
+import { ColumnsSlice } from "./columns-slice.ts";
+import { ChartSlice } from "./chart-slice.ts";
+import { LevelSlice } from "./level-slice.ts";
+import { GameModeRegistrySlice } from "./game-mode-registry-slice.ts";
+import { EVENT, NOTE, LEVEL_REF, CHART_REF } from "../components.ts";
+import { EntityBuilder } from "../../entity-manager/index.ts";
+import type { ColumnDefinition } from "../types.ts";
+import { getNoteColumn } from "../entity-accessors.ts";
 
 export class LevelColumnsSlice extends Slice {
   static readonly sliceKey = "level-columns";

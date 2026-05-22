@@ -1,15 +1,15 @@
 import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
-import { ProjectSlice } from "./project-slice";
-import { ChartSlice } from "./chart-slice";
-import { HistorySlice } from "./history-slice";
-import { CHART_REF, LEVEL } from "../components";
-import { EntityBuilder } from "../../entity-manager";
-import type { Entity } from "../../entity-manager";
-import type { LevelInfo } from "../types";
-import { InsertEntityUserAction, DeleteEntityUserAction } from "../user-actions";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
+import { ProjectSlice } from "./project-slice.ts";
+import { ChartSlice } from "./chart-slice.ts";
+import { HistorySlice } from "./history-slice.ts";
+import { CHART_REF, LEVEL } from "../components.ts";
+import { EntityBuilder } from "../../entity-manager/index.ts";
+import type { Entity } from "../../entity-manager/index.ts";
+import type { LevelInfo } from "../types.ts";
+import { InsertEntityUserAction, DeleteEntityUserAction } from "../user-actions.ts";
 
 export class LevelSlice extends Slice {
   static readonly sliceKey = "level";

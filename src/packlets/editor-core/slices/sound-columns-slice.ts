@@ -1,15 +1,15 @@
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
-import { ColumnsSlice } from "./columns-slice";
-import { ChartSlice } from "./chart-slice";
-import { ProjectSlice } from "./project-slice";
-import { SoundChannelSlice } from "./sound-channel-slice";
-import { CHART, EVENT, SOUND_EVENT, CHART_REF, KEYSOUND } from "../components";
-import { EntityBuilder } from "../../entity-manager";
-import type { ColumnDefinition } from "../types";
-import type { EditBatchBuilder } from "../edit-batch-builder";
-import type { EntityManager, Entity } from "../../entity-manager";
-import { getPulse, getSoundLane } from "../entity-accessors";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
+import { ColumnsSlice } from "./columns-slice.ts";
+import { ChartSlice } from "./chart-slice.ts";
+import { ProjectSlice } from "./project-slice.ts";
+import { SoundChannelSlice } from "./sound-channel-slice.ts";
+import { CHART, EVENT, SOUND_EVENT, CHART_REF, KEYSOUND } from "../components.ts";
+import { EntityBuilder } from "../../entity-manager/index.ts";
+import type { ColumnDefinition } from "../types.ts";
+import type { EditBatchBuilder } from "../edit-batch-builder.ts";
+import type { EntityManager, Entity } from "../../entity-manager/index.ts";
+import { getPulse, getSoundLane } from "../entity-accessors.ts";
 
 export class SoundColumnsSlice extends Slice {
   static readonly sliceKey = "sound-columns";

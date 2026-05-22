@@ -119,4 +119,4 @@ export class KeyboardShortcutHandler {
 /** Global singleton for the active editor instance. */
 export const globalCommandRegistry = new CommandRegistry();
 
-export { CommandPalette } from "./palette";
+export { CommandPalette } from "./palette.tsx";

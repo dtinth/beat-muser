@@ -4,10 +4,10 @@
  * Shared type definitions and constants for the editor core packlet.
  */
 
-import type { Point } from "../geometry";
-import type { Entity, EntityManager } from "../entity-manager";
-import type { Playback } from "../playback-contract";
-import type { EditBatchBuilder } from "./edit-batch-builder";
+import type { Point } from "../geometry/index.ts";
+import type { Entity, EntityManager } from "../entity-manager/index.ts";
+import type { Playback } from "../playback-contract/index.ts";
+import type { EditBatchBuilder } from "./edit-batch-builder.ts";
 
 export interface EditorControllerOptions {
   project: import("../project-format").ProjectFile;

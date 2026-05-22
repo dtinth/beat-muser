@@ -52,7 +52,7 @@ export const EntitySchema = Type.Object(
 
 export type Entity = Static<typeof EntitySchema>;
 
-export { EntityBuilder, entity } from "./builder";
+export { EntityBuilder, entity } from "./builder.ts";
 
 // ---------------------------------------------------------------------------
 // EntityComponentType

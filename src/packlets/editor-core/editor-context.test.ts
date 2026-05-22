@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
-import { EditorContext } from "./editor-context";
-import { Slice } from "./slice";
+import { EditorContext } from "./editor-context.ts";
+import { Slice } from "./slice.ts";
 
 class TestSlice extends Slice {
   static override readonly sliceKey = "test-slice";

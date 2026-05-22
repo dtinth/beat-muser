@@ -10,14 +10,14 @@ import { useStore } from "@nanostores/react";
 import { useParams, useRouteError, useLoaderData } from "react-router";
 import { Pencil, Plus, Eye, EyeOff, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import { Flex, Text, Dialog, Button, TextField } from "@radix-ui/themes";
-import { useToast } from "../toast";
-import { ProjectLayout } from "../project-layout";
-import { ModalManager, ModalHost } from "../modal-manager";
-import { SidebarPanel } from "../sidebar-panel";
-import { perf } from "../perf";
+import { useToast } from "../toast/index.tsx";
+import { ProjectLayout } from "../project-layout/index.tsx";
+import { ModalManager, ModalHost } from "../modal-manager/index.ts";
+import { SidebarPanel } from "../sidebar-panel/index.tsx";
+import { perf } from "../perf/index.ts";
 import { useInView } from "react-intersection-observer";
-import { ScrollableCanvas } from "../scrollable-canvas";
-import { BUILT_IN_EXTENSIONS } from "../extensions";
+import { ScrollableCanvas } from "../scrollable-canvas/index.tsx";
+import { BUILT_IN_EXTENSIONS } from "../extensions/index.ts";
 import {
   EditorController,
   BPM_CHANGE,
@@ -30,14 +30,18 @@ import {
   EditEntityUserAction,
   ProjectSlice,
   PPQN,
-} from "../editor-core";
-import type { ProjectFile } from "../project-format";
-import type { ProjectSource } from "../project-store/types";
-import { createProjectFileSystem } from "../file-system";
-import { createAudioEngine, startAudioPlayback } from "../audio-engine";
-import { createTimelineBehaviorFactory } from "./timeline-behavior";
-import { ProjectToolbar } from "./project-toolbar";
-import { globalCommandRegistry, CommandSet, KeyboardShortcutHandler } from "../command-registry";
+} from "../editor-core/index.ts";
+import type { ProjectFile } from "../project-format/index.ts";
+import type { ProjectSource } from "../project-store/types.ts";
+import { createProjectFileSystem } from "../file-system/index.ts";
+import { createAudioEngine, startAudioPlayback } from "../audio-engine/index.ts";
+import { createTimelineBehaviorFactory } from "./timeline-behavior.ts";
+import { ProjectToolbar } from "./project-toolbar.tsx";
+import {
+  globalCommandRegistry,
+  CommandSet,
+  KeyboardShortcutHandler,
+} from "../command-registry/index.ts";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (

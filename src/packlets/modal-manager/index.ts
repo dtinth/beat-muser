@@ -96,4 +96,4 @@ export class ModalManager {
   }
 }
 
-export { ModalHost } from "./modal-host";
+export { ModalHost } from "./modal-host.tsx";

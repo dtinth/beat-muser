@@ -1,5 +1,5 @@
-import type { Entity } from "../entity-manager";
-import { EVENT, NOTE, LEVEL_REF, SOUND_EVENT } from "./components";
+import type { Entity } from "../entity-manager/index.ts";
+import { EVENT, NOTE, LEVEL_REF, SOUND_EVENT } from "./components.ts";
 
 export function getPulse(entity: Entity): number | undefined {
   return (entity.components[EVENT.key] as { y: number } | undefined)?.y;

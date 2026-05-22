@@ -6,11 +6,11 @@
  * system for example projects.
  */
 
-import type { ProjectSource } from "../project-store/types";
-import type { ProjectFileSystem, FileEntry } from "./types";
-import { createFileSystemFromHandle } from "./real-fs";
-import { createFileSystemFromExample } from "./demo-fs";
-import { showDirectoryPicker } from "./picker";
+import type { ProjectSource } from "../project-store/types.ts";
+import type { ProjectFileSystem, FileEntry } from "./types.ts";
+import { createFileSystemFromHandle } from "./real-fs.ts";
+import { createFileSystemFromExample } from "./demo-fs.ts";
+import { showDirectoryPicker } from "./picker.ts";
 
 export function createProjectFileSystem(source: ProjectSource): ProjectFileSystem {
   switch (source.provider) {

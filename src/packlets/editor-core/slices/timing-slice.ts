@@ -1,10 +1,10 @@
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
-import { ProjectSlice } from "./project-slice";
-import { ChartSlice } from "./chart-slice";
-import { createTimingEngine } from "../../timing-engine";
-import type { TimingEngine } from "../../timing-engine";
-import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF } from "../components";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
+import { ProjectSlice } from "./project-slice.ts";
+import { ChartSlice } from "./chart-slice.ts";
+import { createTimingEngine } from "../../timing-engine/index.ts";
+import type { TimingEngine } from "../../timing-engine/index.ts";
+import { EVENT, BPM_CHANGE, TIME_SIGNATURE, CHART_REF } from "../components.ts";
 
 export class TimingSlice extends Slice {
   static readonly sliceKey = "timing";

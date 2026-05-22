@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useStore } from "@nanostores/react";
 import { Dialog, Button, TextField, Text, Box, Flex } from "@radix-ui/themes";
-import type { ModalManager, ModalRequest, SelectItem } from "./index";
+import type { ModalManager, ModalRequest, SelectItem } from "./index.ts";
 
 export function ModalHost({ manager }: { manager: ModalManager }) {
   const stack = useStore(manager.$stack);

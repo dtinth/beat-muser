@@ -1,6 +1,6 @@
 import { atom } from "nanostores";
-import { Slice } from "../slice";
-import type { ColumnDefinition, TimelineColumn } from "../types";
+import { Slice } from "../slice.ts";
+import type { ColumnDefinition, TimelineColumn } from "../types.ts";
 
 export class ColumnsSlice extends Slice {
   static readonly sliceKey = "columns";

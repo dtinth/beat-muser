@@ -1,4 +1,4 @@
-import type { TimelineColumn } from "../types";
+import type { TimelineColumn } from "../types.ts";
 
 export function buildFlatList(
   columns: TimelineColumn[],

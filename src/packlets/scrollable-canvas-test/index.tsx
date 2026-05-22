@@ -13,17 +13,17 @@
 import { useRef, useState } from "react";
 import { useStore } from "@nanostores/react";
 import { atom } from "nanostores";
-import { ScrollableCanvas } from "../scrollable-canvas";
+import { ScrollableCanvas } from "../scrollable-canvas/index.tsx";
 import type {
   ScrollableCanvasBehavior,
   ScrollableCanvasBehaviorFactory,
   ScrollableCanvasContext,
   RenderObject,
   RenderHandle,
-} from "../scrollable-canvas";
-import { ProjectLayout } from "../project-layout";
+} from "../scrollable-canvas/index.tsx";
+import { ProjectLayout } from "../project-layout/index.tsx";
 import { Button, Flex, Text } from "@radix-ui/themes";
-import { SidebarPanel } from "../sidebar-panel";
+import { SidebarPanel } from "../sidebar-panel/index.tsx";
 
 // ---------------------------------------------------------------------------
 // Constants

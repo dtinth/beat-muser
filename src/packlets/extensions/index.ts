@@ -13,8 +13,8 @@
  * exposes primitives via {@link ExtensionHost}.
  */
 
-import type { GameModeLayout } from "../editor-core/lane-layouts";
-import { BEAT_EXTENSION } from "./beat-extension";
+import type { GameModeLayout } from "../editor-core/lane-layouts.ts";
+import { BEAT_EXTENSION } from "./beat-extension.ts";
 
 export interface ExtensionManifest {
   id: string;

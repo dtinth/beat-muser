@@ -1,11 +1,11 @@
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
-import { ColumnsSlice } from "./columns-slice";
-import { ChartSlice } from "./chart-slice";
-import { TimingSlice } from "./timing-slice";
-import { EVENT, TIME_SIGNATURE, BPM_CHANGE, CHART_REF } from "../components";
-import { EntityBuilder } from "../../entity-manager";
-import type { ColumnDefinition } from "../types";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
+import { ColumnsSlice } from "./columns-slice.ts";
+import { ChartSlice } from "./chart-slice.ts";
+import { TimingSlice } from "./timing-slice.ts";
+import { EVENT, TIME_SIGNATURE, BPM_CHANGE, CHART_REF } from "../components.ts";
+import { EntityBuilder } from "../../entity-manager/index.ts";
+import type { ColumnDefinition } from "../types.ts";
 
 export class TimingColumnsSlice extends Slice {
   static readonly sliceKey = "timing-columns";

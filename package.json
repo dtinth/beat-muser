@@ -9,7 +9,7 @@
     "preview": "vp preview",
     "prepare": "vp config",
     "list-packlets": "node bin/list-packlets.ts",
-    "build-schemas": "tsx bin/build-schemas.ts"
+    "build-schemas": "node bin/build-schemas.ts"
   },
   "dependencies": {
     "@nanostores/react": "^1.1.0",

@@ -6,7 +6,7 @@
 
 import { describe, expect, test } from "vite-plus/test";
 import { Type } from "typebox";
-import { EntityManager, EntityComponentType } from "./index";
+import { EntityManager, EntityComponentType } from "./index.ts";
 
 const Position = new EntityComponentType(
   "position",

@@ -1,15 +1,15 @@
 import { atom, computed, type ReadableAtom } from "nanostores";
-import { Slice } from "../slice";
-import type { EditorContext } from "../editor-context";
-import { ProjectSlice } from "./project-slice";
-import { ChartSlice } from "./chart-slice";
-import { ViewportSlice } from "./viewport-slice";
-import { ColumnsSlice } from "./columns-slice";
-import { SelectionSlice } from "./selection-slice";
-import { BoxSelectionSlice } from "./box-selection-slice";
-import { CursorSlice } from "./cursor-slice";
-import { SnapSlice } from "./snap-slice";
-import { TimingSlice } from "./timing-slice";
+import { Slice } from "../slice.ts";
+import type { EditorContext } from "../editor-context.ts";
+import { ProjectSlice } from "./project-slice.ts";
+import { ChartSlice } from "./chart-slice.ts";
+import { ViewportSlice } from "./viewport-slice.ts";
+import { ColumnsSlice } from "./columns-slice.ts";
+import { SelectionSlice } from "./selection-slice.ts";
+import { BoxSelectionSlice } from "./box-selection-slice.ts";
+import { CursorSlice } from "./cursor-slice.ts";
+import { SnapSlice } from "./snap-slice.ts";
+import { TimingSlice } from "./timing-slice.ts";
 import {
   EVENT,
   NOTE,
@@ -19,17 +19,17 @@ import {
   CHART_REF,
   SOUND_EVENT,
   SOUND_CHANNEL,
-} from "../components";
-import type { TimelineRenderSpec } from "../types";
-import type { TimelineColumn } from "../types";
-import { DragSlice } from "./drag-slice";
-import { buildFlatList } from "./column-flat-list";
-import { WaveformSlice } from "./waveform-slice";
-import { computeWaveformOffsets, type SoundEventInput } from "../waveform-slicer";
-import { computeWaveformSegments } from "../waveform-segments";
-import { SOUND_GROUP } from "../components";
-import { ZoomSlice } from "./zoom-slice";
-import { perf } from "../../perf";
+} from "../components.ts";
+import type { TimelineRenderSpec } from "../types.ts";
+import type { TimelineColumn } from "../types.ts";
+import { DragSlice } from "./drag-slice.ts";
+import { buildFlatList } from "./column-flat-list.ts";
+import { WaveformSlice } from "./waveform-slice.ts";
+import { computeWaveformOffsets, type SoundEventInput } from "../waveform-slicer.ts";
+import { computeWaveformSegments } from "../waveform-segments.ts";
+import { SOUND_GROUP } from "../components.ts";
+import { ZoomSlice } from "./zoom-slice.ts";
+import { perf } from "../../perf/index.ts";
 
 function getGhostTargetColumn(
   entityId: string,
