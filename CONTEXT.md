@@ -21,6 +21,10 @@ The editor-side API surface that extensions interact with via `connect(host)`. P
 **Extension manager**:
 An orchestrator (`src/packlets/extensions/`) that manages extension lifecycle (register, unregister). Created in the app layer (`project-view`), receives the `ExtensionHost` from the controller, and registers built-in and user-installed extensions.
 
+**Extension URL injection**:
+A mechanism to load extensions ad-hoc via `?extension=<url>` query parameter. The URL must point to a valid extension manifest JSON. Trust is tracked in sessionStorage — on first visit, the user is prompted with `confirm()`. If declined, the parameter is removed from the URL via `replaceState`. Handled by the {@link ExtensionManager} in the route loader. Multiple `?extension=` parameters are supported.
+_Avoid_: query plugin, URL extension (without "injection" qualifier)
+
 **Entity component schema**:
 A declarative schema in the extension manifest describing a custom entity component (e.g. `fingerId`, `drag`). The editor uses these schemas to drive the inspector UI, clipboard handling, and schema validation. Data is stored as-is via `additionalProperties: true` on existing component objects.
 

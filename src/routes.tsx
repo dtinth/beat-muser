@@ -16,6 +16,7 @@ import {
 import { createProjectFileSystem } from "./packlets/file-system/index.ts";
 import { parseProjectFile } from "./packlets/project-format/index.ts";
 import type { ProjectFile } from "./packlets/project-format/index.ts";
+import { getExtensionManager } from "./packlets/extensions/index.ts";
 
 export const router = createBrowserRouter([
   {
@@ -54,7 +55,9 @@ export const router = createBrowserRouter([
       },
       {
         path: "projects/:slug",
-        loader: async ({ params }) => {
+        loader: async ({ params, request }) => {
+          await getExtensionManager().initFromUrl(request.url);
+
           let source: ProjectSource;
           if (params.slug === DEMO_SLUG) {
             source = { provider: "examples", name: "demo" };

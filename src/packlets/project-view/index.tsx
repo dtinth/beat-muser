@@ -17,7 +17,7 @@ import { SidebarPanel } from "../sidebar-panel/index.tsx";
 import { perf } from "../perf/index.ts";
 import { useInView } from "react-intersection-observer";
 import { ScrollableCanvas } from "../scrollable-canvas/index.tsx";
-import { BUILT_IN_EXTENSIONS } from "../extensions/index.ts";
+import { getExtensionManager } from "../extensions/index.ts";
 import {
   EditorController,
   BPM_CHANGE,
@@ -738,10 +738,7 @@ export function ProjectViewPage() {
 
   const [controller] = useState(() => {
     const ctrl = new EditorController({ project: loadedProject });
-    const host = ctrl.createExtensionHost();
-    for (const ext of BUILT_IN_EXTENSIONS) {
-      ext.connect(host);
-    }
+    getExtensionManager().connect(ctrl.createExtensionHost());
     return ctrl;
   });
   const [modalManager] = useState(() => new ModalManager());
