@@ -627,42 +627,17 @@ export class RenderSlice extends Slice {
     const scaleY = viewport.getScaleY();
     const size = chartSlice.getChartSize();
     const waveformMap = waveformSlice.$waveformData.get();
-
-    let fp = `${selectedChartId}|${scaleY}|${size}|${waveformMap.size}`;
-    for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
-      const e = entityManager.getComponent(entity, EVENT);
-      const se = entityManager.getComponent(entity, SOUND_EVENT);
-      const cr = entityManager.getComponent(entity, CHART_REF);
-      if (!e || !se || !cr || cr.chartId !== selectedChartId) continue;
-      fp += `|${entity.id}:${e.y}:${se.soundLane}:${se.soundChannelId}`;
-    }
-
-    if (fp === this._lastWaveformFingerprint) return this._cachedWaveformSlices;
-    this._lastWaveformFingerprint = fp;
-
     const timing = this.ctx.get(TimingSlice);
     const timingEngine = timing.getTimingEngine();
     const trackHeight = viewport.getTrackHeight();
     const columns = columnsSlice.$columns.get();
 
-    const channelDurations = new Map<string, { durationSec: number }>();
     const soundEventInputs: SoundEventInput[] = [];
-
     for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
       const e = entityManager.getComponent(entity, EVENT);
       const se = entityManager.getComponent(entity, SOUND_EVENT);
       const cr = entityManager.getComponent(entity, CHART_REF);
       if (!e || !se || !cr || cr.chartId !== selectedChartId) continue;
-
-      const soundChannel = entityManager.get(se.soundChannelId);
-      const channelPath = soundChannel
-        ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
-        : undefined;
-      if (channelPath && waveformMap.has(channelPath)) {
-        const wd = waveformMap.get(channelPath)!;
-        channelDurations.set(se.soundChannelId, { durationSec: wd.durationSec });
-      }
-
       soundEventInputs.push({
         entityId: entity.id,
         pulse: e.y,
@@ -672,38 +647,70 @@ export class RenderSlice extends Slice {
       });
     }
 
+    const trimPulseByEntityId = new Map<string, number>();
+    {
+      const sortedPulsesByLane = new Map<number, number[]>();
+      for (const sei of soundEventInputs) {
+        let pulses = sortedPulsesByLane.get(sei.soundLane);
+        if (!pulses) sortedPulsesByLane.set(sei.soundLane, (pulses = []));
+        pulses.push(sei.pulse);
+      }
+      for (const pulses of sortedPulsesByLane.values()) pulses.sort((a, b) => a - b);
+      for (const sei of soundEventInputs) {
+        const pulses = sortedPulsesByLane.get(sei.soundLane)!;
+        const idx = pulses.indexOf(sei.pulse);
+        const nextPulse = idx + 1 < pulses.length ? pulses[idx + 1] : null;
+        trimPulseByEntityId.set(sei.entityId, nextPulse ?? size);
+      }
+    }
+
+    let fp = `${selectedChartId}|${scaleY}|${size}|${waveformMap.size}`;
+    for (const sei of soundEventInputs) {
+      const eventChartSec = timingEngine.pulseToSeconds(sei.pulse);
+      const trimPulse = trimPulseByEntityId.get(sei.entityId)!;
+      const endChartSec = timingEngine.pulseToSeconds(trimPulse);
+      fp += `|${sei.entityId}:${sei.pulse}:${sei.soundLane}:${sei.soundChannelId}:${eventChartSec}:${endChartSec}`;
+    }
+
+    if (fp === this._lastWaveformFingerprint) return this._cachedWaveformSlices;
+    this._lastWaveformFingerprint = fp;
+
+    const channelDurations = new Map<string, { durationSec: number }>();
+    for (const sei of soundEventInputs) {
+      const soundChannel = entityManager.get(sei.soundChannelId);
+      const channelPath = soundChannel
+        ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
+        : undefined;
+      if (channelPath && waveformMap.has(channelPath)) {
+        const wd = waveformMap.get(channelPath)!;
+        channelDurations.set(sei.soundChannelId, { durationSec: wd.durationSec });
+      }
+    }
+
     const offsets = computeWaveformOffsets(soundEventInputs, channelDurations, (pulse: number) =>
       timingEngine.pulseToSeconds(pulse),
     );
 
     const slices: WaveformSegment[] = [];
 
-    for (const entity of entityManager.entitiesWithComponent(SOUND_EVENT)) {
-      const event = entityManager.getComponent(entity, EVENT);
-      const soundEvent = entityManager.getComponent(entity, SOUND_EVENT);
-      const chartRef = entityManager.getComponent(entity, CHART_REF);
-      if (!event || !soundEvent || !chartRef || chartRef.chartId !== selectedChartId) continue;
+    for (const sei of soundEventInputs) {
+      const entity = entityManager.get(sei.entityId);
+      if (!entity) continue;
 
-      const soundChannel = entityManager.get(soundEvent.soundChannelId);
+      const soundChannel = entityManager.get(sei.soundChannelId);
       const soundChannelPath = soundChannel
         ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
         : undefined;
       if (!soundChannelPath || !waveformMap.has(soundChannelPath)) continue;
 
       const wd = waveformMap.get(soundChannelPath)!;
-      const offsetInfo = offsets.get(entity.id);
+      const offsetInfo = offsets.get(sei.entityId);
 
-      const soundLaneCol = columns.find((c) => c.soundLane === soundEvent.soundLane);
+      const soundLaneCol = columns.find((c) => c.soundLane === sei.soundLane);
       if (!soundLaneCol) continue;
 
-      const pulse = event.y;
-
-      const nextPulse = soundEventInputs
-        .filter((se) => se.soundLane === soundEvent.soundLane && se.pulse > pulse)
-        .map((se) => se.pulse)
-        .sort((a, b) => a - b)[0];
-
-      const trimPulse = nextPulse ?? size;
+      const pulse = sei.pulse;
+      const trimPulse = trimPulseByEntityId.get(sei.entityId)!;
 
       const sampleOffsetAudioSec = offsetInfo?.sampleOffsetAudioSec ?? 0;
       const eventChartSec = timingEngine.pulseToSeconds(pulse);
