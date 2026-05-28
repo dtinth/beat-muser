@@ -6,18 +6,22 @@ export function computePeakAndRms(
   if (sampleRate <= 0 || framesPerSec <= 0) {
     throw new Error("sampleRate and framesPerSec must be positive");
   }
-  const chunkSize = Math.floor(sampleRate / framesPerSec);
-  if (chunkSize === 0 || channelData.length === 0) {
+  if (channelData.length === 0) {
     return { peak: new Float32Array(0), rms: new Float32Array(0) };
   }
 
   const totalSamples = channelData[0].length;
-  const chunkCount = Math.ceil(totalSamples / chunkSize);
+  const chunkCount = Math.max(0, Math.ceil((totalSamples * framesPerSec) / sampleRate));
+  if (chunkCount === 0) {
+    return { peak: new Float32Array(0), rms: new Float32Array(0) };
+  }
   const peak = new Float32Array(chunkCount);
   const rms = new Float32Array(chunkCount);
 
   for (let ci = 0; ci < chunkCount; ci++) {
-    computeChunk(channelData, chunkSize, totalSamples, ci, peak, rms);
+    const start = Math.round((ci * sampleRate) / framesPerSec);
+    const end = Math.min(Math.round(((ci + 1) * sampleRate) / framesPerSec), totalSamples);
+    computeChunk(channelData, start, end, ci, peak, rms);
   }
 
   return { peak, rms };
@@ -28,13 +32,18 @@ export function computePeakAndRmsAsync(
   sampleRate: number,
   framesPerSec: number,
 ): Promise<{ peak: Float32Array; rms: Float32Array }> {
-  const chunkSize = Math.floor(sampleRate / framesPerSec);
-  if (chunkSize === 0 || channelData.length === 0) {
+  if (sampleRate <= 0 || framesPerSec <= 0) {
+    throw new Error("sampleRate and framesPerSec must be positive");
+  }
+  if (channelData.length === 0) {
     return Promise.resolve({ peak: new Float32Array(0), rms: new Float32Array(0) });
   }
 
   const totalSamples = channelData[0].length;
-  const chunkCount = Math.ceil(totalSamples / chunkSize);
+  const chunkCount = Math.max(0, Math.ceil((totalSamples * framesPerSec) / sampleRate));
+  if (chunkCount === 0) {
+    return Promise.resolve({ peak: new Float32Array(0), rms: new Float32Array(0) });
+  }
   const peak = new Float32Array(chunkCount);
   const rms = new Float32Array(chunkCount);
 
@@ -46,7 +55,9 @@ export function computePeakAndRmsAsync(
     function processBatch() {
       const batchEnd = Math.min(batchStart + BATCH_CHUNKS, chunkCount);
       for (let ci = batchStart; ci < batchEnd; ci++) {
-        computeChunk(channelData, chunkSize, totalSamples, ci, peak, rms);
+        const start = Math.round((ci * sampleRate) / framesPerSec);
+        const end = Math.min(Math.round(((ci + 1) * sampleRate) / framesPerSec), totalSamples);
+        computeChunk(channelData, start, end, ci, peak, rms);
       }
 
       batchStart = batchEnd;
@@ -63,14 +74,12 @@ export function computePeakAndRmsAsync(
 
 function computeChunk(
   channelData: Float32Array[],
-  chunkSize: number,
-  totalSamples: number,
+  start: number,
+  end: number,
   ci: number,
   peak: Float32Array,
   rms: Float32Array,
 ): void {
-  const start = ci * chunkSize;
-  const end = Math.min(start + chunkSize, totalSamples);
   let maxPeak = 0;
   let sumSq = 0;
 
@@ -85,5 +94,5 @@ function computeChunk(
 
   const count = end - start;
   peak[ci] = maxPeak;
-  rms[ci] = Math.sqrt(sumSq / count);
+  rms[ci] = count > 0 ? Math.sqrt(sumSq / count) : 0;
 }
