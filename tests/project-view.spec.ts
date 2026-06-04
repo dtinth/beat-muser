@@ -25,6 +25,48 @@ test.describe("Project view timeline", () => {
   });
 });
 
+test.describe("Pencil tool BPM edit dialog", () => {
+  test("auto-focuses BPM number input when creating a BPM event", async ({ page }) => {
+    await page.goto("/projects/__demo__");
+    await page.waitForLoadState("networkidle");
+
+    // Activate pencil tool (shortcut: W)
+    await page.keyboard.press("KeyW");
+
+    // Click on the BPM column area of the timeline canvas
+    const canvas = page.locator('[data-testid="scrollable-canvas-root"]');
+    // BPM column spans content-x 88..144 (measure=40, time-sig=48, bpm=56)
+    await canvas.click({ position: { x: 110, y: 200 } });
+
+    const dialog = page.getByRole("dialog", { name: "Edit BPM" });
+    await expect(dialog).toBeVisible();
+
+    const input = dialog.getByRole("spinbutton");
+    await expect(input).toBeFocused();
+  });
+
+  test("auto-focuses time signature numerator when creating a time signature event", async ({
+    page,
+  }) => {
+    await page.goto("/projects/__demo__");
+    await page.waitForLoadState("networkidle");
+
+    // Activate pencil tool (shortcut: W)
+    await page.keyboard.press("KeyW");
+
+    // Click on the time signature column area of the timeline canvas
+    const canvas = page.locator('[data-testid="scrollable-canvas-root"]');
+    // Time signature column spans content-x 40..88 (measure=40, time-sig=48)
+    await canvas.click({ position: { x: 60, y: 200 } });
+
+    const dialog = page.getByRole("dialog", { name: "Edit Time Signature" });
+    await expect(dialog).toBeVisible();
+
+    const numerator = dialog.getByRole("spinbutton").first();
+    await expect(numerator).toBeFocused();
+  });
+});
+
 test.describe("Undo/redo", () => {
   test("smoke: delete note then undo restores it", async ({ page }) => {
     await page.goto("/projects/__demo__");

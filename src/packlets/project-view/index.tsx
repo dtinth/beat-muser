@@ -1032,11 +1032,13 @@ export function ProjectViewPage() {
   const [bpmEditOpen, setBpmEditOpen] = useState(false);
   const [bpmEditEntityId, setBpmEditEntityId] = useState<string | null>(null);
   const [bpmValue, setBpmValue] = useState("");
+  const bpmInputRef = useRef<HTMLInputElement>(null);
 
   const [timeSigEditOpen, setTimeSigEditOpen] = useState(false);
   const [timeSigEditEntityId, setTimeSigEditEntityId] = useState<string | null>(null);
   const [timeSigNumerator, setTimeSigNumerator] = useState("");
   const [timeSigDenominator, setTimeSigDenominator] = useState("");
+  const timeSigNumeratorRef = useRef<HTMLInputElement>(null);
 
   const lastPlacedEntityInfo = useStore(controller.$lastPlacedEntityInfo);
 
@@ -1063,6 +1065,20 @@ export function ProjectViewPage() {
     }
     controller.$lastPlacedEntityInfo.set(null);
   }, [lastPlacedEntityInfo, controller]);
+
+  useEffect(() => {
+    if (bpmEditOpen) {
+      const timer = setTimeout(() => bpmInputRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [bpmEditOpen]);
+
+  useEffect(() => {
+    if (timeSigEditOpen) {
+      const timer = setTimeout(() => timeSigNumeratorRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [timeSigEditOpen]);
 
   const handleBpmConfirm = () => {
     if (!bpmEditEntityId) return;
@@ -1123,6 +1139,7 @@ export function ProjectViewPage() {
         <Dialog.Content maxWidth="300px">
           <Dialog.Title>Edit BPM</Dialog.Title>
           <TextField.Root
+            ref={bpmInputRef}
             type="number"
             value={bpmValue}
             onChange={(e) => setBpmValue(e.target.value)}
@@ -1143,6 +1160,7 @@ export function ProjectViewPage() {
           <Dialog.Title>Edit Time Signature</Dialog.Title>
           <Flex gap="2" align="center">
             <TextField.Root
+              ref={timeSigNumeratorRef}
               type="number"
               value={timeSigNumerator}
               onChange={(e) => setTimeSigNumerator(e.target.value)}
