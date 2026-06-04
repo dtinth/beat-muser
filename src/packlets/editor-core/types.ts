@@ -69,7 +69,7 @@ export const AUTO_EXTEND_THRESHOLD_QN = 4;
 
 export const DEFAULT_CHART_SIZE = 15360;
 
-export const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 4];
+export const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 3.5, 4];
 
 export const BASE_SCALE_Y = 0.2;
 
