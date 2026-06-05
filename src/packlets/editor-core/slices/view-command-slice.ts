@@ -6,6 +6,7 @@ import { CursorSlice } from "./cursor-slice.ts";
 import { TimingSlice } from "./timing-slice.ts";
 import { ChartSlice } from "./chart-slice.ts";
 import { SnapSlice } from "./snap-slice.ts";
+import { ColumnsSlice } from "./columns-slice.ts";
 import { BASE_SCALE_Y, ZOOM_PRESETS } from "../types.ts";
 
 export class ViewCommandSlice extends Slice {
@@ -64,6 +65,31 @@ export class ViewCommandSlice extends Slice {
     cursor.$cursorPulse.set(targetPulse);
     const currentScroll = viewport.$scroll.get();
     viewport.requestScroll({ x: currentScroll.x, y: currentScroll.y + deltaY });
+  }
+
+  navigateColumn(direction: "left" | "right"): void {
+    const cursor = this.ctx.get(CursorSlice);
+    const columns = this.ctx.get(ColumnsSlice).$columns.get();
+    const placeable = columns.filter((c) => c.placementHandler);
+    if (placeable.length === 0) return;
+
+    const current = cursor.$cursorColumnId.get();
+    if (direction === "right") {
+      if (current === null) {
+        cursor.$cursorColumnId.set(placeable[0]!.id);
+      } else {
+        const idx = placeable.findIndex((c) => c.id === current);
+        if (idx < placeable.length - 1) {
+          cursor.$cursorColumnId.set(placeable[idx + 1]!.id);
+        }
+      }
+    } else {
+      if (current === null) return;
+      const idx = placeable.findIndex((c) => c.id === current);
+      if (idx > 0) {
+        cursor.$cursorColumnId.set(placeable[idx - 1]!.id);
+      }
+    }
   }
 
   computeZoomScrollOffset(oldZoom: number, newZoom: number): number {

@@ -256,3 +256,30 @@ When dragging commits, each entity's pulse is updated via {@link EditBatchBuilde
 
 - "Mode" was used ambiguously to mean both game mode and tool mode (select/pencil/erase/pan). Resolved: "game mode" always refers to lane layouts; "tool" refers to the active editor tool.
 - "Plugin" was used in ADR 014 and early discussions. Resolved: use **Extension** for the full system (package + worker). "Plugin" is ambiguous with browser extensions and VS Code's "extension" convention is more widely understood.
+
+## Added terms — Keyboard event placement
+
+**Row cursor**:
+The pulse position cursor on the timeline, navigated by ArrowUp/ArrowDown (snap grid). Stored as `$cursorPulse` in `CursorSlice`. Determines where events are placed along the time axis.
+_Avoid_: "horizontal cursor" (ambiguous with column cursor)
+
+**Column cursor**:
+The column index cursor across timeline columns, navigated by ArrowLeft/ArrowRight and set by mouse hover. Stored as a new `$cursorColumn` atom in `CursorSlice`. Indicates which `TimelineColumn` receives keyboard-placed events. Shown as an upward-pointing triangle below the column. Defaults to -1 (inactive) on page load; becomes active on first timeline hover or ArrowLeft/ArrowRight press.
+
+**Placement key**:
+When the Pencil tool (`W`) is active, pressing `W` a second time places an event at the intersection of the **Row cursor** (pulse) and **Column cursor** (column) using the column's `placementHandler`. Mouse hover overrides the column cursor position at any time. No-op when column cursor is -1 or the column has no `placementHandler`.
+
+**Placeable column list**:
+ArrowLeft/ArrowRight navigate a filtered list of columns that have a `placementHandler`. Columns without one (measure column, spacers) are skipped. Navigation does NOT wrap — clamps at first/last. From -1, ArrowRight goes to first placeable column; ArrowLeft stays at -1.
+
+**Sound lane keyboard skip**:
+Sound lane columns with no selected sound channel return `null` from their `placementHandler`, which silently no-ops during keyboard placement — identical to mouse placement behavior.
+
+**Column cursor persistence**:
+The column cursor persists across tool switches, chart switches, and column changes until page reload. If the stored column ID no longer exists in the placeable column list, the cursor becomes -1 (inactive).
+
+**Keyboard placement read-only guard**:
+During playback, the chart is considered read-only. The placement key is a no-op when `$transportState` is `"playing"`. Column cursor navigation still works during playback.
+
+**Tool scope**:
+The column cursor exists in all tool modes. Keyboard-based event placement is initially scoped to the Pencil tool only.

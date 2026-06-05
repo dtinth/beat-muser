@@ -911,6 +911,18 @@ export function ProjectViewPage() {
       execute: () => controller.navigateSnap("down"),
     });
     commands.add({
+      id: "navigateLeft",
+      title: "Navigate Left",
+      shortcut: "ArrowLeft",
+      execute: () => controller.navigateColumn("left"),
+    });
+    commands.add({
+      id: "navigateRight",
+      title: "Navigate Right",
+      shortcut: "ArrowRight",
+      execute: () => controller.navigateColumn("right"),
+    });
+    commands.add({
       id: "toolSelect",
       title: "Select Tool",
       shortcut: "KeyQ",
@@ -920,7 +932,13 @@ export function ProjectViewPage() {
       id: "toolPencil",
       title: "Pencil Tool",
       shortcut: "KeyW",
-      execute: () => controller.setTool("pencil"),
+      execute: () => {
+        if (controller.$activeTool.get() === "pencil") {
+          controller.placeAtCursor();
+        } else {
+          controller.setTool("pencil");
+        }
+      },
     });
     commands.add({
       id: "toolErase",
