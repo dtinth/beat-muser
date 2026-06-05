@@ -34,6 +34,7 @@ import { ColumnsSlice } from "./slices/columns-slice.ts";
 import { TimingColumnsSlice } from "./slices/timing-columns-slice.ts";
 import { LevelColumnsSlice } from "./slices/level-columns-slice.ts";
 import { SoundColumnsSlice } from "./slices/sound-columns-slice.ts";
+import { SoflanColumnsSlice } from "./slices/soflan-columns-slice.ts";
 import { GameModeRegistrySlice } from "./slices/game-mode-registry-slice.ts";
 import { RenderSlice } from "./slices/render-slice.ts";
 import { PointerInteractionSlice } from "./slices/pointer-interaction-slice.ts";
@@ -151,6 +152,7 @@ export class EditorController {
     this.ctx.register(TimingColumnsSlice);
     this.ctx.register(LevelColumnsSlice);
     this.ctx.register(SoundColumnsSlice);
+    this.ctx.register(SoflanColumnsSlice);
     this.ctx.register(DragSlice);
     this.ctx.register(SoundChannelSlice);
     this.ctx.register(WaveformSlice);

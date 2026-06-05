@@ -16,6 +16,8 @@ import {
   LEVEL_REF,
   BPM_CHANGE,
   TIME_SIGNATURE,
+  SOFLAN,
+  formatSoflanText,
   CHART_REF,
   SOUND_EVENT,
   SOUND_CHANNEL,
@@ -322,6 +324,83 @@ export class RenderSlice extends Slice {
                   selected: true,
                 },
                 testId: "bpm-change-ghost",
+                zIndex: 3,
+                opacity: 0.5,
+              });
+            }
+          }
+        }
+      }
+
+      // --- Soflan event markers ---
+      const soflanColumns = columns.filter((c) => c.id.startsWith("soflan-"));
+      if (soflanColumns.length > 0) {
+        for (const entity of entityManager.entitiesWithComponent(SOFLAN)) {
+          const event = entityManager.getComponent(entity, EVENT);
+          const soflan = entityManager.getComponent(entity, SOFLAN) as
+            | {
+                scroll: { numerator: number; denominator: number };
+                skip: { numerator: number; denominator: number };
+              }
+            | undefined;
+          const levelRef = entityManager.getComponent(entity, LEVEL_REF);
+          if (!event || !soflan || !levelRef) continue;
+          const pulse = event.y;
+          if (pulse < pulseStart || pulse >= pulseEnd) continue;
+
+          const col = soflanColumns.find((c) => c.levelId === levelRef.levelId);
+          if (!col) continue;
+          const colIndex = columns.indexOf(col);
+
+          const isSelected =
+            selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex);
+          const isDragged = draggedEntityIds.has(entity.id);
+
+          const text = formatSoflanText(soflan);
+
+          specs.push({
+            key: `soflan-${entity.id}`,
+            type: "event-marker",
+            x: col.x,
+            y: trackHeight - pulse * scaleY - 14,
+            width: col.width,
+            height: 14,
+            data: {
+              text,
+              backgroundColor: "var(--green-6)",
+              textColor: "#fff",
+              selected: isSelected,
+            },
+            testId: "soflan-marker",
+            entityId: entity.id,
+            zIndex: 2,
+            opacity: isDragging && isDragged ? 0.3 : undefined,
+          });
+
+          if (isDragging && isDragged) {
+            const ghostPulse = pulse + deltaPulse;
+            if (ghostPulse >= pulseStart && ghostPulse < pulseEnd) {
+              const ghostCol = getGhostTargetColumn(
+                entity.id,
+                col,
+                originalColumnIndices,
+                deltaColumnIndex,
+                gameplayFlatList,
+              );
+              specs.push({
+                key: `soflan-ghost-${entity.id}`,
+                type: "event-marker",
+                x: ghostCol.x,
+                y: trackHeight - ghostPulse * scaleY - 14,
+                width: ghostCol.width,
+                height: 14,
+                data: {
+                  text,
+                  backgroundColor: "var(--green-6)",
+                  textColor: "#fff",
+                  selected: true,
+                },
+                testId: "soflan-ghost",
                 zIndex: 3,
                 opacity: 0.5,
               });

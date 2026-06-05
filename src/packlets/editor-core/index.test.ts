@@ -15,6 +15,7 @@ import {
   EVENT,
   CHART_REF,
   LEVEL_REF,
+  SOFLAN,
   SOUND_GROUP,
   SOUND_CHANNEL,
   SOUND_EVENT,
@@ -23,6 +24,7 @@ import {
   SelectionSlice,
   ViewportSlice,
   ColumnsSlice,
+  GameModeRegistrySlice,
   HistorySlice,
   ClipperSlice,
   CLIPBOARD_SCHEMA,
@@ -149,6 +151,135 @@ describe("EditorController", () => {
 
     editor.instance.toggleLevelVisibility(levelId);
     expect(editor.columns.count).toBe(withLevel);
+  });
+
+  describe("Soflan columns", () => {
+    test("adds a Soflan column for levels whose game mode supports soflan", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 1000);
+          }),
+      });
+
+      const chartId = editor.instance.$selectedChartId.get()!;
+      const before = editor.columns.count;
+      editor.instance.addLevel(chartId, "Easy", "beat-7k");
+
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const soflanCol = columns.find((c) => c.id.startsWith("soflan-"));
+      expect(soflanCol).toBeDefined();
+      expect(soflanCol!.title).toBe("S");
+      expect(soflanCol!.width).toBe(48);
+      expect(editor.columns.count).toBeGreaterThan(before);
+    });
+
+    test("no Soflan column for levels without supportsSoflan", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 1000);
+          }),
+      });
+
+      const chartId = editor.instance.$selectedChartId.get()!;
+      // Register a mode without supportsSoflan
+      const registry = editor.instance.ctx.get(GameModeRegistrySlice);
+      registry.registerGameMode({
+        mode: "test-5k",
+        lanes: [{ laneIndex: 1, name: "1", width: 36, noteColor: "var(--gray-7)" }],
+      });
+      editor.instance.addLevel(chartId, "Test", "test-5k");
+
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const soflanCol = columns.find((c) => c.id.startsWith("soflan-"));
+      expect(soflanCol).toBeUndefined();
+    });
+
+    test("Soflan column is positioned after sound columns", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart("Hard", undefined, 1000);
+          }),
+      });
+
+      const chartId = editor.instance.$selectedChartId.get()!;
+      editor.instance.addLevel(chartId, "Easy", "beat-7k");
+
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const soundCol = columns.find((c) => c.id === "sound-lane-0");
+      const soflanCol = columns.find((c) => c.id.startsWith("soflan-"));
+      expect(soflanCol).toBeDefined();
+      expect(soundCol).toBeDefined();
+      expect(soflanCol!.x).toBeGreaterThanOrEqual(soundCol!.x + soundCol!.width);
+    });
+
+    test("pencil-clicking Soflan column creates a Soflan entity", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 15360);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.add(
+              entity((e) =>
+                e
+                  .with(EVENT, { y: 0 })
+                  .with(SOFLAN, {
+                    scroll: { numerator: 1, denominator: 1 },
+                    skip: { numerator: 0, denominator: 1 },
+                  })
+                  .with(LEVEL_REF, { levelId: level.id })
+                  .with(CHART_REF, { chartId: chart.id }),
+              ),
+            );
+          }),
+      });
+
+      editor.setTool("pencil");
+      editor.pointerMove({ y: 392 }); // pulse 240
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const soflanCol = columns.find((c) => c.id.startsWith("soflan-"));
+      expect(soflanCol).toBeDefined();
+      expect(soflanCol!.placementHandler).toBeDefined();
+      editor.pointerDown({ x: soflanCol!.x + soflanCol!.width / 2, y: 392 });
+
+      const soflanEntities = editor.instance
+        .getEntityManager()
+        .entitiesWithComponent(SOFLAN)
+        .filter((e) => (e.components[EVENT.key] as { y: number })?.y === 240);
+      expect(soflanEntities).toHaveLength(1);
+    });
+
+    test("Soflan column rendering produces markers", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 15360);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.add(
+              entity((e) =>
+                e
+                  .with(EVENT, { y: 500 })
+                  .with(SOFLAN, {
+                    scroll: { numerator: 2, denominator: 1 },
+                    skip: { numerator: 1, denominator: 4 },
+                  })
+                  .with(LEVEL_REF, { levelId: level.id })
+                  .with(CHART_REF, { chartId: chart.id }),
+              ),
+            );
+          }),
+      });
+
+      const specs = editor.instance.$visibleRenderObjects.get();
+      const soflanMarkers = specs.filter((s) => s.key.startsWith("soflan-"));
+      expect(soflanMarkers.length).toBeGreaterThan(0);
+      const marker = soflanMarkers[0]!;
+      expect(marker.type).toBe("event-marker");
+      const data = marker.data as Record<string, unknown>;
+      expect(data.text).toMatch(/×2(\s+\+1\/4)?/);
+    });
   });
 
   test("extracts BPM changes from entities", () => {
