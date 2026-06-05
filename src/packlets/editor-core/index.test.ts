@@ -278,7 +278,7 @@ describe("EditorController", () => {
       const marker = soflanMarkers[0]!;
       expect(marker.type).toBe("event-marker");
       const data = marker.data as Record<string, unknown>;
-      expect(data.text).toMatch(/×2(\s+\+1\/4)?/);
+      expect(data.text).toMatch(/×2\s+\+1\/4/);
     });
   });
 

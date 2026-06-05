@@ -224,7 +224,8 @@ export const SOFLAN = new EntityComponentType(
             description: "Scroll velocity multiplier numerator. Can be decimal.",
           }),
           denominator: Type.Number({
-            description: "Scroll velocity multiplier denominator. Can be decimal.",
+            description:
+              "Scroll velocity multiplier denominator. Must be non‑zero. Can be decimal.",
           }),
         },
         { additionalProperties: false },
@@ -235,7 +236,7 @@ export const SOFLAN = new EntityComponentType(
             description: "Beat skip numerator (quarter notes). Can be decimal.",
           }),
           denominator: Type.Number({
-            description: "Beat skip denominator (quarter notes). Can be decimal.",
+            description: "Beat skip denominator (quarter notes). Must be non‑zero. Can be decimal.",
           }),
         },
         { additionalProperties: false },
@@ -252,9 +253,9 @@ export function formatSoflanText(soflan: {
   scroll: { numerator: number; denominator: number };
   skip: { numerator: number; denominator: number };
 }): string {
-  const scrollDen = soflan.scroll.denominator;
+  const scrollDen = soflan.scroll.denominator === 0 ? 1 : soflan.scroll.denominator;
   const skipNum = soflan.skip.numerator;
-  const skipDen = soflan.skip.denominator;
+  const skipDen = soflan.skip.denominator === 0 ? 1 : soflan.skip.denominator;
   let text: string;
   if (scrollDen === 1) {
     text = `×${soflan.scroll.numerator}`;
