@@ -196,7 +196,7 @@ describe("EditorController", () => {
       expect(soflanCol).toBeUndefined();
     });
 
-    test("Soflan column is positioned after sound columns", () => {
+    test("Soflan column is positioned after gameplay lanes of the same level", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
           makeProject((p) => {
@@ -208,11 +208,11 @@ describe("EditorController", () => {
       editor.instance.addLevel(chartId, "Easy", "beat-7k");
 
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
-      const soundCol = columns.find((c) => c.id === "sound-lane-0");
+      const lastLane = [...columns].reverse().find((c) => c.levelId && c.laneIndex !== undefined);
       const soflanCol = columns.find((c) => c.id.startsWith("soflan-"));
       expect(soflanCol).toBeDefined();
-      expect(soundCol).toBeDefined();
-      expect(soflanCol!.x).toBeGreaterThanOrEqual(soundCol!.x + soundCol!.width);
+      expect(lastLane).toBeDefined();
+      expect(soflanCol!.x).toBeGreaterThanOrEqual(lastLane!.x + lastLane!.width);
     });
 
     test("pencil-clicking Soflan column creates a Soflan entity", () => {
