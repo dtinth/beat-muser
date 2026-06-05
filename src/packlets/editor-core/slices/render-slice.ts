@@ -85,6 +85,9 @@ export class RenderSlice extends Slice {
     ctx.get(CursorSlice).$cursorViewportPos.subscribe(() => {
       this.requestRerender();
     });
+    ctx.get(CursorSlice).$cursorColumnId.subscribe(() => {
+      this.requestRerender();
+    });
 
     this.$waveformSlices = computed(
       [
@@ -589,6 +592,26 @@ export class RenderSlice extends Slice {
           testId: "playhead",
           zIndex: 3,
         });
+      }
+
+      // --- Column cursor indicator ---
+      const cursorColumnId = cursor.$cursorColumnId.get();
+      if (cursorColumnId) {
+        const col = columns.find((c) => c.id === cursorColumnId);
+        if (col) {
+          const indicatorHeight = 8;
+          const indicatorWidth = indicatorHeight * 2;
+          specs.push({
+            key: "column-cursor",
+            type: "column-cursor",
+            x: col.x + (col.width - indicatorWidth) / 2,
+            y: trackHeight - cursorPulse * scaleY + 1,
+            width: indicatorWidth,
+            height: indicatorHeight,
+            data: {},
+            zIndex: 4,
+          });
+        }
       }
 
       if (rawPulseStart >= rawPulseEnd) return specs;

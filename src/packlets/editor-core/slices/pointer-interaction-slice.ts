@@ -107,6 +107,30 @@ export class PointerInteractionSlice extends Slice {
       .snapPulse(pulse, this.ctx.get(SnapSlice).$snap.get());
   }
 
+  placeAtCursor(): void {
+    if (this.ctx.get(PlaybackSlice).$transportState.get() === "playing") return;
+    const columnId = this.ctx.get(CursorSlice).$cursorColumnId.get();
+    if (!columnId) return;
+    const columns = this.ctx.get(ColumnsSlice).$columns.get();
+    const column = columns.find((c) => c.id === columnId);
+    if (!column?.placementHandler) return;
+    const pulse = this.ctx.get(CursorSlice).$cursorPulse.get();
+    const entity = column.placementHandler(pulse);
+    if (!entity) return;
+    const previousSelection = new Set(this.ctx.get(SelectionSlice).$selection.get());
+    this.ctx
+      .get(HistorySlice)
+      .applyAction(
+        new PlaceEntityUserAction(
+          this.ctx,
+          entity,
+          column.id,
+          previousSelection,
+          this.$lastPlacedEntityInfo,
+        ),
+      );
+  }
+
   handlePointerDown(point: Point, shiftKey: boolean = false): void {
     const activeTool = this.ctx.get(ToolSlice).$activeTool.get();
 
@@ -269,6 +293,10 @@ export class PointerInteractionSlice extends Slice {
           this.computePulseFromViewportY(viewportY),
         );
     }
+    const contentX = viewportX + this.ctx.get(ViewportSlice).$scroll.get().x;
+    const columns = this.ctx.get(ColumnsSlice).$columns.get();
+    const hoveredColumn = columns.find((c) => contentX >= c.x && contentX < c.x + c.width);
+    this.ctx.get(CursorSlice).$cursorColumnId.set(hoveredColumn?.id ?? null);
     if (playbackSlice.$transportState.get() === "playing") return;
     this.ctx.get(CursorSlice).$cursorViewportPos.set({ x: viewportX, y: viewportY });
     this.recomputeCursorPulse();

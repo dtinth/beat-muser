@@ -225,6 +225,16 @@ function createSelectionBoxRenderer(): () => RenderHandle<{}> {
   };
 }
 
+function createColumnCursorRenderer(): (data: unknown) => RenderHandle<{}> {
+  return () => {
+    const el = document.createElement("div");
+    el.style.clipPath = "polygon(50% 0%, 0% 100%, 100% 100%)";
+    el.style.backgroundColor = "var(--accent-9)";
+    el.style.pointerEvents = "none";
+    return { dom: el, update() {} };
+  };
+}
+
 const rendererMap: Record<string, Renderer> = {
   "column-bg": createColumnBgRenderer(),
   "column-title": createColumnTitleRenderer(),
@@ -234,6 +244,7 @@ const rendererMap: Record<string, Renderer> = {
   "grid-line": createGridLineRenderer(),
   "selection-box": createSelectionBoxRenderer(),
   waveform: createWaveformRenderer(),
+  "column-cursor": createColumnCursorRenderer(),
 };
 
 function specToRenderObject(spec: TimelineRenderSpec): RenderObject {

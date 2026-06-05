@@ -221,6 +221,14 @@ export class EditorTester {
     this.instance.navigateSnap("down");
   }
 
+  navigateLeft() {
+    this.instance.navigateColumn("left");
+  }
+
+  navigateRight() {
+    this.instance.navigateColumn("right");
+  }
+
   get scrollHeight() {
     return this.instance.getContentHeight();
   }

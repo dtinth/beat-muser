@@ -334,6 +334,10 @@ export class EditorController {
     this.ctx.get(SnapSlice).setSnap(snap);
   }
 
+  placeAtCursor(): void {
+    this.pointer.placeAtCursor();
+  }
+
   handlePointerDown(point: Point, shiftKey: boolean = false): void {
     this.pointer.handlePointerDown(point, shiftKey);
   }
@@ -392,6 +396,10 @@ export class EditorController {
 
   navigateSnap(direction: "up" | "down"): void {
     this.ctx.get(ViewCommandSlice).navigateSnap(direction);
+  }
+
+  navigateColumn(direction: "left" | "right"): void {
+    this.ctx.get(ViewCommandSlice).navigateColumn(direction);
   }
 
   onConnected(): void {

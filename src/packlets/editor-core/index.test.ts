@@ -28,6 +28,8 @@ import {
   HistorySlice,
   ClipperSlice,
   CLIPBOARD_SCHEMA,
+  CursorSlice,
+  PlaybackSlice,
 } from "./index.ts";
 import { Rect } from "../geometry/index.ts";
 import type { Entity } from "../entity-manager/index.ts";
@@ -994,6 +996,172 @@ describe("EditorController", () => {
       editor.navigateUp();
       const afterY = playheadViewportY(60);
       expect(afterY).toBe(beforeY);
+    });
+  });
+
+  describe("column cursor", () => {
+    function setup() {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 15360);
+            p.addLevel(chart.id, "Easy", "beat-7k");
+          }),
+      });
+      return editor;
+    }
+
+    test("starts as null (inactive)", () => {
+      const editor = setup();
+      expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBeNull();
+    });
+
+    test("navigateRight from null moves to first placeable column", () => {
+      const editor = setup();
+      editor.navigateRight();
+      expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBe("time-sig");
+    });
+
+    test("navigateRight twice moves to second placeable column", () => {
+      const editor = setup();
+      editor.navigateRight();
+      editor.navigateRight();
+      expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBe("bpm");
+    });
+
+    test("navigateLeft from null stays null", () => {
+      const editor = setup();
+      editor.navigateLeft();
+      expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBeNull();
+    });
+
+    test("navigateLeft from first placeable column stays at first", () => {
+      const editor = setup();
+      editor.navigateRight();
+      editor.navigateLeft();
+      expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBe("time-sig");
+    });
+
+    test("mouse hover over timeline sets column cursor to column under pointer", () => {
+      const editor = setup();
+      editor.pointerMove({ x: 50, y: 200 });
+      expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBe("time-sig");
+    });
+
+    test("mouse hover over bpm column sets column cursor to bpm", () => {
+      const editor = setup();
+      editor.pointerMove({ x: 100, y: 200 });
+      expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBe("bpm");
+    });
+  });
+
+  describe("column cursor render spec", () => {
+    test("produces a column-cursor render spec when column cursor is active", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 15360);
+            p.addLevel(chart.id, "Easy", "beat-7k");
+          }),
+      });
+      editor.instance.ctx.get(CursorSlice).$cursorColumnId.set("time-sig");
+      const specs = editor.instance.$visibleRenderObjects.get();
+      const cursorSpec = specs.find((s) => s.type === "column-cursor");
+      expect(cursorSpec).toBeDefined();
+      expect(cursorSpec!.width).toBe(16); // 2x height
+      expect(cursorSpec!.height).toBe(8);
+      // Centered in time-sig column (x=40, width=48)
+      expect(cursorSpec!.x).toBe(56);
+    });
+
+    test("no column-cursor render spec when column cursor is null", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 15360);
+            p.addLevel(chart.id, "Easy", "beat-7k");
+          }),
+      });
+      const specs = editor.instance.$visibleRenderObjects.get();
+      const cursorSpec = specs.find((s) => s.type === "column-cursor");
+      expect(cursorSpec).toBeUndefined();
+    });
+  });
+
+  describe("placeAtCursor", () => {
+    let levelEntity: Entity;
+
+    function setup() {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 15360);
+            levelEntity = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.add(
+              entity((e) =>
+                e
+                  .with(EVENT, { y: 0 })
+                  .with(NOTE, { lane: 0 })
+                  .with(LEVEL_REF, { levelId: levelEntity!.id })
+                  .with(CHART_REF, { chartId: chart.id }),
+              ),
+            );
+          }),
+      });
+      return editor;
+    }
+
+    test("places a note at the cursor position when column cursor points to a lane", () => {
+      const editor = setup();
+      const cursorSlice = editor.instance.ctx.get(CursorSlice);
+      const columnsSlice = editor.instance.ctx.get(ColumnsSlice);
+      const cols = columnsSlice.$columns.get();
+      const laneColumn = cols.find((c) => c.id.includes("lane-8"));
+      cursorSlice.$cursorPulse.set(480);
+      cursorSlice.$cursorColumnId.set(laneColumn!.id);
+      editor.instance.placeAtCursor();
+      const notes = editor.instance
+        .getEntityManager()
+        .entitiesWithComponent(NOTE)
+        .filter((e) => (e.components[EVENT.key] as { y: number })?.y === 480);
+      expect(notes).toHaveLength(1);
+    });
+
+    test("no-op during playback", () => {
+      const editor = setup();
+      const cursorSlice = editor.instance.ctx.get(CursorSlice);
+      const columnsSlice = editor.instance.ctx.get(ColumnsSlice);
+      const cols = columnsSlice.$columns.get();
+      const laneColumn = cols.find((c) => c.id.includes("lane-8"));
+      cursorSlice.$cursorPulse.set(480);
+      cursorSlice.$cursorColumnId.set(laneColumn!.id);
+      editor.instance.ctx.get(PlaybackSlice).$transportState.set("playing");
+      editor.instance.placeAtCursor();
+      const notes = editor.instance
+        .getEntityManager()
+        .entitiesWithComponent(NOTE)
+        .filter((e) => (e.components[EVENT.key] as { y: number })?.y === 480);
+      expect(notes).toHaveLength(0);
+    });
+
+    test("no-op when column cursor is null", () => {
+      const editor = setup();
+      editor.instance.placeAtCursor();
+      const notes = editor.instance.getEntityManager().entitiesWithComponent(NOTE);
+      expect(notes).toHaveLength(1); // only the pre-seeded note
+    });
+
+    test("places a BPM change at cursor when column cursor is on bpm column", () => {
+      const editor = setup();
+      const cursorSlice = editor.instance.ctx.get(CursorSlice);
+      cursorSlice.$cursorPulse.set(240);
+      cursorSlice.$cursorColumnId.set("bpm");
+      editor.instance.placeAtCursor();
+      const bpms = editor.instance
+        .getEntityManager()
+        .entitiesWithComponent(BPM_CHANGE)
+        .filter((e) => (e.components[EVENT.key] as { y: number })?.y === 240);
+      expect(bpms).toHaveLength(1);
     });
   });
 

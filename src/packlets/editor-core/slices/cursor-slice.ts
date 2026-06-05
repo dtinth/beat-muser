@@ -7,4 +7,5 @@ export class CursorSlice extends Slice {
 
   $cursorPulse = atom<number>(0);
   $cursorViewportPos = atom<Point>({ x: 0, y: -1 });
+  $cursorColumnId = atom<string | null>(null);
 }
