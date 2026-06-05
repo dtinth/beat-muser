@@ -31,6 +31,8 @@ export interface GameModeLayout {
   lanes: LaneDefinition[];
   /** Whether this mode supports linking sound channels to notes (keysounding). */
   keysounds?: boolean;
+  /** Whether this mode supports Soflan (scroll velocity change) events. */
+  supportsSoflan?: boolean;
 }
 
 /**

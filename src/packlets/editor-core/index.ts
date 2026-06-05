@@ -26,6 +26,7 @@ export * from "./slices/columns-slice.ts";
 export * from "./slices/timing-columns-slice.ts";
 export * from "./slices/level-columns-slice.ts";
 export * from "./slices/sound-columns-slice.ts";
+export * from "./slices/soflan-columns-slice.ts";
 export * from "./slices/game-mode-registry-slice.ts";
 export * from "./slices/render-slice.ts";
 export * from "./slices/pointer-interaction-slice.ts";

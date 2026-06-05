@@ -110,6 +110,13 @@ The {@link PlaybackSlice} in editor-core that holds transport state (`$transport
 **Playback rate**:
 A speed multiplier applied to playback. At 1.0x, playback time and context time are the same. At 0.5x, playback time elapses at half speed. Rate is passed as a parameter to `startAudioPlayback()` alongside the `Playback` object and applied both to scheduling math and `source.playbackRate`.
 
+**Soflan event**:
+A timed entity scoped to a level that changes scroll velocity during gameplay. Carries a rational speed multiplier (`numerator`/`denominator`) and a rational beat skip (`skipNumerator`/`skipDenominator`, in quarter notes). At game runtime, the playfield jumps forward by the skip amount and subsequent scrolling uses the new speed. Soflan events are metadata-only — they do not affect the editor's timeline rendering or scroll speed.
+_Avoid_: scroll velocity event (use "Soflan event")
+
+**Soflan column**:
+A timeline column that displays Soflan markers for a specific level. One column per level, stacked to the right of sound lanes. Soflan events are placed by pencil-clicking the column and editing the values in a dialog (same pattern as BPM).
+
 ## Relationships
 
 - A **Chart** contains one or more **Levels**
@@ -141,6 +148,10 @@ A speed multiplier applied to playback. At 1.0x, playback time and context time 
 - The **Render slice** includes cached **Decoration specs** in the visible render objects
 - The **Extension worker** calls `readEntities` and `exportFile` via JSON-RPC during command execution
 - An **Exporter** triggers its bound **Command** when the project is saved and contains a matching **Level**
+- A **Soflan event** is scoped to a **Level** via `LEVEL_REF`
+- A **Level** has zero or more **Soflan events**
+- A **Soflan column** exists for each **Level** that has a game mode supporting Soflan
+- **Soflan columns** are stacked to the right of **Sound columns**
 
 ## Example dialogue
 

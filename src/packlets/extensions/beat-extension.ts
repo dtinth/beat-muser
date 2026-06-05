@@ -109,12 +109,14 @@ const BEAT_5K_LAYOUT: GameModeLayout = {
   mode: "beat-5k",
   lanes: BEAT_5K_LANES,
   keysounds: true,
+  supportsSoflan: true,
 };
 
 const BEAT_7K_LAYOUT: GameModeLayout = {
   mode: "beat-7k",
   lanes: BEAT_7K_LANES,
   keysounds: true,
+  supportsSoflan: true,
 };
 
 export const BEAT_EXTENSION: Extension = {

@@ -22,6 +22,7 @@ import {
   EditorController,
   BPM_CHANGE,
   TIME_SIGNATURE,
+  SOFLAN,
   CHART,
   LEVEL,
   SOUND_GROUP,
@@ -1040,6 +1041,14 @@ export function ProjectViewPage() {
   const [timeSigDenominator, setTimeSigDenominator] = useState("");
   const timeSigNumeratorRef = useRef<HTMLInputElement>(null);
 
+  const [soflanEditOpen, setSoflanEditOpen] = useState(false);
+  const [soflanEditEntityId, setSoflanEditEntityId] = useState<string | null>(null);
+  const [soflanScrollNum, setSoflanScrollNum] = useState("");
+  const [soflanScrollDen, setSoflanScrollDen] = useState("");
+  const [soflanSkipNum, setSoflanSkipNum] = useState("");
+  const [soflanSkipDen, setSoflanSkipDen] = useState("");
+  const soflanScrollNumRef = useRef<HTMLInputElement>(null);
+
   const lastPlacedEntityInfo = useStore(controller.$lastPlacedEntityInfo);
 
   useEffect(() => {
@@ -1062,6 +1071,22 @@ export function ProjectViewPage() {
       setTimeSigNumerator(String(ts?.numerator ?? 4));
       setTimeSigDenominator(String(ts?.denominator ?? 4));
       setTimeSigEditOpen(true);
+    } else if (info.columnId.startsWith("soflan-")) {
+      const entity = controller.getEntityManager().get(info.entityId);
+      const soflan = entity
+        ? (controller.getEntityManager().getComponent(entity, SOFLAN) as
+            | {
+                scroll: { numerator: number; denominator: number };
+                skip: { numerator: number; denominator: number };
+              }
+            | undefined)
+        : undefined;
+      setSoflanEditEntityId(info.entityId);
+      setSoflanScrollNum(String(soflan?.scroll.numerator ?? 1));
+      setSoflanScrollDen(String(soflan?.scroll.denominator ?? 1));
+      setSoflanSkipNum(String(soflan?.skip.numerator ?? 0));
+      setSoflanSkipDen(String(soflan?.skip.denominator ?? 1));
+      setSoflanEditOpen(true);
     }
     controller.$lastPlacedEntityInfo.set(null);
   }, [lastPlacedEntityInfo, controller]);
@@ -1080,6 +1105,13 @@ export function ProjectViewPage() {
     }
   }, [timeSigEditOpen]);
 
+  useEffect(() => {
+    if (soflanEditOpen) {
+      const timer = setTimeout(() => soflanScrollNumRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [soflanEditOpen]);
+
   const handleBpmConfirm = () => {
     if (!bpmEditEntityId) return;
     const entity = controller.getEntityManager().get(bpmEditEntityId);
@@ -1096,6 +1128,37 @@ export function ProjectViewPage() {
     );
     setBpmEditOpen(false);
     setBpmEditEntityId(null);
+  };
+
+  const handleSoflanConfirm = () => {
+    if (!soflanEditEntityId) return;
+    const entity = controller.getEntityManager().get(soflanEditEntityId);
+    if (!entity) return;
+    const scrollNum = parseFloat(soflanScrollNum);
+    const scrollDen = parseFloat(soflanScrollDen);
+    const skipNum = parseFloat(soflanSkipNum);
+    const skipDen = parseFloat(soflanSkipDen);
+    if (
+      Number.isNaN(scrollNum) ||
+      Number.isNaN(scrollDen) ||
+      Number.isNaN(skipNum) ||
+      Number.isNaN(skipDen)
+    )
+      return;
+    if (scrollDen === 0 || skipDen === 0) return;
+    const oldComponents = structuredClone(entity.components);
+    const newComponents = {
+      ...oldComponents,
+      [SOFLAN.key]: {
+        scroll: { numerator: scrollNum, denominator: scrollDen },
+        skip: { numerator: skipNum, denominator: skipDen },
+      },
+    };
+    controller.applyAction(
+      new EditEntityUserAction(controller.ctx, soflanEditEntityId, oldComponents, newComponents),
+    );
+    setSoflanEditOpen(false);
+    setSoflanEditEntityId(null);
   };
 
   const handleTimeSigConfirm = () => {
@@ -1183,6 +1246,64 @@ export function ProjectViewPage() {
               Cancel
             </Button>
             <Button onClick={handleTimeSigConfirm}>OK</Button>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
+      <Dialog.Root open={soflanEditOpen} onOpenChange={setSoflanEditOpen}>
+        <Dialog.Content maxWidth="300px">
+          <Dialog.Title>Edit Soflan</Dialog.Title>
+          <Flex direction="column" gap="2">
+            <Text size="2">Scroll speed</Text>
+            <Flex gap="2" align="center">
+              <TextField.Root
+                ref={soflanScrollNumRef}
+                type="number"
+                value={soflanScrollNum}
+                onChange={(e) => setSoflanScrollNum(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSoflanConfirm();
+                }}
+                style={{ width: 80 }}
+              />
+              <Text size="2">/</Text>
+              <TextField.Root
+                type="number"
+                value={soflanScrollDen}
+                onChange={(e) => setSoflanScrollDen(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSoflanConfirm();
+                }}
+                style={{ width: 80 }}
+              />
+            </Flex>
+            <Text size="2">Skip (quarter notes)</Text>
+            <Flex gap="2" align="center">
+              <TextField.Root
+                type="number"
+                value={soflanSkipNum}
+                onChange={(e) => setSoflanSkipNum(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSoflanConfirm();
+                }}
+                style={{ width: 80 }}
+              />
+              <Text size="2">/</Text>
+              <TextField.Root
+                type="number"
+                value={soflanSkipDen}
+                onChange={(e) => setSoflanSkipDen(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSoflanConfirm();
+                }}
+                style={{ width: 80 }}
+              />
+            </Flex>
+          </Flex>
+          <Flex gap="2" mt="3" justify="end">
+            <Button variant="soft" onClick={() => setSoflanEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSoflanConfirm}>OK</Button>
           </Flex>
         </Dialog.Content>
       </Dialog.Root>

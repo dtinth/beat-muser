@@ -214,6 +214,63 @@ export const SOUND_CHANNEL = new EntityComponentType(
   ),
 );
 
+export const SOFLAN = new EntityComponentType(
+  "soflan",
+  Type.Object(
+    {
+      scroll: Type.Object(
+        {
+          numerator: Type.Number({
+            description: "Scroll velocity multiplier numerator. Can be decimal.",
+          }),
+          denominator: Type.Number({
+            description: "Scroll velocity multiplier denominator. Can be decimal.",
+          }),
+        },
+        { additionalProperties: false },
+      ),
+      skip: Type.Object(
+        {
+          numerator: Type.Number({
+            description: "Beat skip numerator (quarter notes). Can be decimal.",
+          }),
+          denominator: Type.Number({
+            description: "Beat skip denominator (quarter notes). Can be decimal.",
+          }),
+        },
+        { additionalProperties: false },
+      ),
+    },
+    {
+      additionalProperties: false,
+      description: "Identifies a Soflan (scroll velocity change) event. Scoped to a level.",
+    },
+  ),
+);
+
+export function formatSoflanText(soflan: {
+  scroll: { numerator: number; denominator: number };
+  skip: { numerator: number; denominator: number };
+}): string {
+  const scrollDen = soflan.scroll.denominator;
+  const skipNum = soflan.skip.numerator;
+  const skipDen = soflan.skip.denominator;
+  let text: string;
+  if (scrollDen === 1) {
+    text = `×${soflan.scroll.numerator}`;
+  } else {
+    text = `×${soflan.scroll.numerator}/${scrollDen}`;
+  }
+  if (skipNum !== 0) {
+    if (skipDen === 1) {
+      text += ` +${skipNum}`;
+    } else {
+      text += ` +${skipNum}/${skipDen}`;
+    }
+  }
+  return text;
+}
+
 export const SOUND_EVENT = new EntityComponentType(
   "soundEvent",
   Type.Object(
