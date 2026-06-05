@@ -4,7 +4,7 @@ import { ColumnsSlice } from "./columns-slice.ts";
 import { ChartSlice } from "./chart-slice.ts";
 import { LevelSlice } from "./level-slice.ts";
 import { GameModeRegistrySlice } from "./game-mode-registry-slice.ts";
-import { EVENT, NOTE, LEVEL_REF, CHART_REF } from "../components.ts";
+import { EVENT, NOTE, SOFLAN, LEVEL_REF, CHART_REF } from "../components.ts";
 import { EntityBuilder } from "../../entity-manager/index.ts";
 import type { ColumnDefinition } from "../types.ts";
 import { getNoteColumn } from "../entity-accessors.ts";
