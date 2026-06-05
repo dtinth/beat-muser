@@ -111,7 +111,7 @@ The {@link PlaybackSlice} in editor-core that holds transport state (`$transport
 A speed multiplier applied to playback. At 1.0x, playback time and context time are the same. At 0.5x, playback time elapses at half speed. Rate is passed as a parameter to `startAudioPlayback()` alongside the `Playback` object and applied both to scheduling math and `source.playbackRate`.
 
 **Soflan event**:
-A timed entity scoped to a level that changes scroll velocity during gameplay. Carries a rational speed multiplier (`numerator`/`denominator`) and a rational beat skip (`skipNumerator`/`skipDenominator`, in quarter notes). At game runtime, the playfield jumps forward by the skip amount and subsequent scrolling uses the new speed. Soflan events are metadata-only — they do not affect the editor's timeline rendering or scroll speed.
+A timed entity scoped to a level that changes scroll velocity during gameplay. Carries a rational speed multiplier (`scroll: { numerator, denominator }`) and a rational beat skip (`skip: { numerator, denominator }`, in quarter notes). At game runtime, the playfield jumps forward by the skip amount and subsequent scrolling uses the new speed. Soflan events are metadata-only — they do not affect the editor's timeline rendering or scroll speed.
 _Avoid_: scroll velocity event (use "Soflan event")
 
 **Soflan column**:

@@ -70,6 +70,30 @@ export class LevelColumnsSlice extends Slice {
           },
         });
       }
+      if (layout.supportsSoflan) {
+        defs.push({
+          id: `soflan-${level.id}`,
+          title: "S",
+          width: 48,
+          levelId: level.id,
+          backgroundColor: "var(--gray-2)",
+          containsEntity: (entity) => {
+            const lr = entity.components[LEVEL_REF.key] as { levelId: string } | undefined;
+            return lr?.levelId === level.id && entity.components[SOFLAN.key] !== undefined;
+          },
+          placementHandler: (pulse) => {
+            return new EntityBuilder()
+              .with(EVENT, { y: pulse })
+              .with(SOFLAN, {
+                scroll: { numerator: 1, denominator: 1 },
+                skip: { numerator: 0, denominator: 1 },
+              })
+              .with(LEVEL_REF, { levelId: level.id })
+              .with(CHART_REF, { chartId })
+              .build();
+          },
+        });
+      }
     }
 
     return defs;
