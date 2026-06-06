@@ -617,7 +617,7 @@ export class RenderSlice extends Slice {
           const containerH = Math.max(Math.abs(toCenterY - fromCenterY), 1);
 
           specs.push({
-            key: `decoration-${dec.from.pulse}-${dec.to.pulse}`,
+            key: `decoration-${dec.from.pulse}-${dec.from.lane}-${dec.to.pulse}-${dec.to.lane}`,
             type: "decoration-line",
             x: containerX,
             y: containerY,
