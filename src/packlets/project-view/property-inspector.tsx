@@ -90,7 +90,7 @@ function PropertyControl({
           min={min}
           max={max}
           step={step}
-          value={numVal}
+          value={Number.isFinite(numVal) ? numVal : min}
           onChange={(e) => onChange(Number(e.target.value))}
           style={{ flex: 1, accentColor: "var(--accent-9)" }}
         />
@@ -142,7 +142,11 @@ function PropertyControl({
       <input
         type="number"
         value={value === MULTIPLE ? "" : String(value ?? 0)}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onChange={(e) => {
+          const sanitized = Number(e.target.value);
+          if (Number.isNaN(sanitized) || !Number.isFinite(sanitized)) return;
+          onChange(sanitized);
+        }}
         placeholder={value === MULTIPLE ? "(multiple)" : undefined}
         style={{
           width: "100%",
