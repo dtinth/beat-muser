@@ -9,10 +9,7 @@
 
 import { atom } from "nanostores";
 
-/**
- * A decoration spec in pulse/lane coordinates, matching ADR 020 format.
- */
-export interface DecorationSpec {
+export interface LineDecorationSpec {
   type: "line";
   from: { pulse: number; lane: number; anchor: "bottom" | "center" | "grid" };
   to: { pulse: number; lane: number; anchor: "bottom" | "center" | "grid" };
@@ -20,6 +17,18 @@ export interface DecorationSpec {
   width: number;
   zIndex: number;
 }
+
+export interface ArrowDecorationSpec {
+  type: "arrow";
+  pulse: number;
+  lane: number;
+  anchor: "bottom" | "center" | "grid";
+  angle: number;
+  color: string;
+  zIndex: number;
+}
+
+export type DecorationSpec = LineDecorationSpec | ArrowDecorationSpec;
 
 /** Reactive atom holding all current decoration specs from all workers. */
 export const $decorationSpecs = atom<DecorationSpec[]>([]);
