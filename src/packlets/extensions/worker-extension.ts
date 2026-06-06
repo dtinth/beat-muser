@@ -30,17 +30,21 @@ export class WorkerExtension implements Extension {
   private pendingRpc = new Map<number, PendingRpc>();
   private nextRpcId = 1;
 
-  constructor(manifestData: Record<string, unknown>, workerUrl: string) {
+  constructor(manifestData: Record<string, unknown>, workerSource: string | null) {
     this.manifestData = manifestData;
     this.manifest = {
       id: manifestData.id as string,
       name: manifestData.name as string,
       version: manifestData.version as string,
     };
-    try {
-      this.worker = new Worker(workerUrl, { type: "module" });
-    } catch {
-      console.warn(`Failed to create worker for extension ${this.manifest.id}`);
+    if (workerSource !== null) {
+      try {
+        const blob = new Blob([workerSource], { type: "application/javascript" });
+        const blobUrl = URL.createObjectURL(blob);
+        this.worker = new Worker(blobUrl);
+      } catch (err) {
+        console.warn(`Failed to create worker for extension ${this.manifest.id}:`, err);
+      }
     }
   }
 

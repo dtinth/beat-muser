@@ -124,10 +124,20 @@ export class ExtensionManager {
       }
     }
 
-    // Worker-based extension
+    // Worker-based extension — fetch the worker source to create a blob worker
+    // (avoids cross-origin and MIME type issues with direct Worker(url) construction)
     if (manifest.worker) {
       const workerUrl = new URL(manifest.worker, url).href;
-      return new WorkerExtension(manifest, workerUrl);
+      try {
+        const workerRes = await fetch(workerUrl);
+        if (workerRes.ok) {
+          const workerSource = await workerRes.text();
+          return new WorkerExtension(manifest, workerSource);
+        }
+      } catch {
+        console.warn(`Failed to fetch worker script for ${manifest.id} from ${workerUrl}`);
+      }
+      return new WorkerExtension(manifest, null);
     }
 
     // Declarative-only extension
