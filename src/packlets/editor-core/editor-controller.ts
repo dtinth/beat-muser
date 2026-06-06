@@ -339,6 +339,7 @@ export class EditorController {
   snapIncrease(): void {
     const current = this.$snap.get();
     const index = SNAP_OPTIONS.indexOf(current);
+    // If current snap is not found, default to index 0 to start at the coarsest snap.
     const nextIndex = index === -1 ? 0 : (index + 1) % SNAP_OPTIONS.length;
     this.setSnap(SNAP_OPTIONS[nextIndex]);
   }
@@ -346,6 +347,7 @@ export class EditorController {
   snapDecrease(): void {
     const current = this.$snap.get();
     const index = SNAP_OPTIONS.indexOf(current);
+    // If current snap is not found, default to the last index to start at the finest snap.
     const prevIndex =
       index === -1
         ? SNAP_OPTIONS.length - 1
