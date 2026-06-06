@@ -26,7 +26,21 @@ A mechanism to load extensions ad-hoc via `?extension=<url>` query parameter. Th
 _Avoid_: query plugin, URL extension (without "injection" qualifier)
 
 **Entity component schema**:
-A declarative schema in the extension manifest describing a custom entity component (e.g. `fingerId`, `drag`). The editor uses these schemas to drive the inspector UI, clipboard handling, and schema validation. Data is stored as-is via `additionalProperties: true` on existing component objects.
+A declarative schema in the extension manifest describing a custom entity component (e.g. `fingerId`, `drag`). The editor uses these schemas to drive the inspector UI, clipboard handling, schema validation, and property editing. Data is stored as-is via `additionalProperties: true` on existing component objects.
+
+**Property set**:
+A named group of editable note attributes declared by an extension in its manifest. Each property maps to an entity component key, carries a default value, label, and UI hint (control type, options, min/max). Game modes reference property sets by name. Property sets are the declarative bridge between component schemas (data shape) and game modes (which properties are editable).
+_Avoid_: property group, editable set
+
+**Property definition**:
+A single editable field within a property set. Specifies the target entity component key (via `component`), the `default` value, `label` for display, and optional `ui` configuration describing the control type (`segmented`, `slider`, `number`, `text`, `select`) and its parameters (options list, min/max/step).
+
+**Current property values**:
+Editor-tracked "sticky" values for each extension property key. Initialized from the declared default in the property set. Updated by the property inspector when the user changes a value. These values are injected as entity components when placing new gameplay entities via the pencil tool.
+_Avoid_: default values (conflicts with manifest defaults), preset
+
+**Property inspector**:
+A sidebar panel that reads the active game mode's property sets and renders UI controls for each property definition. When entities are selected, it reads the matching component values from those entities and displays them. Changing a control writes the new value to selected entities and updates current property values. Shows "multiple" when selected entities have varying values for the same property.
 
 **Decoration spec**:
 A render description produced by the extension worker, expressed in pulse/lane coordinates. Types: `line` (connecting two points), `fill` (colored region), `label` (text overlay). Each point specifies an **anchor mode**. The editor converts pulse/lane to pixel coordinates, handles culling, and composites decorations into the timeline.
@@ -140,6 +154,13 @@ A timeline column that displays Soflan markers for a specific level. One column 
 - An **Extension** declares zero or more **Entity component schemas**
 - An **Extension** declares zero or more **Commands** in its manifest
 - An **Extension** declares zero or more **Exporters**, each binding a **Command** to a set of **Game modes**
+- An **Extension** declares zero or more **Property sets** in its manifest
+- A **Game mode** references zero or more **Property sets** by ID
+- A **Property set** contains one or more **Property definitions**
+- A **Property definition** references exactly one entity **Component** by key
+- The **Property inspector** reads the active **Game mode**'s **Property sets** to render **Property definitions**
+- **Current property values** are seeded from **Property set** defaults and updated by inspector edits
+- New gameplay entities receive **Current property values** as entity **Components** during placement
 - An **Extension** calls `registerGameMode()` on the **Extension host** in its `connect()` function
 - An **Extension manager** manages the lifecycle of all **Extensions**
 - The **Extension host** is created by `EditorController.createExtensionHost()` and wired to the **Game mode registry**

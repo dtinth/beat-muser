@@ -38,6 +38,7 @@ import { createProjectFileSystem } from "../file-system/index.ts";
 import { createAudioEngine, startAudioPlayback } from "../audio-engine/index.ts";
 import { createTimelineBehaviorFactory } from "./timeline-behavior.ts";
 import { ProjectToolbar } from "./project-toolbar.tsx";
+import { PropertyInspector } from "./property-inspector.tsx";
 import {
   globalCommandRegistry,
   CommandSet,
@@ -512,6 +513,14 @@ function RightPanels({
           {
             label: "Debug",
             content: <DebugContent />,
+          },
+        ]}
+      />
+      <SidebarPanel
+        tabs={[
+          {
+            label: "Properties",
+            content: <PropertyInspector controller={controller} />,
           },
         ]}
       />

@@ -27,6 +27,35 @@ export interface ExtensionManifest {
   version: string;
 }
 
+export interface PropertyDefinition {
+  /** Component key in entity.components that this property targets. */
+  component: string;
+  /** Default value when no value has been set yet. */
+  default: unknown;
+  /** Display label shown in the property inspector. */
+  label: string;
+  /** Optional UI configuration for the inspector control. */
+  ui?: {
+    /** Control type. Defaults to "text" if not specified. */
+    control?: "text" | "number" | "segmented" | "slider" | "select";
+    /** Options for segmented/select controls. */
+    options?: { value: unknown; label: string }[];
+    /** Min value for number/slider controls. */
+    min?: number;
+    /** Max value for number/slider controls. */
+    max?: number;
+    /** Step value for number/slider controls. */
+    step?: number;
+  };
+}
+
+export interface PropertySet {
+  /** Display label for the property set in the inspector. */
+  label: string;
+  /** Map of property key to property definition. */
+  properties: Record<string, PropertyDefinition>;
+}
+
 export interface Extension {
   readonly manifest: ExtensionManifest;
   connect(host: ExtensionHost): void;
@@ -34,6 +63,7 @@ export interface Extension {
 
 export interface ExtensionHost {
   registerGameMode(layout: GameModeLayout): void;
+  registerPropertySet(id: string, propertySet: PropertySet): void;
 }
 
 function isValidUrl(u: string): boolean {
@@ -124,6 +154,9 @@ export class ExtensionManager {
     const ext: Extension = {
       manifest: { id: manifest.id, name: manifest.name, version: manifest.version },
       connect(h) {
+        for (const [id, ps] of Object.entries(manifest.propertySets ?? {})) {
+          h.registerPropertySet(id, ps as PropertySet);
+        }
         for (const gm of manifest.gameModes ?? []) {
           h.registerGameMode(gm);
         }

@@ -33,6 +33,8 @@ export interface GameModeLayout {
   keysounds?: boolean;
   /** Whether this mode supports Soflan (scroll velocity change) events. */
   supportsSoflan?: boolean;
+  /** IDs of property sets whose editable properties apply to this game mode. */
+  propertySets?: string[];
 }
 
 /**

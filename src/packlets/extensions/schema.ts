@@ -49,6 +49,12 @@ export const ExtensionManifestSchema = Type.Object(
               description: "Whether this mode supports keysounding.",
             }),
           ),
+          propertySets: Type.Optional(
+            Type.Array(Type.String(), {
+              description:
+                "IDs of property sets whose editable properties apply to this game mode.",
+            }),
+          ),
         }),
         { description: "Game modes contributed by this extension." },
       ),
@@ -83,6 +89,77 @@ export const ExtensionManifestSchema = Type.Object(
           },
         ),
         { description: "Custom entity component schemas declared by this extension." },
+      ),
+    ),
+    propertySets: Type.Optional(
+      Type.Record(
+        Type.String(),
+        Type.Object({
+          label: Type.String({
+            description: "Display label for the property set in the inspector.",
+          }),
+          properties: Type.Record(
+            Type.String(),
+            Type.Object({
+              component: Type.String({
+                description: "Component key in entity.components that this property targets.",
+              }),
+              default: Type.Unknown(),
+              label: Type.String({
+                description: "Display label shown in the property inspector.",
+              }),
+              ui: Type.Optional(
+                Type.Object(
+                  {
+                    control: Type.Optional(
+                      Type.String({
+                        description:
+                          'Control type: "text", "number", "segmented", "slider", or "select".',
+                      }),
+                    ),
+                    options: Type.Optional(
+                      Type.Array(
+                        Type.Object({
+                          value: Type.Unknown(),
+                          label: Type.String({
+                            description: "Option label.",
+                          }),
+                        }),
+                        {
+                          description: "Options for segmented/select controls.",
+                        },
+                      ),
+                    ),
+                    min: Type.Optional(
+                      Type.Number({
+                        description: "Min value for number/slider controls.",
+                      }),
+                    ),
+                    max: Type.Optional(
+                      Type.Number({
+                        description: "Max value for number/slider controls.",
+                      }),
+                    ),
+                    step: Type.Optional(
+                      Type.Number({
+                        description: "Step value for number/slider controls.",
+                      }),
+                    ),
+                  },
+                  {
+                    description: "Optional UI configuration for the inspector control.",
+                  },
+                ),
+              ),
+            }),
+            {
+              description: "Map of property key to property definition.",
+            },
+          ),
+        }),
+        {
+          description: "Named groups of editable note attributes declared by this extension.",
+        },
       ),
     ),
     commands: Type.Optional(
