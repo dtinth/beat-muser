@@ -605,8 +605,8 @@ export class RenderSlice extends Slice {
             width: containerW,
             height: containerH,
             data: {
-              fromX: 0,
-              fromY: 0,
+              fromX: fromColCenter - containerX,
+              fromY: fromCenterY - containerY,
               toX: toColCenter - containerX,
               toY: toCenterY - containerY,
               color: dec.color,
