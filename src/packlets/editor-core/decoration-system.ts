@@ -15,6 +15,7 @@ export interface LineDecorationSpec {
   to: { pulse: number; lane: number; anchor: "bottom" | "center" | "grid" };
   color: string;
   width: number;
+  curve?: number;
   zIndex: number;
 }
 
