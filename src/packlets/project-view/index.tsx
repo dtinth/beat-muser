@@ -849,6 +849,18 @@ export function ProjectViewPage() {
       execute: () => controller.zoomOut(),
     });
     commands.add({
+      id: "snapIncrease",
+      title: "Increase Snap",
+      shortcut: "BracketRight",
+      execute: () => controller.snapIncrease(),
+    });
+    commands.add({
+      id: "snapDecrease",
+      title: "Decrease Snap",
+      shortcut: "BracketLeft",
+      execute: () => controller.snapDecrease(),
+    });
+    commands.add({
       id: "openCommandPalette",
       title: "Open Command Palette",
       shortcut: "$mod+KeyK",

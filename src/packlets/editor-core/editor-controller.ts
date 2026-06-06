@@ -52,6 +52,8 @@ import { createPlayback } from "./create-playback.ts";
 import { SOUND_EVENT, CHART_REF, EVENT, SOUND_CHANNEL, CHART } from "./components.ts";
 import { DEFAULT_CHART_SIZE } from "./types.ts";
 
+const SNAP_OPTIONS = ["1/4", "1/8", "1/12", "1/16", "1/24", "1/32", "1/48", "1/64"];
+
 export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
@@ -330,6 +332,23 @@ export class EditorController {
 
   setSnap(snap: string): void {
     this.ctx.get(SnapSlice).setSnap(snap);
+  }
+
+  snapIncrease(): void {
+    const current = this.$snap.get();
+    const index = SNAP_OPTIONS.indexOf(current);
+    const nextIndex = index === -1 ? 0 : (index + 1) % SNAP_OPTIONS.length;
+    this.setSnap(SNAP_OPTIONS[nextIndex]);
+  }
+
+  snapDecrease(): void {
+    const current = this.$snap.get();
+    const index = SNAP_OPTIONS.indexOf(current);
+    const prevIndex =
+      index === -1
+        ? SNAP_OPTIONS.length - 1
+        : (index - 1 + SNAP_OPTIONS.length) % SNAP_OPTIONS.length;
+    this.setSnap(SNAP_OPTIONS[prevIndex]);
   }
 
   placeAtCursor(): void {
