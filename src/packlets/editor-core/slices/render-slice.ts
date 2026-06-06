@@ -107,6 +107,10 @@ export class RenderSlice extends Slice {
       this.requestRerender();
     });
 
+    $extensionDecorations.subscribe(() => {
+      this.requestRerender();
+    });
+
     this.$visibleRenderObjects = computed([this.$rerenderRequestCount], () => this.computeSpecs());
   }
 
