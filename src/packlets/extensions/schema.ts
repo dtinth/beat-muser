@@ -162,6 +162,34 @@ export const ExtensionManifestSchema = Type.Object(
         },
       ),
     ),
+    coloringRules: Type.Optional(
+      Type.Array(
+        Type.Object({
+          id: Type.String({
+            description: "Unique rule identifier within the extension.",
+          }),
+          priority: Type.Number({
+            description: "Higher values override lower. Ties break by registration order.",
+          }),
+          match: Type.Record(Type.String(), Type.Unknown(), {
+            description:
+              "MongoDB-style query against entity.components. Supports $eq, $ne, $in, $nin, $gt, $gte, $lt, $lte, $and, $or, $not.",
+          }),
+          apply: Type.Object({
+            noteColor: Type.String({
+              description: "CSS color value to use for the note when this rule matches.",
+            }),
+          }),
+          gameModes: Type.Optional(
+            Type.Array(Type.String(), {
+              description:
+                "Game mode IDs this rule applies to. If omitted, applies to all modes in the extension.",
+            }),
+          ),
+        }),
+        { description: "Declarative coloring rules contributed by this extension." },
+      ),
+    ),
     commands: Type.Optional(
       Type.Array(
         Type.Object({

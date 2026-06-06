@@ -14,6 +14,7 @@ import {
   EVENT,
   NOTE,
   LEVEL_REF,
+  LEVEL,
   BPM_CHANGE,
   TIME_SIGNATURE,
   SOFLAN,
@@ -32,6 +33,8 @@ import { computeWaveformSegments } from "../waveform-segments.ts";
 import { SOUND_GROUP } from "../components.ts";
 import { ZoomSlice } from "./zoom-slice.ts";
 import { perf } from "../../perf/index.ts";
+import { GameModeRegistrySlice } from "./game-mode-registry-slice.ts";
+import { findMatchingRule } from "../coloring-rule-system.ts";
 
 function getGhostTargetColumn(
   entityId: string,
@@ -196,6 +199,7 @@ export class RenderSlice extends Slice {
     }); // end computeSpecs:misc
 
     // --- Gameplay notes ---
+    const gameModeRegistry = this.ctx.get(GameModeRegistrySlice);
     perf.measure("computeSpecs:events", () => {
       for (const entity of entityManager.entitiesWithComponent(NOTE)) {
         const event = entityManager.getComponent(entity, EVENT);
@@ -216,6 +220,20 @@ export class RenderSlice extends Slice {
           selection.$selection.get().has(entity.id) || boxSelection.isInBox(pulse, colIndex);
         const isDragged = draggedEntityIds.has(entity.id);
 
+        // Resolve coloring rules
+        let noteColor = laneCol.noteColor ?? "var(--accent-9)";
+        const levelEntity = entityManager.get(levelRef.levelId);
+        const levelComponent = levelEntity
+          ? entityManager.getComponent(levelEntity, LEVEL)
+          : undefined;
+        if (levelComponent?.mode) {
+          const rules = gameModeRegistry.getColoringRulesForMode(levelComponent.mode);
+          if (rules.length > 0) {
+            const matched = findMatchingRule(rules, entity.components);
+            if (matched) noteColor = matched.noteColor;
+          }
+        }
+
         specs.push({
           key: `note-${entity.id}`,
           type: "event-marker",
@@ -225,7 +243,7 @@ export class RenderSlice extends Slice {
           height: 14,
           data: {
             text: "",
-            backgroundColor: laneCol.noteColor ?? "var(--accent-9)",
+            backgroundColor: noteColor,
             textColor: "#fff",
             selected: isSelected,
           },
@@ -254,7 +272,7 @@ export class RenderSlice extends Slice {
               height: 14,
               data: {
                 text: "",
-                backgroundColor: ghostCol.noteColor ?? "var(--accent-9)",
+                backgroundColor: noteColor,
                 textColor: "#fff",
                 selected: true,
               },

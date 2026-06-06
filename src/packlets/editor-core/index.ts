@@ -40,4 +40,5 @@ export * from "./waveform-slicer.ts";
 export * from "./waveform-segments.ts";
 export * from "./create-playback.ts";
 export * from "./property-system.ts";
+export * from "./coloring-rule-system.ts";
 export * from "./editor-controller.ts";

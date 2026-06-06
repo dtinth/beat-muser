@@ -1,8 +1,9 @@
 import { atom } from "nanostores";
 import { Slice } from "../slice.ts";
 import type { GameModeLayout } from "../lane-layouts.ts";
-import type { PropertySet } from "../../extensions/index.ts";
+import type { PropertySet, ColoringRule } from "../../extensions/index.ts";
 import { seedPropertyDefaults } from "../property-system.ts";
+import { compileColoringRule, type CompiledColoringRule } from "../coloring-rule-system.ts";
 
 export class GameModeRegistrySlice extends Slice {
   static readonly sliceKey = "game-mode-registry";
@@ -12,6 +13,8 @@ export class GameModeRegistrySlice extends Slice {
 
   private modes = new Map<string, GameModeLayout>();
   private propertySets = new Map<string, PropertySet>();
+  /** Game mode → compiled coloring rules (sorted by priority desc, stable for ties). */
+  private coloringRules = new Map<string, CompiledColoringRule[]>();
 
   /**
    * Register a game mode layout.
@@ -69,5 +72,27 @@ export class GameModeRegistrySlice extends Slice {
       if (ps) result.push(ps);
     }
     return result;
+  }
+
+  /**
+   * Register a coloring rule and index it by game mode.
+   */
+  registerColoringRule(rule: ColoringRule): void {
+    const compiled = compileColoringRule(rule);
+    const modes = rule.gameModes ?? Array.from(this.modes.keys());
+    for (const mode of modes) {
+      const existing = this.coloringRules.get(mode) ?? [];
+      existing.push(compiled);
+      // Keep sorted: higher priority first, stable sort for ties
+      existing.sort((a, b) => b.priority - a.priority);
+      this.coloringRules.set(mode, existing);
+    }
+  }
+
+  /**
+   * Get compiled coloring rules for a game mode, sorted by priority descending.
+   */
+  getColoringRulesForMode(mode: string): CompiledColoringRule[] {
+    return this.coloringRules.get(mode) ?? [];
   }
 }
