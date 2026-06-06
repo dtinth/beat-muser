@@ -98,6 +98,36 @@ describe("EditorController", () => {
     editor.timing.shouldHaveMeasureBoundaries({ start: 0, end: 2000 }, [0, 960, 1920]);
   });
 
+  test("snapIncrease and snapDecrease cycle snap resolutions", () => {
+    const editor = new EditorTester({ getProjectToLoad: () => makeProject() });
+
+    // Default snap should be "1/16"
+    expect(editor.instance.$snap.get()).toBe("1/16");
+
+    // snapIncrease should go forward: "1/16" -> "1/24" -> "1/32" -> "1/48" -> "1/64" -> "1/4" (wraps from "1/64" back to start of the array "1/4")
+    editor.instance.snapIncrease();
+    expect(editor.instance.$snap.get()).toBe("1/24");
+
+    editor.instance.snapIncrease();
+    expect(editor.instance.$snap.get()).toBe("1/32");
+
+    editor.instance.snapIncrease();
+    expect(editor.instance.$snap.get()).toBe("1/48");
+
+    editor.instance.snapIncrease();
+    expect(editor.instance.$snap.get()).toBe("1/64");
+
+    editor.instance.snapIncrease();
+    expect(editor.instance.$snap.get()).toBe("1/4");
+
+    // snapDecrease should go backward: "1/4" -> "1/64" -> "1/48"
+    editor.instance.snapDecrease();
+    expect(editor.instance.$snap.get()).toBe("1/64");
+
+    editor.instance.snapDecrease();
+    expect(editor.instance.$snap.get()).toBe("1/48");
+  });
+
   test("provides default columns", () => {
     const editor = new EditorTester({ getProjectToLoad: () => makeProject() });
 

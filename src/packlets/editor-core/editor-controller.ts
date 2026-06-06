@@ -54,6 +54,8 @@ import { DEFAULT_CHART_SIZE } from "./types.ts";
 import { setPropertyValue } from "./property-system.ts";
 import { globalCommandRegistry } from "../command-registry/index.ts";
 
+const SNAP_OPTIONS = ["1/4", "1/8", "1/12", "1/16", "1/24", "1/32", "1/48", "1/64"];
+
 export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
 
@@ -332,6 +334,25 @@ export class EditorController {
 
   setSnap(snap: string): void {
     this.ctx.get(SnapSlice).setSnap(snap);
+  }
+
+  snapIncrease(): void {
+    const current = this.$snap.get();
+    const index = SNAP_OPTIONS.indexOf(current);
+    // If current snap is not found, default to index 0 to start at the coarsest snap.
+    const nextIndex = index === -1 ? 0 : (index + 1) % SNAP_OPTIONS.length;
+    this.setSnap(SNAP_OPTIONS[nextIndex]);
+  }
+
+  snapDecrease(): void {
+    const current = this.$snap.get();
+    const index = SNAP_OPTIONS.indexOf(current);
+    // If current snap is not found, default to the last index to start at the finest snap.
+    const prevIndex =
+      index === -1
+        ? SNAP_OPTIONS.length - 1
+        : (index - 1 + SNAP_OPTIONS.length) % SNAP_OPTIONS.length;
+    this.setSnap(SNAP_OPTIONS[prevIndex]);
   }
 
   placeAtCursor(): void {
