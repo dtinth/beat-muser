@@ -235,6 +235,27 @@ function createColumnCursorRenderer(): (data: unknown) => RenderHandle<{}> {
   };
 }
 
+function createDecorationArrowRenderer(): Renderer {
+  return (data: unknown) => {
+    const d = data as { angle: number; color: string };
+    const el = document.createElement("div");
+    el.style.width = "12px";
+    el.style.height = "12px";
+    el.style.margin = "auto";
+    el.style.clipPath = "polygon(50% 0%, 0% 100%, 100% 100%)";
+    el.style.backgroundColor = d.color;
+    el.style.transform = `rotate(${d.angle - 90}deg)`;
+    return {
+      dom: el,
+      update(newData: unknown) {
+        const nd = newData as typeof d;
+        el.style.backgroundColor = nd.color;
+        el.style.transform = `rotate(${nd.angle - 90}deg)`;
+      },
+    };
+  };
+}
+
 function createDecorationLineRenderer(): Renderer {
   return (data: unknown) => {
     const d = data as {
@@ -289,6 +310,7 @@ const rendererMap: Record<string, Renderer> = {
   waveform: createWaveformRenderer(),
   "column-cursor": createColumnCursorRenderer(),
   "decoration-line": createDecorationLineRenderer(),
+  "decoration-arrow": createDecorationArrowRenderer(),
 };
 
 function specToRenderObject(spec: TimelineRenderSpec): RenderObject {

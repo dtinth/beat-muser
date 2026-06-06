@@ -576,7 +576,22 @@ export class RenderSlice extends Slice {
     // --- Extension decorations (lines, arrows) from workers ---
     perf.measure("computeSpecs:decorations", () => {
       for (const dec of $extensionDecorations.get()) {
-        if (dec.type === "line") {
+        if (dec.type === "arrow") {
+          const col = columns.find((c) => c.laneIndex === dec.lane);
+          if (!col) continue;
+          const y = trackHeight - dec.pulse * scaleY;
+          if (dec.pulse < pulseStart || dec.pulse >= pulseEnd) continue;
+          specs.push({
+            key: `flick-arrow-${dec.pulse}-${dec.lane}`,
+            type: "decoration-arrow",
+            x: col.x,
+            y: y - 36,
+            width: col.width,
+            height: 24,
+            data: { angle: dec.angle, color: dec.color } as Record<string, unknown>,
+            zIndex: 2,
+          });
+        } else if (dec.type === "line") {
           const fromCol = columns.find((c) => c.laneIndex === dec.from.lane);
           const toCol = columns.find((c) => c.laneIndex === dec.to.lane);
           if (!fromCol || !toCol) continue;
