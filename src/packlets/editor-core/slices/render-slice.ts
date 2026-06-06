@@ -630,6 +630,7 @@ export class RenderSlice extends Slice {
               toY: toCenterY - containerY,
               color: dec.color,
               width: 8,
+              curve: dec.curve ?? 0,
             } as Record<string, unknown>,
             zIndex: 2,
           });

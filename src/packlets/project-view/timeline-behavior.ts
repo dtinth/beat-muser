@@ -268,6 +268,7 @@ function createDecorationLineRenderer(): Renderer {
       toY: number;
       color: string;
       width: number;
+      curve: number;
     };
     const el = document.createElement("div");
     el.style.position = "absolute";
@@ -283,20 +284,33 @@ function createDecorationLineRenderer(): Renderer {
     svg.style.width = "100%";
     svg.style.height = "100%";
     el.appendChild(svg);
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("stroke-linecap", "round");
-    line.setAttribute("stroke", d.color);
-    line.setAttribute("stroke-width", String(d.width ?? 8));
-    svg.appendChild(line);
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke", d.color);
+    path.setAttribute("stroke-width", String(d.width ?? 8));
+    svg.appendChild(path);
+
+    function setPath(nd: typeof d) {
+      const dx = nd.toX - nd.fromX;
+      const dy = nd.toY - nd.fromY;
+      const c = nd.curve ?? 0;
+      if (c === 0) {
+        path.setAttribute("d", `M${nd.fromX},${nd.fromY} L${nd.toX},${nd.toY}`);
+      } else {
+        const midX = (nd.fromX + nd.toX) / 2;
+        const midY = (nd.fromY + nd.toY) / 2;
+        const absDx = Math.abs(dx);
+        const cpX = midX + (c * absDx) / 2;
+        const cpY = midY - (c * Math.sign(dx) * dy) / 2;
+        path.setAttribute("d", `M${nd.fromX},${nd.fromY} Q${cpX},${cpY} ${nd.toX},${nd.toY}`);
+      }
+    }
 
     const update = (newData: unknown) => {
-      const nd = newData as typeof d;
-      line.setAttribute("x1", String(nd.fromX));
-      line.setAttribute("y1", String(nd.fromY));
-      line.setAttribute("x2", String(nd.toX));
-      line.setAttribute("y2", String(nd.toY));
+      setPath(newData as typeof d);
     };
-    update(d);
+    setPath(d);
 
     return { dom: el, update };
   };
