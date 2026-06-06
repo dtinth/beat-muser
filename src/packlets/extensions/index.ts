@@ -174,6 +174,9 @@ export class ExtensionManager {
         for (const [id, ps] of Object.entries(manifest.propertySets ?? {})) {
           h.registerPropertySet(id, ps as PropertySet);
         }
+        for (const rule of manifest.coloringRules ?? []) {
+          h.registerColoringRule(rule as ColoringRule);
+        }
         for (const gm of manifest.gameModes ?? []) {
           h.registerGameMode(gm);
         }
