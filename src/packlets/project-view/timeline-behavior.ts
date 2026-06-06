@@ -254,14 +254,15 @@ function createDecorationLineRenderer(): Renderer {
     el.style.overflow = "visible";
     el.style.pointerEvents = "none";
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "100%");
-    svg.setAttribute("height", "100%");
+    svg.setAttribute("overflow", "visible");
     svg.style.display = "block";
+    svg.style.width = "100%";
+    svg.style.height = "100%";
     el.appendChild(svg);
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("stroke", d.color);
-    line.setAttribute("stroke-width", String(d.width ?? 2));
     line.setAttribute("stroke-linecap", "round");
+    line.setAttribute("stroke", d.color);
+    line.setAttribute("stroke-width", String(d.width ?? 8));
     svg.appendChild(line);
 
     const update = (newData: unknown) => {
