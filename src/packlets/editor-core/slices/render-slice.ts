@@ -603,15 +603,14 @@ export class RenderSlice extends Slice {
             width: containerW,
             height: containerH,
             data: {
-              // All coordinates relative to container
-              fromX: fromColCenter - containerX,
-              fromY: fromY - containerY,
+              fromX: 0,
+              fromY: 0,
               toX: toColCenter - containerX,
               toY: toY - containerY,
               color: dec.color,
-              width: dec.width,
+              width: 8,
             } as Record<string, unknown>,
-            zIndex: dec.zIndex,
+            zIndex: 2,
           });
         }
       }
