@@ -46,11 +46,13 @@ import { WaveformSlice } from "./slices/waveform-slice.ts";
 import { PlaybackSlice } from "./slices/playback-slice.ts";
 import type { GameModeLayout } from "./lane-layouts.ts";
 import type { ExtensionHost, PropertySet, ColoringRule } from "../extensions/index.ts";
-import { SetMetadataUserAction } from "./user-actions.ts";
+import { SetMetadataUserAction, BatchEditEntitiesUserAction } from "./user-actions.ts";
 import type { ProjectFile, ProjectMetadata } from "../project-format/index.ts";
 import { createPlayback } from "./create-playback.ts";
-import { SOUND_EVENT, CHART_REF, EVENT, SOUND_CHANNEL, CHART } from "./components.ts";
+import { SOUND_EVENT, CHART_REF, EVENT, SOUND_CHANNEL, CHART, LEVEL_REF } from "./components.ts";
 import { DEFAULT_CHART_SIZE } from "./types.ts";
+import { setPropertyValue } from "./property-system.ts";
+import { globalCommandRegistry } from "../command-registry/index.ts";
 
 export class EditorController {
   outbox: Emitter<EditorOutboxEvents> = createNanoEvents<EditorOutboxEvents>();
@@ -451,8 +453,31 @@ export class EditorController {
     return this.ctx.get(GameModeRegistrySlice).getAllModes();
   }
 
+  applyProperty(key: string, value: unknown): void {
+    setPropertyValue(key, value);
+    const selection = this.ctx.get(SelectionSlice).$selection.get();
+    if (selection.size === 0) return;
+    const em = this.entityManager;
+    const selectedLevelId = this.ctx.get(LevelSlice).$selectedLevelId.get();
+    const entities = [...selection]
+      .map((id) => em.get(id))
+      .filter(
+        (e): e is NonNullable<typeof e> =>
+          !!e &&
+          (selectedLevelId ? em.getComponent(e, LEVEL_REF)?.levelId === selectedLevelId : true),
+      );
+    if (entities.length === 0) return;
+    const edits = entities.map((e) => ({
+      entityId: e.id,
+      oldComponents: structuredClone(e.components),
+      newComponents: { ...e.components, [key]: value },
+    }));
+    this.ctx.get(HistorySlice).applyAction(new BatchEditEntitiesUserAction(this.ctx, edits));
+  }
+
   createExtensionHost(): ExtensionHost {
     const registry = this.ctx.get(GameModeRegistrySlice);
+    const ctrl = this;
     return {
       registerGameMode(layout: GameModeLayout) {
         registry.registerGameMode(layout);
@@ -462,6 +487,22 @@ export class EditorController {
       },
       registerColoringRule(rule: ColoringRule) {
         registry.registerColoringRule(rule);
+      },
+      applyProperty(key: string, value: unknown) {
+        ctrl.applyProperty(key, value);
+      },
+      registerCommand(command: {
+        id: string;
+        title: string;
+        shortcut?: string;
+        execute: () => void;
+      }) {
+        return globalCommandRegistry.register({
+          id: command.id,
+          title: command.title,
+          shortcut: command.shortcut,
+          execute: command.execute,
+        });
       },
     };
   }

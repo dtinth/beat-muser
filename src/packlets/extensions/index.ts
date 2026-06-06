@@ -14,74 +14,29 @@
  * primitives via {@link ExtensionHost}.
  */
 
-import type { GameModeLayout } from "../editor-core/lane-layouts.ts";
 import { BEAT_EXTENSION } from "./beat-extension.ts";
+import { WorkerExtension } from "./worker-extension.ts";
+import type {
+  ExtensionManifest,
+  PropertyDefinition,
+  PropertySet,
+  ColoringRule,
+  Extension,
+  ExtensionHost,
+} from "./types.ts";
 
 export const BUILT_IN_EXTENSIONS = [BEAT_EXTENSION];
 
 const TRUST_STORAGE_KEY = "extension-trusted-urls";
 
-export interface ExtensionManifest {
-  id: string;
-  name: string;
-  version: string;
-}
-
-export interface PropertyDefinition {
-  /** Component key in entity.components that this property targets. */
-  component: string;
-  /** Default value when no value has been set yet. */
-  default: unknown;
-  /** Display label shown in the property inspector. */
-  label: string;
-  /** Optional UI configuration for the inspector control. */
-  ui?: {
-    /** Control type. Defaults to "text" if not specified. */
-    control?: "text" | "number" | "segmented" | "slider" | "select";
-    /** Options for segmented/select controls. */
-    options?: { value: unknown; label: string }[];
-    /** Min value for number/slider controls. */
-    min?: number;
-    /** Max value for number/slider controls. */
-    max?: number;
-    /** Step value for number/slider controls. */
-    step?: number;
-  };
-}
-
-export interface PropertySet {
-  /** Display label for the property set in the inspector. */
-  label: string;
-  /** Map of property key to property definition. */
-  properties: Record<string, PropertyDefinition>;
-}
-
-export interface ColoringRule {
-  /** Unique rule identifier within the extension. */
-  id: string;
-  /** Priority: higher values override lower. Ties break by registration order. */
-  priority: number;
-  /** MongoDB-style query against entity.components. */
-  match: Record<string, unknown>;
-  /** Formatting to apply when matched. */
-  apply: {
-    /** CSS color value to use for the note. */
-    noteColor: string;
-  };
-  /** Game mode IDs this rule applies to. If omitted, applies to all modes in the extension. */
-  gameModes?: string[];
-}
-
-export interface Extension {
-  readonly manifest: ExtensionManifest;
-  connect(host: ExtensionHost): void;
-}
-
-export interface ExtensionHost {
-  registerGameMode(layout: GameModeLayout): void;
-  registerPropertySet(id: string, propertySet: PropertySet): void;
-  registerColoringRule(rule: ColoringRule): void;
-}
+export type {
+  ExtensionManifest,
+  PropertyDefinition,
+  PropertySet,
+  ColoringRule,
+  Extension,
+  ExtensionHost,
+};
 
 function isValidUrl(u: string): boolean {
   try {
@@ -168,6 +123,14 @@ export class ExtensionManager {
           throw new Error(`Game mode missing mode or lanes`);
       }
     }
+
+    // Worker-based extension
+    if (manifest.worker) {
+      const workerUrl = new URL(manifest.worker, url).href;
+      return new WorkerExtension(manifest, workerUrl);
+    }
+
+    // Declarative-only extension
     const ext: Extension = {
       manifest: { id: manifest.id, name: manifest.name, version: manifest.version },
       connect(h) {
@@ -179,6 +142,29 @@ export class ExtensionManager {
         }
         for (const rule of manifest.coloringRules ?? []) {
           h.registerColoringRule(rule as ColoringRule);
+        }
+        for (const cmd of manifest.commands ?? []) {
+          if (cmd.applyProperty) {
+            const { key, value } = cmd.applyProperty;
+            h.registerCommand({
+              id: cmd.id,
+              title: cmd.title,
+              shortcut: cmd.shortcut,
+              execute() {
+                h.applyProperty(key, value);
+              },
+            });
+          } else {
+            h.registerCommand({
+              id: cmd.id,
+              title: cmd.title,
+              shortcut: cmd.shortcut,
+              execute() {
+                // No-op fallback for commands without applyProperty
+                // Worker-based extensions handle this via WorkerExtension.connect
+              },
+            });
+          }
         }
       },
     };
