@@ -35,6 +35,7 @@ import { ZoomSlice } from "./zoom-slice.ts";
 import { perf } from "../../perf/index.ts";
 import { GameModeRegistrySlice } from "./game-mode-registry-slice.ts";
 import { findMatchingRule } from "../coloring-rule-system.ts";
+import { $extensionDecorations } from "../../extensions/index.ts";
 
 function getGhostTargetColumn(
   entityId: string,
@@ -571,6 +572,50 @@ export class RenderSlice extends Slice {
         }
       }
     }); // end computeSpecs:events
+
+    // --- Extension decorations (lines, arrows) from workers ---
+    perf.measure("computeSpecs:decorations", () => {
+      for (const dec of $extensionDecorations.get()) {
+        if (dec.type === "line") {
+          const fromCol = columns.find((c) => c.laneIndex === dec.from.lane);
+          const toCol = columns.find((c) => c.laneIndex === dec.to.lane);
+          if (!fromCol || !toCol) continue;
+
+          const fromY = trackHeight - dec.from.pulse * scaleY;
+          const toY = trackHeight - dec.to.pulse * scaleY;
+          const fromColCenter = fromCol.x + fromCol.width / 2;
+          const toColCenter = toCol.x + toCol.width / 2;
+
+          // Skip if both endpoints are outside the visible range
+          if (dec.from.pulse < pulseStart && dec.to.pulse < pulseStart) continue;
+          if (dec.from.pulse >= pulseEnd && dec.to.pulse >= pulseEnd) continue;
+
+          const containerX = Math.min(fromColCenter, toColCenter);
+          const containerY = Math.min(fromY, toY);
+          const containerW = Math.max(Math.abs(toColCenter - fromColCenter), 1);
+          const containerH = Math.max(Math.abs(toY - fromY), 1);
+
+          specs.push({
+            key: `decoration-${dec.from.pulse}-${dec.to.pulse}`,
+            type: "decoration-line",
+            x: containerX,
+            y: containerY,
+            width: containerW,
+            height: containerH,
+            data: {
+              // All coordinates relative to container
+              fromX: fromColCenter - containerX,
+              fromY: fromY - containerY,
+              toX: toColCenter - containerX,
+              toY: toY - containerY,
+              color: dec.color,
+              width: dec.width,
+            } as Record<string, unknown>,
+            zIndex: dec.zIndex,
+          });
+        }
+      }
+    }); // end computeSpecs:decorations
 
     // --- Waveform segments (pre-computed, filtered by visibility) ---
     perf.measure("computeSpecs:waveforms", () => {

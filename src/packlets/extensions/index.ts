@@ -14,6 +14,7 @@
  * primitives via {@link ExtensionHost}.
  */
 
+import { atom } from "nanostores";
 import { BEAT_EXTENSION } from "./beat-extension.ts";
 import { WorkerExtension } from "./worker-extension.ts";
 import type {
@@ -24,8 +25,12 @@ import type {
   Extension,
   ExtensionHost,
 } from "./types.ts";
+import type { DecorationSpec } from "../editor-core/decoration-system.ts";
 
 export const BUILT_IN_EXTENSIONS = [BEAT_EXTENSION];
+
+/** Reactive atom holding all current decoration specs from all extensions. */
+export const $extensionDecorations = atom<DecorationSpec[]>([]);
 
 const TRUST_STORAGE_KEY = "extension-trusted-urls";
 
@@ -206,6 +211,24 @@ export class ExtensionManager {
     if (this.extensions.has(id)) return;
     extension.connect(this.host);
     this.extensions.set(id, extension);
+
+    // Wire decoration callbacks for worker extensions
+    if (extension instanceof WorkerExtension) {
+      extension.setOnDecorations((decorations) => {
+        $extensionDecorations.set(decorations);
+      });
+    }
+  }
+
+  /**
+   * Push entity data to all worker-based extensions for decoration computation.
+   */
+  pushEntitiesToWorkers(entities: Record<string, unknown>[]): void {
+    for (const ext of this.extensions.values()) {
+      if (ext instanceof WorkerExtension) {
+        ext.sendEntities(entities);
+      }
+    }
   }
 
   unregister(id: string): void {

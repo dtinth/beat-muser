@@ -4,9 +4,9 @@
  * Worker-based extension. Spawns a Web Worker from the extension package,
  * communicates via JSON-RPC 2.0 over postMessage.
  *
- * Commands declared in the manifest are registered in the editor's command
- * registry and dispatched to the worker via `execute-command` messages.
- * The worker may call RPC methods (e.g. `applyProperty`) back to the editor.
+ * The worker receives entity data for decoration computation, handles
+ * command execution via `execute-command` messages, and can call RPC
+ * methods (e.g. `applyProperty`, `readEntities`) back to the editor.
  */
 
 import type {
@@ -17,6 +17,7 @@ import type {
   ColoringRule,
 } from "./types.ts";
 import type { GameModeLayout } from "../editor-core/lane-layouts.ts";
+import type { DecorationSpec } from "../editor-core/decoration-system.ts";
 
 interface PendingRpc {
   resolve: (result: unknown) => void;
@@ -29,6 +30,8 @@ export class WorkerExtension implements Extension {
   private worker: Worker | null = null;
   private pendingRpc = new Map<number, PendingRpc>();
   private nextRpcId = 1;
+  private lastEntities: unknown[] | null = null;
+  private onDecorations: ((decorations: DecorationSpec[]) => void) | null = null;
 
   constructor(manifestData: Record<string, unknown>, workerSource: string | null) {
     this.manifestData = manifestData;
@@ -48,6 +51,22 @@ export class WorkerExtension implements Extension {
     }
   }
 
+  /**
+   * Set a callback to receive decoration specs from the worker.
+   */
+  setOnDecorations(cb: (decorations: DecorationSpec[]) => void): void {
+    this.onDecorations = cb;
+  }
+
+  /**
+   * Send entities to the worker for decoration computation.
+   * Called when entity data changes.
+   */
+  sendEntities(entities: Record<string, unknown>[]): void {
+    this.lastEntities = entities;
+    this.worker?.postMessage({ type: "entities-changed", entities });
+  }
+
   connect(host: ExtensionHost): void {
     const data = this.manifestData;
 
@@ -64,7 +83,6 @@ export class WorkerExtension implements Extension {
 
     const worker = this.worker;
     if (!worker) {
-      // Worker unavailable — register commands as no-ops so shortcuts don't error
       for (const cmd of (data.commands ?? []) as { id: string; title: string }[]) {
         host.registerCommand({ id: cmd.id, title: cmd.title, execute: () => {} });
       }
@@ -87,13 +105,19 @@ export class WorkerExtension implements Extension {
     worker.onmessage = (event: MessageEvent) => {
       const msg = event.data;
 
-      // JSON-RPC request from worker → handle and respond
+      // Decoration specs from worker
+      if (msg.type === "decorations") {
+        this.onDecorations?.(msg.decorations as DecorationSpec[]);
+        return;
+      }
+
+      // JSON-RPC request from worker
       if (msg.jsonrpc === "2.0" && msg.method) {
         this.handleRpc(host, worker, msg);
         return;
       }
 
-      // JSON-RPC response to our request → resolve pending
+      // JSON-RPC response
       if (msg.jsonrpc === "2.0" && typeof msg.id === "number") {
         const pending = this.pendingRpc.get(msg.id);
         if (pending) {
@@ -107,9 +131,7 @@ export class WorkerExtension implements Extension {
         return;
       }
 
-      // Legacy message types
       if (msg.type === "command-complete") {
-        // Worker finished processing a command — nothing to do currently
         return;
       }
     };
@@ -153,6 +175,10 @@ export class WorkerExtension implements Extension {
           respond({});
           break;
         }
+        case "readEntities": {
+          respond({ entities: this.lastEntities ?? [] });
+          break;
+        }
         default:
           respondError(new Error(`Unknown RPC method: ${msg.method}`));
       }
@@ -161,5 +187,3 @@ export class WorkerExtension implements Extension {
     }
   }
 }
-
-export { type PendingRpc };

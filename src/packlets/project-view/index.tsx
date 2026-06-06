@@ -802,6 +802,20 @@ export function ProjectViewPage() {
     };
   }, [fileSystem, controller]);
 
+  // Push entity data to extension workers for decoration computation
+  useEffect(() => {
+    const em = controller.getEntityManager();
+    const unsub = em.$mutationVersion.subscribe(() => {
+      const entities = em.toArray().map((e) => ({
+        id: e.id,
+        version: e.version,
+        components: e.components,
+      }));
+      getExtensionManager().pushEntitiesToWorkers(entities);
+    });
+    return () => unsub();
+  }, [controller]);
+
   useEffect(() => {
     const unsub1 = controller.outbox.on("playbackPlay", async (playback, rate) => {
       const engine = audioEngineRef.current;

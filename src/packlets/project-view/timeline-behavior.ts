@@ -235,6 +235,48 @@ function createColumnCursorRenderer(): (data: unknown) => RenderHandle<{}> {
   };
 }
 
+function createDecorationLineRenderer(): Renderer {
+  return (data: unknown) => {
+    const d = data as {
+      fromX: number;
+      fromY: number;
+      toX: number;
+      toY: number;
+      color: string;
+      width: number;
+    };
+    const el = document.createElement("div");
+    el.style.position = "absolute";
+    el.style.top = "0";
+    el.style.left = "0";
+    el.style.width = "100%";
+    el.style.height = "100%";
+    el.style.overflow = "visible";
+    el.style.pointerEvents = "none";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.style.display = "block";
+    el.appendChild(svg);
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("stroke", d.color);
+    line.setAttribute("stroke-width", String(d.width ?? 2));
+    line.setAttribute("stroke-linecap", "round");
+    svg.appendChild(line);
+
+    const update = (newData: unknown) => {
+      const nd = newData as typeof d;
+      line.setAttribute("x1", String(nd.fromX));
+      line.setAttribute("y1", String(nd.fromY));
+      line.setAttribute("x2", String(nd.toX));
+      line.setAttribute("y2", String(nd.toY));
+    };
+    update(d);
+
+    return { dom: el, update };
+  };
+}
+
 const rendererMap: Record<string, Renderer> = {
   "column-bg": createColumnBgRenderer(),
   "column-title": createColumnTitleRenderer(),
@@ -245,6 +287,7 @@ const rendererMap: Record<string, Renderer> = {
   "selection-box": createSelectionBoxRenderer(),
   waveform: createWaveformRenderer(),
   "column-cursor": createColumnCursorRenderer(),
+  "decoration-line": createDecorationLineRenderer(),
 };
 
 function specToRenderObject(spec: TimelineRenderSpec): RenderObject {
