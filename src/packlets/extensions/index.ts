@@ -56,6 +56,22 @@ export interface PropertySet {
   properties: Record<string, PropertyDefinition>;
 }
 
+export interface ColoringRule {
+  /** Unique rule identifier within the extension. */
+  id: string;
+  /** Priority: higher values override lower. Ties break by registration order. */
+  priority: number;
+  /** MongoDB-style query against entity.components. */
+  match: Record<string, unknown>;
+  /** Formatting to apply when matched. */
+  apply: {
+    /** CSS color value to use for the note. */
+    noteColor: string;
+  };
+  /** Game mode IDs this rule applies to. If omitted, applies to all modes in the extension. */
+  gameModes?: string[];
+}
+
 export interface Extension {
   readonly manifest: ExtensionManifest;
   connect(host: ExtensionHost): void;
@@ -64,6 +80,7 @@ export interface Extension {
 export interface ExtensionHost {
   registerGameMode(layout: GameModeLayout): void;
   registerPropertySet(id: string, propertySet: PropertySet): void;
+  registerColoringRule(rule: ColoringRule): void;
 }
 
 function isValidUrl(u: string): boolean {
@@ -156,6 +173,9 @@ export class ExtensionManager {
       connect(h) {
         for (const [id, ps] of Object.entries(manifest.propertySets ?? {})) {
           h.registerPropertySet(id, ps as PropertySet);
+        }
+        for (const rule of manifest.coloringRules ?? []) {
+          h.registerColoringRule(rule as ColoringRule);
         }
         for (const gm of manifest.gameModes ?? []) {
           h.registerGameMode(gm);

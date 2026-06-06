@@ -2332,5 +2332,100 @@ describe("EditorController", () => {
       expect(notes).toHaveLength(1);
       expect((notes[0]!.components as Record<string, unknown>).fingerId).toBe(0);
     });
+
+    test("coloring rule overrides note color in render output", () => {
+      const demoExtension: Extension = {
+        manifest: { id: "com.example.demo", name: "Demo", version: "1.0.0" },
+        connect(h) {
+          h.registerPropertySet("demoNote", {
+            label: "Demo",
+            properties: {
+              fingerId: { component: "fingerId", default: 0, label: "Finger" },
+            },
+          });
+          h.registerColoringRule({
+            id: "finger-0",
+            priority: 100,
+            gameModes: ["demo-mode"],
+            match: { fingerId: 0 },
+            apply: { noteColor: "#ff0000" },
+          });
+          h.registerGameMode({
+            mode: "demo-mode",
+            propertySets: ["demoNote"],
+            lanes: [{ laneIndex: 0, name: "1", width: 80, noteColor: "#00ff00" }],
+          });
+        },
+      };
+
+      const editor = new EditorTester({
+        extensions: [demoExtension],
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "demo-mode");
+            p.add(
+              entity((e) =>
+                e
+                  .with(EVENT, { y: 240 })
+                  .with(NOTE, { lane: 0 })
+                  .with(LEVEL_REF, { levelId: level.id })
+                  .with(CHART_REF, { chartId: chart.id })
+                  .withComponent("fingerId", 0),
+              ),
+            );
+          }),
+      });
+
+      const specs = editor.instance.$visibleRenderObjects.get();
+      const noteSpec = specs.find((s) => s.type === "event-marker" && s.testId === "note");
+      expect(noteSpec).toBeDefined();
+      expect((noteSpec!.data as { backgroundColor: string }).backgroundColor).toBe("#ff0000");
+    });
+
+    test("coloring rule does not apply when no match", () => {
+      const demoExtension: Extension = {
+        manifest: { id: "com.example.demo", name: "Demo", version: "1.0.0" },
+        connect(h) {
+          h.registerColoringRule({
+            id: "finger-0",
+            priority: 100,
+            gameModes: ["demo-mode"],
+            match: { fingerId: 0 },
+            apply: { noteColor: "#ff0000" },
+          });
+          h.registerGameMode({
+            mode: "demo-mode",
+            lanes: [{ laneIndex: 0, name: "1", width: 80, noteColor: "#00ff00" }],
+          });
+        },
+      };
+
+      const editor = new EditorTester({
+        extensions: [demoExtension],
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "demo-mode");
+            // Note has fingerId=1, rule matches fingerId=0 — no override
+            p.add(
+              entity((e) =>
+                e
+                  .with(EVENT, { y: 240 })
+                  .with(NOTE, { lane: 0 })
+                  .with(LEVEL_REF, { levelId: level.id })
+                  .with(CHART_REF, { chartId: chart.id })
+                  .withComponent("fingerId", 1),
+              ),
+            );
+          }),
+      });
+
+      const specs = editor.instance.$visibleRenderObjects.get();
+      const noteSpec = specs.find((s) => s.type === "event-marker" && s.testId === "note");
+      expect(noteSpec).toBeDefined();
+      // Should fall back to lane noteColor
+      expect((noteSpec!.data as { backgroundColor: string }).backgroundColor).toBe("#00ff00");
+    });
   });
 });
