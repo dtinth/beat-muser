@@ -242,15 +242,18 @@ function createDecorationArrowRenderer(): Renderer {
     el.style.width = "12px";
     el.style.height = "12px";
     el.style.margin = "auto";
+    // Triangle points up at 0°; rotate so 0° angle→right, 90°→up
     el.style.clipPath = "polygon(50% 0%, 0% 100%, 100% 100%)";
     el.style.backgroundColor = d.color;
-    el.style.transform = `rotate(${d.angle - 90}deg)`;
+    const safeAngle = Number.isFinite(d.angle) ? d.angle : 0;
+    el.style.transform = `rotate(${90 - safeAngle}deg)`;
     return {
       dom: el,
       update(newData: unknown) {
         const nd = newData as typeof d;
         el.style.backgroundColor = nd.color;
-        el.style.transform = `rotate(${nd.angle - 90}deg)`;
+        const a = Number.isFinite(nd.angle) ? nd.angle : 0;
+        el.style.transform = `rotate(${90 - a}deg)`;
       },
     };
   };
