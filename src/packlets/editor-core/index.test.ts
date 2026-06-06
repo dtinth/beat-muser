@@ -104,7 +104,7 @@ describe("EditorController", () => {
     // Default snap should be "1/16"
     expect(editor.instance.$snap.get()).toBe("1/16");
 
-    // snapIncrease should go forward: "1/16" -> "1/24" -> "1/32" -> "1/48" -> "1/64" -> "1/4"
+    // snapIncrease should go forward: "1/16" -> "1/24" -> "1/32" -> "1/48" -> "1/64" -> "1/4" (wraps from "1/64" back to start of the array "1/4")
     editor.instance.snapIncrease();
     expect(editor.instance.$snap.get()).toBe("1/24");
 
