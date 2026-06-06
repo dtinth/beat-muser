@@ -581,8 +581,10 @@ export class RenderSlice extends Slice {
           const toCol = columns.find((c) => c.laneIndex === dec.to.lane);
           if (!fromCol || !toCol) continue;
 
-          const fromY = trackHeight - dec.from.pulse * scaleY;
-          const toY = trackHeight - dec.to.pulse * scaleY;
+          // Anchor to center of event marker (14px tall rectangles)
+          const EVENT_HEIGHT = 14;
+          const fromCenterY = trackHeight - dec.from.pulse * scaleY - EVENT_HEIGHT / 2;
+          const toCenterY = trackHeight - dec.to.pulse * scaleY - EVENT_HEIGHT / 2;
           const fromColCenter = fromCol.x + fromCol.width / 2;
           const toColCenter = toCol.x + toCol.width / 2;
 
@@ -591,9 +593,9 @@ export class RenderSlice extends Slice {
           if (dec.from.pulse >= pulseEnd && dec.to.pulse >= pulseEnd) continue;
 
           const containerX = Math.min(fromColCenter, toColCenter);
-          const containerY = Math.min(fromY, toY);
+          const containerY = Math.min(fromCenterY, toCenterY);
           const containerW = Math.max(Math.abs(toColCenter - fromColCenter), 1);
-          const containerH = Math.max(Math.abs(toY - fromY), 1);
+          const containerH = Math.max(Math.abs(toCenterY - fromCenterY), 1);
 
           specs.push({
             key: `decoration-${dec.from.pulse}-${dec.to.pulse}`,
@@ -606,7 +608,7 @@ export class RenderSlice extends Slice {
               fromX: 0,
               fromY: 0,
               toX: toColCenter - containerX,
-              toY: toY - containerY,
+              toY: toCenterY - containerY,
               color: dec.color,
               width: 8,
             } as Record<string, unknown>,
