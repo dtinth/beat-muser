@@ -1,6 +1,8 @@
 import { atom } from "nanostores";
 import { Slice } from "../slice.ts";
 import type { GameModeLayout } from "../lane-layouts.ts";
+import type { PropertySet } from "../../extensions/index.ts";
+import { seedPropertyDefaults } from "../property-system.ts";
 
 export class GameModeRegistrySlice extends Slice {
   static readonly sliceKey = "game-mode-registry";
@@ -9,6 +11,7 @@ export class GameModeRegistrySlice extends Slice {
   $modes = atom<ReadonlyMap<string, GameModeLayout>>(new Map());
 
   private modes = new Map<string, GameModeLayout>();
+  private propertySets = new Map<string, PropertySet>();
 
   /**
    * Register a game mode layout.
@@ -36,5 +39,35 @@ export class GameModeRegistrySlice extends Slice {
    */
   getAllModes(): GameModeLayout[] {
     return Array.from(this.modes.values());
+  }
+
+  /**
+   * Register a property set for a game mode. Seeds default property values
+   * if no user-set values exist yet.
+   */
+  registerPropertySet(id: string, propertySet: PropertySet): void {
+    this.propertySets.set(id, propertySet);
+    seedPropertyDefaults(propertySet);
+  }
+
+  /**
+   * Look up a property set by ID.
+   */
+  getPropertySet(id: string): PropertySet | undefined {
+    return this.propertySets.get(id);
+  }
+
+  /**
+   * Get all property sets referenced by a game mode.
+   */
+  getPropertySetsForMode(mode: string): PropertySet[] {
+    const layout = this.modes.get(mode);
+    if (!layout?.propertySets) return [];
+    const result: PropertySet[] = [];
+    for (const id of layout.propertySets) {
+      const ps = this.propertySets.get(id);
+      if (ps) result.push(ps);
+    }
+    return result;
   }
 }

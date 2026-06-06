@@ -11,6 +11,11 @@ export class EntityBuilder {
     return this;
   }
 
+  withComponent(key: string, value: unknown): this {
+    this.components[key] = value;
+    return this;
+  }
+
   build(): Entity {
     return {
       id: uuidv7(),

@@ -36,6 +36,7 @@ import type { Entity } from "../entity-manager/index.ts";
 import { RenderSlice } from "./slices/render-slice.ts";
 import type { WaveformData } from "./slices/waveform-slice.ts";
 import { EditEntityUserAction } from "./user-actions.ts";
+import type { Extension, PropertySet } from "../extensions/index.ts";
 
 const UUID_V7_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -2281,6 +2282,55 @@ describe("EditorController", () => {
         .entitiesWithComponent(BPM_CHANGE)
         .filter((e) => em.getComponent(e, EVENT)!.y === 600);
       expect(pasted).toHaveLength(1);
+    });
+  });
+
+  describe("extension property injection during placement", () => {
+    test("placing a note in a level with property sets injects extension components", () => {
+      const tapPropertySet: PropertySet = {
+        label: "Tap Note",
+        properties: {
+          fingerId: {
+            component: "fingerId",
+            default: 0,
+            label: "Finger",
+          },
+        },
+      };
+      const demoExtension: Extension = {
+        manifest: { id: "com.example.demo", name: "Demo", version: "1.0.0" },
+        connect(h) {
+          h.registerPropertySet("demoNote", tapPropertySet);
+          h.registerGameMode({
+            mode: "demo-mode",
+            propertySets: ["demoNote"],
+            lanes: [{ laneIndex: 0, name: "1", width: 80, noteColor: "#ff0000" }],
+          });
+        },
+      };
+
+      const editor = new EditorTester({
+        extensions: [demoExtension],
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            p.addLevel(chart.id, "Easy", "demo-mode");
+          }),
+      });
+
+      editor.setTool("pencil");
+      const laneCol = editor.instance.ctx
+        .get(ColumnsSlice)
+        .$columns.get()
+        .find((c) => c.laneIndex === 0);
+      expect(laneCol).toBeDefined();
+      editor.pointerMove({ y: 392 }); // pulse 240
+      editor.pointerDown({ x: laneCol!.x + laneCol!.width / 2, y: 392 }); // click lane
+
+      const em = editor.instance.getEntityManager();
+      const notes = em.entitiesWithComponent(NOTE);
+      expect(notes).toHaveLength(1);
+      expect((notes[0]!.components as Record<string, unknown>).fingerId).toBe(0);
     });
   });
 });

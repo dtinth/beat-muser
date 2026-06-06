@@ -8,6 +8,7 @@ import { EVENT, NOTE, SOFLAN, LEVEL_REF, CHART_REF } from "../components.ts";
 import { EntityBuilder } from "../../entity-manager/index.ts";
 import type { ColumnDefinition } from "../types.ts";
 import { getNoteColumn } from "../entity-accessors.ts";
+import { getPropertyComponentsForMode } from "../property-system.ts";
 
 export class LevelColumnsSlice extends Slice {
   static readonly sliceKey = "level-columns";
@@ -43,6 +44,7 @@ export class LevelColumnsSlice extends Slice {
       defs.push({ id: `spacer-level-${level.id}`, title: "", width: 8 });
       const layout = registry.getGameModeLayout(level.mode);
       if (!layout) continue;
+      const modePropertySets = registry.getPropertySetsForMode(level.mode);
       for (const lane of layout.lanes) {
         defs.push({
           id: `level-${level.id}-lane-${lane.laneIndex}`,
@@ -58,12 +60,16 @@ export class LevelColumnsSlice extends Slice {
             return col?.levelId === level.id && col?.laneIndex === lane.laneIndex;
           },
           placementHandler: (pulse) => {
-            return new EntityBuilder()
+            const builder = new EntityBuilder()
               .with(EVENT, { y: pulse })
               .with(NOTE, { lane: lane.laneIndex })
               .with(LEVEL_REF, { levelId: level.id })
-              .with(CHART_REF, { chartId })
-              .build();
+              .with(CHART_REF, { chartId });
+            const extra = getPropertyComponentsForMode(modePropertySets);
+            for (const [key, value] of Object.entries(extra)) {
+              builder.withComponent(key, value);
+            }
+            return builder.build();
           },
           moveEntityTo: (batch, _em, entity) => {
             batch.setNoteColumn(entity.id, level.id, lane.laneIndex);
