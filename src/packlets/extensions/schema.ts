@@ -16,6 +16,12 @@ export const ExtensionManifestSchema = Type.Object(
     version: Type.String({
       description: "Semantic version string.",
     }),
+    worker: Type.Optional(
+      Type.String({
+        description:
+          "URL to the extension's Web Worker script (resolved relative to the manifest).",
+      }),
+    ),
     gameModes: Type.Optional(
       Type.Array(
         Type.Object({
@@ -199,6 +205,25 @@ export const ExtensionManifestSchema = Type.Object(
           title: Type.String({
             description: "Display name shown in the command palette.",
           }),
+          shortcut: Type.Optional(
+            Type.String({
+              description: "Keyboard shortcut, e.g. 'T', 'D', 'F', 'A', 'S'.",
+            }),
+          ),
+          applyProperty: Type.Optional(
+            Type.Object(
+              {
+                key: Type.String({
+                  description: "Component key to set when this command is executed.",
+                }),
+                value: Type.Unknown(),
+              },
+              {
+                description:
+                  "If set, the command directly applies a property without needing a worker.",
+              },
+            ),
+          ),
         }),
         { description: "Commands contributed by this extension." },
       ),
