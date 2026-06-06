@@ -611,10 +611,44 @@ export class RenderSlice extends Slice {
           if (dec.from.pulse < pulseStart && dec.to.pulse < pulseStart) continue;
           if (dec.from.pulse >= pulseEnd && dec.to.pulse >= pulseEnd) continue;
 
-          const containerX = Math.min(fromColCenter, toColCenter);
-          const containerY = Math.min(fromCenterY, toCenterY);
-          const containerW = Math.max(Math.abs(toColCenter - fromColCenter), 1);
-          const containerH = Math.max(Math.abs(toCenterY - fromCenterY), 1);
+          // Convert optional cubic bezier CPs from pulse/lane to pixel space
+          let cp1Pixel: { x: number; y: number } | undefined;
+          let cp2Pixel: { x: number; y: number } | undefined;
+          const cp1 = dec.cp1;
+          const cp2 = dec.cp2;
+          if (cp1) {
+            const cp1Col = columns.find((c) => c.laneIndex === cp1.lane);
+            if (cp1Col) {
+              cp1Pixel = {
+                x: cp1Col.x + cp1Col.width / 2,
+                y: trackHeight - cp1.pulse * scaleY - 7,
+              };
+            }
+          }
+          if (cp2) {
+            const cp2Col = columns.find((c) => c.laneIndex === cp2.lane);
+            if (cp2Col) {
+              cp2Pixel = {
+                x: cp2Col.x + cp2Col.width / 2,
+                y: trackHeight - cp2.pulse * scaleY - 7,
+              };
+            }
+          }
+
+          const allX = [fromColCenter, toColCenter];
+          const allY = [fromCenterY, toCenterY];
+          if (cp1Pixel) {
+            allX.push(cp1Pixel.x);
+            allY.push(cp1Pixel.y);
+          }
+          if (cp2Pixel) {
+            allX.push(cp2Pixel.x);
+            allY.push(cp2Pixel.y);
+          }
+          const containerX = Math.min(...allX);
+          const containerY = Math.min(...allY);
+          const containerW = Math.max(...allX) - containerX || 1;
+          const containerH = Math.max(...allY) - containerY || 1;
 
           specs.push({
             key: `decoration-${dec.from.pulse}-${dec.from.lane}-${dec.to.pulse}-${dec.to.lane}`,
@@ -628,9 +662,12 @@ export class RenderSlice extends Slice {
               fromY: fromCenterY - containerY,
               toX: toColCenter - containerX,
               toY: toCenterY - containerY,
+              cp1x: cp1Pixel ? cp1Pixel.x - containerX : undefined,
+              cp1y: cp1Pixel ? cp1Pixel.y - containerY : undefined,
+              cp2x: cp2Pixel ? cp2Pixel.x - containerX : undefined,
+              cp2y: cp2Pixel ? cp2Pixel.y - containerY : undefined,
               color: dec.color,
               width: 8,
-              curve: dec.curve ?? 0,
             } as Record<string, unknown>,
             zIndex: 2,
           });

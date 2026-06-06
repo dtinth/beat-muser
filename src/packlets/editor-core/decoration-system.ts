@@ -15,7 +15,9 @@ export interface LineDecorationSpec {
   to: { pulse: number; lane: number; anchor: "bottom" | "center" | "grid" };
   color: string;
   width: number;
-  curve?: number;
+  /** Optional cubic bezier control points in pulse/lane space. Worker-computed. */
+  cp1?: { pulse: number; lane: number };
+  cp2?: { pulse: number; lane: number };
   zIndex: number;
 }
 

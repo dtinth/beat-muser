@@ -268,7 +268,10 @@ function createDecorationLineRenderer(): Renderer {
       toY: number;
       color: string;
       width: number;
-      curve: number;
+      cp1x?: number;
+      cp1y?: number;
+      cp2x?: number;
+      cp2y?: number;
     };
     const el = document.createElement("div");
     el.style.position = "absolute";
@@ -292,26 +295,18 @@ function createDecorationLineRenderer(): Renderer {
     svg.appendChild(path);
 
     function setPath(nd: typeof d) {
-      const dx = nd.toX - nd.fromX;
-      const dy = nd.toY - nd.fromY;
-      const c = nd.curve ?? 0;
-      if (c === 0) {
-        path.setAttribute("d", `M${nd.fromX},${nd.fromY} L${nd.toX},${nd.toY}`);
+      if (nd.cp1x !== undefined && nd.cp2x !== undefined) {
+        path.setAttribute(
+          "d",
+          `M${nd.fromX},${nd.fromY} C${nd.cp1x},${nd.cp1y} ${nd.cp2x},${nd.cp2y} ${nd.toX},${nd.toY}`,
+        );
       } else {
-        const midX = (nd.fromX + nd.toX) / 2;
-        const midY = (nd.fromY + nd.toY) / 2;
-        const absDx = Math.abs(dx);
-        const cpX = midX + (c * absDx) / 2;
-        const cpY = midY - (c * Math.sign(dx) * dy) / 2;
-        path.setAttribute("d", `M${nd.fromX},${nd.fromY} Q${cpX},${cpY} ${nd.toX},${nd.toY}`);
+        path.setAttribute("d", `M${nd.fromX},${nd.fromY} L${nd.toX},${nd.toY}`);
       }
     }
 
-    const update = (newData: unknown) => {
-      setPath(newData as typeof d);
-    };
+    const update = (newData: unknown) => setPath(newData as typeof d);
     setPath(d);
-
     return { dom: el, update };
   };
 }
