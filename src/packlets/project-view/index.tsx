@@ -805,8 +805,9 @@ export function ProjectViewPage() {
   // Set file export delegate so extension workers can write exported files
   useEffect(() => {
     getExtensionManager().setFileExportDelegate({
-      exportFile(name: string, data: string) {
-        fileSystem.writeFile(name, data);
+      async exportFile(name: string, data: string) {
+        await fileSystem.writeFile(name, data);
+        showSuccess({ title: `Exported ${name}` });
       },
     });
   }, [fileSystem]);
