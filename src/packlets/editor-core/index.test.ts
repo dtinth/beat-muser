@@ -2360,7 +2360,8 @@ describe("EditorController", () => {
       const em = editor.instance.getEntityManager();
       const notes = em.entitiesWithComponent(NOTE);
       expect(notes).toHaveLength(1);
-      expect((notes[0]!.components as Record<string, unknown>).fingerId).toBe(0);
+      // Extension properties are NOT injected — notes start clean
+      expect((notes[0]!.components as Record<string, unknown>).fingerId).toBeUndefined();
     });
 
     test("coloring rule overrides note color in render output", () => {

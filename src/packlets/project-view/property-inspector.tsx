@@ -15,21 +15,17 @@ import {
   LEVEL_REF,
   LEVEL,
   BatchEditEntitiesUserAction,
-  $currentPropertyValues,
-  setPropertyValue,
 } from "../editor-core/index.ts";
 import type { PropertyDefinition } from "../extensions/index.ts";
 
 const MULTIPLE = Symbol("multiple");
 
 function getControlValue(
-  propKey: string,
+  _propKey: string,
   def: PropertyDefinition,
-  currentValues: Record<string, unknown>,
   entityComponents: unknown[],
 ): unknown | typeof MULTIPLE {
-  const defaultVal = propKey in currentValues ? currentValues[propKey] : def.default;
-  if (entityComponents.length === 0) return defaultVal;
+  if (entityComponents.length === 0) return def.default;
   const first = entityComponents[0];
   for (const c of entityComponents) {
     if (c !== first) return MULTIPLE;
@@ -188,7 +184,6 @@ export function PropertyInspector({ controller }: { controller: EditorController
   const selectedLevelId = useStore(controller.$selectedLevelId);
   const selection = useStore(controller.ctx.get(SelectionSlice).$selection);
   useStore(controller.getEntityManager().$mutationVersion);
-  const currentValues = useStore($currentPropertyValues);
 
   // Get selected level's game mode
   const em = controller.getEntityManager();
@@ -209,9 +204,7 @@ export function PropertyInspector({ controller }: { controller: EditorController
       return lr?.levelId === selectedLevelId;
     });
 
-  const handleChange = (propKey: string, def: PropertyDefinition, value: unknown) => {
-    setPropertyValue(propKey, value);
-
+  const handleChange = (_propKey: string, def: PropertyDefinition, value: unknown) => {
     if (selectedEntities.length === 0) return;
 
     const edits = selectedEntities.map((e) => ({
@@ -250,7 +243,7 @@ export function PropertyInspector({ controller }: { controller: EditorController
           </Text>
           {Object.entries(ps.properties).map(([propKey, def]) => {
             const entityComponents = selectedEntities.map((e) => e.components[def.component]);
-            const value = getControlValue(propKey, def, currentValues, entityComponents);
+            const value = getControlValue(propKey, def, entityComponents);
             return (
               <Flex key={propKey} direction="column" style={{ gap: 2 }}>
                 <Text size="1" color="gray">

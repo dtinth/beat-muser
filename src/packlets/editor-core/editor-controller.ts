@@ -57,7 +57,6 @@ import type { ProjectFile, ProjectMetadata } from "../project-format/index.ts";
 import { createPlayback } from "./create-playback.ts";
 import { SOUND_EVENT, CHART_REF, EVENT, SOUND_CHANNEL, CHART, LEVEL_REF } from "./components.ts";
 import { DEFAULT_CHART_SIZE } from "./types.ts";
-import { setPropertyValue } from "./property-system.ts";
 import { globalCommandRegistry } from "../command-registry/index.ts";
 
 const SNAP_OPTIONS = ["1/4", "1/8", "1/12", "1/16", "1/24", "1/32", "1/48", "1/64"];
@@ -481,7 +480,6 @@ export class EditorController {
   }
 
   applyProperty(key: string, value: unknown): void {
-    setPropertyValue(key, value);
     const selection = this.ctx.get(SelectionSlice).$selection.get();
     if (selection.size === 0) return;
     const em = this.entityManager;
