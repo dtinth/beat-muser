@@ -679,6 +679,9 @@ export class RenderSlice extends Slice {
     perf.measure("computeSpecs:waveforms", () => {
       for (const segment of this.$waveformSlices?.get() ?? []) {
         if (segment.pulseEnd <= pulseStart || segment.pulseStart >= pulseEnd) continue;
+        // Skip segments whose event is far above the viewport but the trimPulse
+        // spans into the viewport (last event on a lane extends to chart end).
+        if (segment.pulseStart < pulseStart - 200 && segment.pulseEnd > pulseEnd) continue;
         const { peak, rms } = segment.getWaveformPixels();
         specs.push({
           key: segment.key,
