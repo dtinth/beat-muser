@@ -58,12 +58,17 @@ export class LevelColumnsSlice extends Slice {
             return col?.levelId === level.id && col?.laneIndex === lane.laneIndex;
           },
           placementHandler: (pulse) => {
-            return new EntityBuilder()
+            const builder = new EntityBuilder()
               .with(EVENT, { y: pulse })
               .with(NOTE, { lane: lane.laneIndex })
               .with(LEVEL_REF, { levelId: level.id })
-              .with(CHART_REF, { chartId })
-              .build();
+              .with(CHART_REF, { chartId });
+            if (layout.defaultComponents) {
+              for (const [key, value] of Object.entries(layout.defaultComponents)) {
+                builder.withComponent(key, value);
+              }
+            }
+            return builder.build();
           },
           moveEntityTo: (batch, _em, entity) => {
             batch.setNoteColumn(entity.id, level.id, lane.laneIndex);

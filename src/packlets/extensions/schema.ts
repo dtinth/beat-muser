@@ -61,6 +61,12 @@ export const ExtensionManifestSchema = Type.Object(
                 "IDs of property sets whose editable properties apply to this game mode.",
             }),
           ),
+          defaultComponents: Type.Optional(
+            Type.Record(Type.String(), Type.Unknown(), {
+              description:
+                "Default component values injected on new entities placed in this game mode.",
+            }),
+          ),
         }),
         { description: "Game modes contributed by this extension." },
       ),

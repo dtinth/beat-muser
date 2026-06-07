@@ -35,6 +35,8 @@ export interface GameModeLayout {
   supportsSoflan?: boolean;
   /** IDs of property sets whose editable properties apply to this game mode. */
   propertySets?: string[];
+  /** Default component values injected on new entities placed in this game mode. */
+  defaultComponents?: Record<string, unknown>;
 }
 
 /**
