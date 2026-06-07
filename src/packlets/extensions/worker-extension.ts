@@ -15,6 +15,7 @@ import type {
   ExtensionManifest,
   PropertySet,
   ColoringRule,
+  ExporterManifest,
 } from "./types.ts";
 import type { GameModeLayout } from "../editor-core/lane-layouts.ts";
 import type { DecorationSpec } from "../editor-core/decoration-system.ts";
@@ -32,6 +33,7 @@ export class WorkerExtension implements Extension {
   private nextRpcId = 1;
   private lastEntities: unknown[] | null = null;
   private onDecorations: ((decorations: DecorationSpec[]) => void) | null = null;
+  private onExportFile: ((name: string, data: string) => void) | null = null;
 
   constructor(manifestData: Record<string, unknown>, workerSource: string | null) {
     this.manifestData = manifestData;
@@ -59,6 +61,13 @@ export class WorkerExtension implements Extension {
   }
 
   /**
+   * Set a callback to receive exportFile requests from the worker.
+   */
+  setOnExportFile(cb: (name: string, data: string) => void): void {
+    this.onExportFile = cb;
+  }
+
+  /**
    * Send entities to the worker for decoration computation.
    * Called when entity data changes.
    */
@@ -79,6 +88,9 @@ export class WorkerExtension implements Extension {
     }
     for (const rule of (data.coloringRules ?? []) as Record<string, unknown>[]) {
       host.registerColoringRule(rule as unknown as ColoringRule);
+    }
+    for (const exporter of (data.exporters ?? []) as Record<string, unknown>[]) {
+      host.registerExporter(exporter as unknown as ExporterManifest);
     }
 
     const worker = this.worker;
@@ -177,6 +189,12 @@ export class WorkerExtension implements Extension {
         }
         case "readEntities": {
           respond({ entities: this.lastEntities ?? [] });
+          break;
+        }
+        case "exportFile": {
+          const params = msg.params as { name: string; data: string };
+          this.onExportFile?.(params.name, params.data);
+          respond({});
           break;
         }
         default:

@@ -1,7 +1,7 @@
 import { atom } from "nanostores";
 import { Slice } from "../slice.ts";
 import type { GameModeLayout } from "../lane-layouts.ts";
-import type { PropertySet, ColoringRule } from "../../extensions/index.ts";
+import type { PropertySet, ColoringRule, ExporterManifest } from "../../extensions/index.ts";
 import { seedPropertyDefaults } from "../property-system.ts";
 import { compileColoringRule, type CompiledColoringRule } from "../coloring-rule-system.ts";
 
@@ -15,6 +15,7 @@ export class GameModeRegistrySlice extends Slice {
   private propertySets = new Map<string, PropertySet>();
   /** Game mode → compiled coloring rules (sorted by priority desc, stable for ties). */
   private coloringRules = new Map<string, CompiledColoringRule[]>();
+  private exporters: ExporterManifest[] = [];
 
   /**
    * Register a game mode layout.
@@ -94,5 +95,19 @@ export class GameModeRegistrySlice extends Slice {
    */
   getColoringRulesForMode(mode: string): CompiledColoringRule[] {
     return this.coloringRules.get(mode) ?? [];
+  }
+
+  /**
+   * Register an exporter.
+   */
+  registerExporter(exporter: ExporterManifest): void {
+    this.exporters.push(exporter);
+  }
+
+  /**
+   * Get all exporters whose game modes include the given mode.
+   */
+  getExportersForMode(mode: string): ExporterManifest[] {
+    return this.exporters.filter((e) => e.gameModes.includes(mode));
   }
 }

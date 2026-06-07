@@ -45,7 +45,13 @@ import { SoundChannelSlice } from "./slices/sound-channel-slice.ts";
 import { WaveformSlice } from "./slices/waveform-slice.ts";
 import { PlaybackSlice } from "./slices/playback-slice.ts";
 import type { GameModeLayout } from "./lane-layouts.ts";
-import type { ExtensionHost, PropertySet, ColoringRule } from "../extensions/index.ts";
+import type {
+  ExtensionHost,
+  PropertySet,
+  ColoringRule,
+  ExporterManifest,
+} from "../extensions/index.ts";
+import { getExtensionManager } from "../extensions/index.ts";
 import { SetMetadataUserAction, BatchEditEntitiesUserAction } from "./user-actions.ts";
 import type { ProjectFile, ProjectMetadata } from "../project-format/index.ts";
 import { createPlayback } from "./create-playback.ts";
@@ -524,6 +530,10 @@ export class EditorController {
           shortcut: command.shortcut,
           execute: command.execute,
         });
+      },
+      registerExporter(exporter: ExporterManifest) {
+        registry.registerExporter(exporter);
+        getExtensionManager().registerExporter(exporter);
       },
     };
   }

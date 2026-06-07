@@ -63,6 +63,12 @@ export interface Extension {
   connect(host: ExtensionHost): void;
 }
 
+export interface ExporterManifest {
+  id: string;
+  gameModes: string[];
+  commandId: string;
+}
+
 export interface ExtensionHost {
   registerGameMode(layout: GameModeLayout): void;
   registerPropertySet(id: string, propertySet: PropertySet): void;
@@ -76,4 +82,6 @@ export interface ExtensionHost {
     shortcut?: string;
     execute: () => void;
   }): () => void;
+  /** Register an exporter mapping game modes to a command ID. */
+  registerExporter(exporter: ExporterManifest): void;
 }

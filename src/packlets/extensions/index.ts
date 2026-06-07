@@ -24,8 +24,11 @@ import type {
   ColoringRule,
   Extension,
   ExtensionHost,
+  ExporterManifest,
 } from "./types.ts";
 import type { DecorationSpec } from "../editor-core/decoration-system.ts";
+import { globalCommandRegistry } from "../command-registry/index.ts";
+import type { ProjectFile } from "../project-format/index.ts";
 
 export const BUILT_IN_EXTENSIONS = [BEAT_EXTENSION];
 
@@ -41,6 +44,7 @@ export type {
   ColoringRule,
   Extension,
   ExtensionHost,
+  ExporterManifest,
 };
 
 function isValidUrl(u: string): boolean {
@@ -93,6 +97,9 @@ export class ExtensionManager {
   private host: ExtensionHost | null = null;
   private extensions = new Map<string, Extension>();
   private pendingExtensions: Extension[] = [];
+  private fileExportDelegate: { exportFile: (name: string, data: string) => void } | null = null;
+  /** Registered exporters for post-save triggering. */
+  private exporters: import("./types.ts").ExporterManifest[] = [];
 
   /** Called from the route loader. Parses `?extension=`, resolves trust, fetches manifests. */
   async initFromUrl(pageUrl: string): Promise<void> {
@@ -161,6 +168,9 @@ export class ExtensionManager {
         for (const rule of manifest.coloringRules ?? []) {
           h.registerColoringRule(rule as ColoringRule);
         }
+        for (const exporter of manifest.exporters ?? []) {
+          h.registerExporter(exporter);
+        }
         for (const cmd of manifest.commands ?? []) {
           if (cmd.applyProperty) {
             const { key, value } = cmd.applyProperty;
@@ -217,6 +227,9 @@ export class ExtensionManager {
       extension.setOnDecorations((decorations) => {
         $extensionDecorations.set(decorations);
       });
+      extension.setOnExportFile((name, data) => {
+        this.fileExportDelegate?.exportFile(name, data);
+      });
     }
   }
 
@@ -227,6 +240,40 @@ export class ExtensionManager {
     for (const ext of this.extensions.values()) {
       if (ext instanceof WorkerExtension) {
         ext.sendEntities(entities);
+      }
+    }
+  }
+
+  /**
+   * Set the delegate for file export. Called once from project-view.
+   */
+  setFileExportDelegate(delegate: { exportFile: (name: string, data: string) => void }): void {
+    this.fileExportDelegate = delegate;
+  }
+
+  /**
+   * Record an exporter mapping for post-save triggering.
+   */
+  registerExporter(exporter: import("./types.ts").ExporterManifest): void {
+    this.exporters.push(exporter);
+  }
+
+  /**
+   * Called after saving a project. Checks all levels against registered exporters
+   * and triggers matching exporter commands via the global command registry.
+   */
+  handleAfterSave(projectFile: ProjectFile): void {
+    if (this.exporters.length === 0) return;
+    const modes = new Set<string>();
+    for (const entity of projectFile.entities) {
+      const level = entity.components.level as { mode: string } | undefined;
+      if (level?.mode) modes.add(level.mode);
+    }
+    const fired = new Set<string>();
+    for (const exporter of this.exporters) {
+      if (exporter.gameModes.some((m) => modes.has(m)) && !fired.has(exporter.commandId)) {
+        fired.add(exporter.commandId);
+        globalCommandRegistry.execute(exporter.commandId);
       }
     }
   }

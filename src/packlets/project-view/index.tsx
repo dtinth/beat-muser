@@ -802,6 +802,15 @@ export function ProjectViewPage() {
     };
   }, [fileSystem, controller]);
 
+  // Set file export delegate so extension workers can write exported files
+  useEffect(() => {
+    getExtensionManager().setFileExportDelegate({
+      exportFile(name: string, data: string) {
+        fileSystem.writeFile(name, data);
+      },
+    });
+  }, [fileSystem]);
+
   // Push entity data to extension workers for decoration computation
   useEffect(() => {
     const em = controller.getEntityManager();
@@ -1020,6 +1029,7 @@ export function ProjectViewPage() {
           const projectFile = controller.serialize();
           const json = JSON.stringify(projectFile, null, 2);
           await fileSystem.writeFile("beat-muser-project.json", json);
+          getExtensionManager().handleAfterSave(projectFile);
           showSuccess({ title: "Project saved" });
         } catch (error) {
           console.error(error);
