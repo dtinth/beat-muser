@@ -22,12 +22,18 @@ import type { PropertyDefinition } from "../extensions/index.ts";
 
 const MULTIPLE = Symbol("multiple");
 
+function stringifyPrimitive(value: unknown): string | undefined {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+    ? String(value)
+    : undefined;
+}
+
 function getControlValue(
   propKey: string,
   def: PropertyDefinition,
   currentValues: Record<string, unknown>,
   entityComponents: unknown[],
-): unknown | typeof MULTIPLE {
+): unknown {
   const defaultVal = propKey in currentValues ? currentValues[propKey] : def.default;
   if (entityComponents.length === 0) return defaultVal;
   const first = entityComponents[0];
@@ -43,7 +49,7 @@ function PropertyControl({
   onChange,
 }: {
   def: PropertyDefinition;
-  value: unknown | typeof MULTIPLE;
+  value: unknown;
   onChange: (value: unknown) => void;
 }) {
   const control = def.ui?.control ?? "text";
@@ -82,7 +88,7 @@ function PropertyControl({
     const min = def.ui?.min ?? 0;
     const max = def.ui?.max ?? 1;
     const step = def.ui?.step ?? 0.01;
-    const numVal = value === MULTIPLE ? (min as number) : (Number(value) ?? 0);
+    const numVal = value === MULTIPLE ? (min as number) : Number(value) || 0;
     return (
       <Flex align="center" style={{ gap: 6 }}>
         <input
@@ -111,7 +117,7 @@ function PropertyControl({
   if (control === "select" && def.ui?.options) {
     return (
       <select
-        value={value === MULTIPLE ? "" : String(value ?? "")}
+        value={value === MULTIPLE ? "" : (stringifyPrimitive(value) ?? "")}
         onChange={(e) => {
           const opt = def.ui?.options?.find((o) => String(o.value) === e.target.value);
           if (opt) onChange(opt.value);
@@ -141,7 +147,7 @@ function PropertyControl({
     return (
       <input
         type="number"
-        value={value === MULTIPLE ? "" : String(value ?? 0)}
+        value={value === MULTIPLE ? "" : (stringifyPrimitive(value) ?? "0")}
         onChange={(e) => onChange(Number(e.target.value))}
         placeholder={value === MULTIPLE ? "(multiple)" : undefined}
         style={{
@@ -162,7 +168,7 @@ function PropertyControl({
   return (
     <input
       type="text"
-      value={value === MULTIPLE ? "" : String(value ?? "")}
+      value={value === MULTIPLE ? "" : (stringifyPrimitive(value) ?? "")}
       onChange={(e) => onChange(e.target.value)}
       placeholder={value === MULTIPLE ? "(multiple)" : undefined}
       style={{
