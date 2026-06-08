@@ -1,7 +1,15 @@
 import { Slice } from "../slice.ts";
 import { SelectionSlice } from "./selection-slice.ts";
 import { ColumnsSlice } from "./columns-slice.ts";
-import { EVENT, BPM_CHANGE, TIME_SIGNATURE, NOTE, LEVEL_REF, SOUND_EVENT } from "../components.ts";
+import {
+  EVENT,
+  BPM_CHANGE,
+  TIME_SIGNATURE,
+  NOTE,
+  LEVEL_REF,
+  SOUND_EVENT,
+  SOFLAN,
+} from "../components.ts";
 import type { Entity } from "../../entity-manager/index.ts";
 
 export class BoxSelectionSlice extends Slice {
@@ -114,6 +122,23 @@ export class BoxSelectionSlice extends Slice {
             if (columns[i]!.soundLane === soundEvent.soundLane) {
               colIndex = i;
               break;
+            }
+          }
+        }
+      }
+      if (colIndex === -1) {
+        const soflan = entity.components[SOFLAN.key];
+        if (soflan) {
+          const levelRef = entity.components[LEVEL_REF.key] as { levelId: string } | undefined;
+          if (levelRef) {
+            for (let i = 0; i < columns.length; i++) {
+              if (
+                columns[i]!.levelId === levelRef.levelId &&
+                columns[i]!.id?.startsWith("soflan-")
+              ) {
+                colIndex = i;
+                break;
+              }
             }
           }
         }
