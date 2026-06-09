@@ -502,7 +502,6 @@ export class EditorController {
 
   createExtensionHost(): ExtensionHost {
     const registry = this.ctx.get(GameModeRegistrySlice);
-    const ctrl = this;
     return {
       registerGameMode(layout: GameModeLayout) {
         registry.registerGameMode(layout);
@@ -513,8 +512,8 @@ export class EditorController {
       registerColoringRule(rule: ColoringRule) {
         registry.registerColoringRule(rule);
       },
-      applyProperty(key: string, value: unknown) {
-        ctrl.applyProperty(key, value);
+      applyProperty: (key: string, value: unknown) => {
+        this.applyProperty(key, value);
       },
       registerCommand(command: {
         id: string;
