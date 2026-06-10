@@ -20,11 +20,18 @@ import type { PropertyDefinition } from "../extensions/index.ts";
 
 const MULTIPLE = Symbol("multiple");
 
+function toDisplayString(value: unknown, fallback = ""): string {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return fallback;
+}
+
 function getControlValue(
   _propKey: string,
   def: PropertyDefinition,
   entityComponents: unknown[],
-): unknown | typeof MULTIPLE {
+): unknown {
   if (entityComponents.length === 0) return def.default;
   const first = entityComponents[0];
   for (const c of entityComponents) {
@@ -39,7 +46,7 @@ function PropertyControl({
   onChange,
 }: {
   def: PropertyDefinition;
-  value: unknown | typeof MULTIPLE;
+  value: unknown;
   onChange: (value: unknown) => void;
 }) {
   const control = def.ui?.control ?? "text";
@@ -78,7 +85,7 @@ function PropertyControl({
     const min = def.ui?.min ?? 0;
     const max = def.ui?.max ?? 1;
     const step = def.ui?.step ?? 0.01;
-    const numVal = value === MULTIPLE ? (min as number) : (Number(value) ?? 0);
+    const numVal = value === MULTIPLE ? (min as number) : Number(value);
     return (
       <Flex align="center" style={{ gap: 6 }}>
         <input
@@ -107,7 +114,7 @@ function PropertyControl({
   if (control === "select" && def.ui?.options) {
     return (
       <select
-        value={value === MULTIPLE ? "" : String(value ?? "")}
+        value={value === MULTIPLE ? "" : toDisplayString(value)}
         onChange={(e) => {
           const opt = def.ui?.options?.find((o) => String(o.value) === e.target.value);
           if (opt) onChange(opt.value);
@@ -137,7 +144,7 @@ function PropertyControl({
     return (
       <input
         type="number"
-        value={value === MULTIPLE ? "" : String(value ?? 0)}
+        value={value === MULTIPLE ? "" : toDisplayString(value, "0")}
         onChange={(e) => {
           const sanitized = Number(e.target.value);
           if (Number.isNaN(sanitized) || !Number.isFinite(sanitized)) return;
@@ -162,7 +169,7 @@ function PropertyControl({
   return (
     <input
       type="text"
-      value={value === MULTIPLE ? "" : String(value ?? "")}
+      value={value === MULTIPLE ? "" : toDisplayString(value)}
       onChange={(e) => onChange(e.target.value)}
       placeholder={value === MULTIPLE ? "(multiple)" : undefined}
       style={{
