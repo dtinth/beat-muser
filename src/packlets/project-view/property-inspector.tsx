@@ -85,7 +85,8 @@ function PropertyControl({
     const min = def.ui?.min ?? 0;
     const max = def.ui?.max ?? 1;
     const step = def.ui?.step ?? 0.01;
-    const numVal = value === MULTIPLE ? (min as number) : Number(value);
+    const rawNumVal = value === MULTIPLE ? (min as number) : Number(value);
+    const numVal = Number.isFinite(rawNumVal) ? rawNumVal : (min as number);
     return (
       <Flex align="center" style={{ gap: 6 }}>
         <input
@@ -93,7 +94,7 @@ function PropertyControl({
           min={min}
           max={max}
           step={step}
-          value={Number.isFinite(numVal) ? numVal : min}
+          value={numVal}
           onChange={(e) => onChange(Number(e.target.value))}
           style={{ flex: 1, accentColor: "var(--accent-9)" }}
         />
