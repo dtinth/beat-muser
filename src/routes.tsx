@@ -4,6 +4,7 @@ import { AppHeader } from "./packlets/app-header/index.tsx";
 import { ProjectListPage } from "./packlets/project-list/index.tsx";
 import { ProjectViewPage } from "./packlets/project-view/index.tsx";
 import { ScrollableCanvasTestPage } from "./packlets/scrollable-canvas-test/index.tsx";
+import { ExtensionManagerPage } from "./packlets/extension-manager/index.tsx";
 import { ErrorPage } from "./packlets/error-page/index.tsx";
 import { uuidv7 } from "uuidv7";
 import type { ProjectSource } from "./packlets/project-store/types.ts";
@@ -56,7 +57,10 @@ export const router = createBrowserRouter([
       {
         path: "projects/:slug",
         loader: async ({ params, request }) => {
-          await getExtensionManager().initFromUrl(request.url);
+          await Promise.all([
+            getExtensionManager().initFromUrl(request.url),
+            getExtensionManager().initFromStorage(),
+          ]);
 
           let source: ProjectSource;
           if (params.slug === DEMO_SLUG) {
@@ -120,6 +124,10 @@ export const router = createBrowserRouter([
           return { projectFile, source };
         },
         element: <ProjectViewPage />,
+      },
+      {
+        path: "extensions",
+        element: <ExtensionManagerPage />,
       },
       {
         path: "test/scrollable-canvas",

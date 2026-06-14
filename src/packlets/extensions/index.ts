@@ -9,7 +9,8 @@
  * directly. Downloaded extensions wrap a Web Worker behind the same API.
  *
  * The {@link ExtensionManager} manages the lifecycle of registered
- * extensions and handles URL-based extension injection via `?extension=`.
+ * extensions and handles URL-based extension injection via URL params
+ * and localStorage-persisted extension URLs.
  * The `EditorController` is extension-agnostic — it only exposes
  * primitives via {@link ExtensionHost}.
  */
@@ -35,7 +36,8 @@ export const BUILT_IN_EXTENSIONS = [BEAT_EXTENSION];
 /** Reactive atom holding all current decoration specs from all extensions. */
 export const $extensionDecorations = atom<DecorationSpec[]>([]);
 
-const TRUST_STORAGE_KEY = "extension-trusted-urls";
+const SESSION_TRUST_KEY = "extension-trusted-urls";
+const LOCAL_STORAGE_KEY = "installed-extensions";
 
 export type {
   ExtensionManifest,
@@ -56,22 +58,51 @@ function isValidUrl(u: string): boolean {
   }
 }
 
-function getTrustedUrls(): Set<string> {
+function getSessionTrustedUrls(): Set<string> {
   try {
-    const raw = sessionStorage.getItem(TRUST_STORAGE_KEY);
+    const raw = sessionStorage.getItem(SESSION_TRUST_KEY);
     return new Set(raw ? (JSON.parse(raw) as string[]) : []);
   } catch {
     return new Set();
   }
 }
 
-function storeTrustedUrl(url: string): void {
-  const urls = getTrustedUrls();
+function storeSessionTrustedUrl(url: string): void {
+  const urls = getSessionTrustedUrls();
   urls.add(url);
   try {
-    sessionStorage.setItem(TRUST_STORAGE_KEY, JSON.stringify([...urls]));
+    sessionStorage.setItem(SESSION_TRUST_KEY, JSON.stringify([...urls]));
   } catch {
     console.warn("Failed to persist extension trust to sessionStorage");
+  }
+}
+
+export function getAllExtensionUrls(): string[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addExtensionUrl(url: string): void {
+  const urls = getAllExtensionUrls();
+  if (urls.includes(url)) return;
+  urls.push(url);
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(urls));
+  } catch {
+    console.warn("Failed to persist extension URL to localStorage");
+  }
+}
+
+export function removeExtensionUrl(url: string): void {
+  const urls = getAllExtensionUrls().filter((u) => u !== url);
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(urls));
+  } catch {
+    console.warn("Failed to persist extension URL to localStorage");
   }
 }
 
@@ -79,12 +110,12 @@ function resolveTrust(rawUrls: string[]): { trustedUrls: string[]; urlCleaned: b
   const trustedUrls: string[] = [];
   let urlCleaned = false;
   for (const url of rawUrls) {
-    if (getTrustedUrls().has(url)) {
+    if (getSessionTrustedUrls().has(url)) {
       trustedUrls.push(url);
     } else if (
       confirm(`An extension wants to load from:\n\n${url}\n\nOnly load extensions you trust.`)
     ) {
-      storeTrustedUrl(url);
+      storeSessionTrustedUrl(url);
       trustedUrls.push(url);
     } else {
       urlCleaned = true;
@@ -100,6 +131,17 @@ export class ExtensionManager {
   private fileExportDelegate: { exportFile: (name: string, data: string) => void } | null = null;
   /** Registered exporters for post-save triggering. */
   private exporters: import("./types.ts").ExporterManifest[] = [];
+
+  /** Reads all extension URLs from localStorage and fetches their manifests. */
+  async initFromStorage(): Promise<void> {
+    const urls = getAllExtensionUrls();
+    const results = await Promise.allSettled(urls.map((url) => this.fetchManifest(url)));
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        this.pendingExtensions.push(result.value);
+      }
+    }
+  }
 
   /** Called from the route loader. Parses `?extension=`, resolves trust, fetches manifests. */
   async initFromUrl(pageUrl: string): Promise<void> {
