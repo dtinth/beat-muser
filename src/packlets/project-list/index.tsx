@@ -95,6 +95,9 @@ export function ProjectListPage() {
           <Button variant="soft" onClick={() => setDemoOpen(true)}>
             Try Demo
           </Button>
+          <Button variant="outline" onClick={() => navigate("/extensions")}>
+            Manage Extensions
+          </Button>
         </Flex>
         <Flex direction="column" gap="2" width="100%" style={{ maxWidth: 600 }}>
           {projects.map((project) => (
