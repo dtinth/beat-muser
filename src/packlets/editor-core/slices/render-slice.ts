@@ -588,7 +588,7 @@ export class RenderSlice extends Slice {
           const y = trackHeight - dec.pulse * scaleY;
           if (dec.pulse < pulseStart || dec.pulse >= pulseEnd) continue;
           specs.push({
-            key: `flick-arrow-${dec.pulse}-${dec.lane}`,
+            key: `flick-arrow-${dec.pulse}-${dec.lane}-${dec.levelId ?? ""}`,
             type: "decoration-arrow",
             x: col.x,
             y: y - 36,
@@ -661,7 +661,7 @@ export class RenderSlice extends Slice {
           const containerH = Math.max(...allY) - containerY || 1;
 
           specs.push({
-            key: `decoration-${dec.from.pulse}-${dec.from.lane}-${dec.to.pulse}-${dec.to.lane}`,
+            key: `decoration-${dec.from.pulse}-${dec.from.lane}-${dec.to.pulse}-${dec.to.lane}-${dec.levelId ?? ""}`,
             type: "decoration-line",
             x: containerX,
             y: containerY,
