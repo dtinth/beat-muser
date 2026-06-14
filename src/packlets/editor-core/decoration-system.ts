@@ -19,6 +19,8 @@ export interface LineDecorationSpec {
   cp1?: { pulse: number; lane: number };
   cp2?: { pulse: number; lane: number };
   zIndex: number;
+  /** Level ID this decoration belongs to. Used to scope rendering to the correct level. */
+  levelId?: string;
 }
 
 export interface ArrowDecorationSpec {
@@ -29,6 +31,8 @@ export interface ArrowDecorationSpec {
   angle: number;
   color: string;
   zIndex: number;
+  /** Level ID this decoration belongs to. Used to scope rendering to the correct level. */
+  levelId?: string;
 }
 
 export type DecorationSpec = LineDecorationSpec | ArrowDecorationSpec;

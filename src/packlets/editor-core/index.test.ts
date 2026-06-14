@@ -37,6 +37,7 @@ import { RenderSlice } from "./slices/render-slice.ts";
 import type { WaveformData } from "./slices/waveform-slice.ts";
 import { EditEntityUserAction } from "./user-actions.ts";
 import type { Extension, PropertySet } from "../extensions/index.ts";
+import { $extensionDecorations } from "../extensions/index.ts";
 
 const UUID_V7_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -2457,6 +2458,81 @@ describe("EditorController", () => {
       expect(noteSpec).toBeDefined();
       // Should fall back to lane noteColor
       expect((noteSpec!.data as { backgroundColor: string }).backgroundColor).toBe("#00ff00");
+    });
+  });
+
+  describe("decoration level scoping", () => {
+    test("line decoration with levelId anchors to the correct level's columns", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            p.addLevel(chart.id, "Level A", "beat-7k");
+            p.addLevel(chart.id, "Level B", "beat-7k");
+          }),
+      });
+
+      // Add a decoration spec targeting Level B lane 1
+      const levelA = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0]!;
+      const levelB = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[1]!;
+      $extensionDecorations.set([
+        {
+          type: "line",
+          from: { pulse: 240, lane: 1, anchor: "center" },
+          to: { pulse: 480, lane: 2, anchor: "center" },
+          color: "#ff0000",
+          width: 2,
+          zIndex: 0,
+          levelId: levelB.id,
+        },
+      ]);
+      editor.instance.ctx.get(RenderSlice).requestRerender();
+
+      const specs = editor.instance.$visibleRenderObjects.get();
+      const lineSpecs = specs.filter((s) => s.type === "decoration-line");
+      expect(lineSpecs).toHaveLength(1);
+      // The line should anchor to Level B's columns (lane 1, 2), not Level A's
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const levelBLane1Col = columns.find((c) => c.levelId === levelB.id && c.laneIndex === 1);
+      const levelALane1Col = columns.find((c) => c.levelId === levelA.id && c.laneIndex === 1);
+      expect(levelALane1Col).toBeDefined();
+      // Should anchor to Level B, not Level A
+      expect(lineSpecs[0]!.x).not.toBe(levelALane1Col!.x + levelALane1Col!.width / 2);
+      expect(lineSpecs[0]!.x).toBe(levelBLane1Col!.x + levelBLane1Col!.width / 2);
+    });
+
+    test("arrow decoration with levelId anchors to the correct level's columns", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            p.addLevel(chart.id, "Level A", "beat-7k");
+            p.addLevel(chart.id, "Level B", "beat-7k");
+          }),
+      });
+
+      const levelB = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[1]!;
+      $extensionDecorations.set([
+        {
+          type: "arrow",
+          pulse: 240,
+          lane: 1,
+          anchor: "center",
+          angle: 90,
+          color: "#fff",
+          zIndex: 0,
+          levelId: levelB.id,
+        },
+      ]);
+      editor.instance.ctx.get(RenderSlice).requestRerender();
+
+      const specs = editor.instance.$visibleRenderObjects.get();
+      const arrowSpecs = specs.filter((s) => s.type === "decoration-arrow");
+      expect(arrowSpecs).toHaveLength(1);
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const levelBLane1Col = columns.find((c) => c.levelId === levelB.id && c.laneIndex === 1)!;
+      // Arrow should be positioned above Level B's lane 1, not Level A's
+      expect(arrowSpecs[0]!.x).toBe(levelBLane1Col.x);
     });
   });
 });

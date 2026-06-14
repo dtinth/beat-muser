@@ -581,7 +581,9 @@ export class RenderSlice extends Slice {
     perf.measure("computeSpecs:decorations", () => {
       for (const dec of $extensionDecorations.get()) {
         if (dec.type === "arrow") {
-          const col = columns.find((c) => c.laneIndex === dec.lane);
+          const col = dec.levelId
+            ? columns.find((c) => c.laneIndex === dec.lane && c.levelId === dec.levelId)
+            : columns.find((c) => c.laneIndex === dec.lane);
           if (!col) continue;
           const y = trackHeight - dec.pulse * scaleY;
           if (dec.pulse < pulseStart || dec.pulse >= pulseEnd) continue;
@@ -596,8 +598,12 @@ export class RenderSlice extends Slice {
             zIndex: 2,
           });
         } else if (dec.type === "line") {
-          const fromCol = columns.find((c) => c.laneIndex === dec.from.lane);
-          const toCol = columns.find((c) => c.laneIndex === dec.to.lane);
+          const fromCol = dec.levelId
+            ? columns.find((c) => c.laneIndex === dec.from.lane && c.levelId === dec.levelId)
+            : columns.find((c) => c.laneIndex === dec.from.lane);
+          const toCol = dec.levelId
+            ? columns.find((c) => c.laneIndex === dec.to.lane && c.levelId === dec.levelId)
+            : columns.find((c) => c.laneIndex === dec.to.lane);
           if (!fromCol || !toCol) continue;
 
           // Anchor to center of event marker (14px tall rectangles)
@@ -617,7 +623,9 @@ export class RenderSlice extends Slice {
           const cp1 = dec.cp1;
           const cp2 = dec.cp2;
           if (cp1) {
-            const cp1Col = columns.find((c) => c.laneIndex === cp1.lane);
+            const cp1Col = dec.levelId
+              ? columns.find((c) => c.laneIndex === cp1.lane && c.levelId === dec.levelId)
+              : columns.find((c) => c.laneIndex === cp1.lane);
             if (cp1Col) {
               cp1Pixel = {
                 x: cp1Col.x + cp1Col.width / 2,
@@ -626,7 +634,9 @@ export class RenderSlice extends Slice {
             }
           }
           if (cp2) {
-            const cp2Col = columns.find((c) => c.laneIndex === cp2.lane);
+            const cp2Col = dec.levelId
+              ? columns.find((c) => c.laneIndex === cp2.lane && c.levelId === dec.levelId)
+              : columns.find((c) => c.laneIndex === cp2.lane);
             if (cp2Col) {
               cp2Pixel = {
                 x: cp2Col.x + cp2Col.width / 2,
