@@ -14,7 +14,8 @@ import { HistorySlice } from "./history-slice.ts";
 import { TimingSlice } from "./timing-slice.ts";
 import { DragSlice } from "./drag-slice.ts";
 import { PlaybackSlice } from "./playback-slice.ts";
-import { EVENT } from "../components.ts";
+import { LevelSlice } from "./level-slice.ts";
+import { EVENT, LEVEL_REF } from "../components.ts";
 import { Point, Rect } from "../../geometry/index.ts";
 import { EraseUserAction, PlaceEntityUserAction } from "../user-actions.ts";
 import { EditBatchBuilder } from "../edit-batch-builder.ts";
@@ -195,9 +196,14 @@ export class PointerInteractionSlice extends Slice {
           // Clicked a selected event — preserve selection
           dragSelection = currentSelection;
         } else {
-          // Clicked an unselected event — select it
+          // Clicked an unselected event — select it and switch to its level
           dragSelection = new Set([hit]);
           this.ctx.get(SelectionSlice).$selection.set(dragSelection);
+          const hitEntity = em.get(hit);
+          if (hitEntity) {
+            const lr = em.getComponent(hitEntity, LEVEL_REF);
+            if (lr) this.ctx.get(LevelSlice).setSelectedLevelId(lr.levelId);
+          }
         }
       }
 
