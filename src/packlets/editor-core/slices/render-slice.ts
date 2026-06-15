@@ -617,19 +617,19 @@ export class RenderSlice extends Slice {
           if (dec.from.pulse < pulseStart && dec.to.pulse < pulseStart) continue;
           if (dec.from.pulse >= pulseEnd && dec.to.pulse >= pulseEnd) continue;
 
-          // Convert optional cubic bezier CPs from normalized space to pixel space
+          // Convert optional cubic bezier CPs from normalized space (0=source/dec.to, 1=dest/dec.from) to pixel space
           const cp1 = dec.cp1;
           const cp2 = dec.cp2;
           const cp1Pixel = cp1
             ? {
-                x: fromColCenter + cp1.x * (toColCenter - fromColCenter),
-                y: fromCenterY + cp1.y * (toCenterY - fromCenterY),
+                x: toColCenter + cp1.x * (fromColCenter - toColCenter),
+                y: toCenterY + cp1.y * (fromCenterY - toCenterY),
               }
             : undefined;
           const cp2Pixel = cp2
             ? {
-                x: fromColCenter + cp2.x * (toColCenter - fromColCenter),
-                y: fromCenterY + cp2.y * (toCenterY - fromCenterY),
+                x: toColCenter + cp2.x * (fromColCenter - toColCenter),
+                y: toCenterY + cp2.y * (fromCenterY - toCenterY),
               }
             : undefined;
 
