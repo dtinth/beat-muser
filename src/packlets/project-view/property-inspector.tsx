@@ -53,7 +53,7 @@ function PropertyControl({
 
   if (control === "segmented" && def.ui?.options) {
     return (
-      <Flex style={{ gap: 2 }}>
+      <Flex style={{ gap: 2 }} wrap="wrap">
         {def.ui.options.map((opt) => {
           const isActive = value !== MULTIPLE && value === opt.value;
           return (

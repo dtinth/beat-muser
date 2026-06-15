@@ -610,8 +610,8 @@ export class RenderSlice extends Slice {
           const EVENT_HEIGHT = 14;
           const fromCenterY = trackHeight - dec.from.pulse * scaleY - EVENT_HEIGHT / 2;
           const toCenterY = trackHeight - dec.to.pulse * scaleY - EVENT_HEIGHT / 2;
-          const fromColCenter = fromCol.x + fromCol.width / 2;
-          const toColCenter = toCol.x + toCol.width / 2;
+          const fromColCenter = fromCol.x + fromCol.width * (dec.from.anchorX ?? 0.5);
+          const toColCenter = toCol.x + toCol.width * (dec.to.anchorX ?? 0.5);
 
           // Skip if both endpoints are outside the visible range
           if (dec.from.pulse < pulseStart && dec.to.pulse < pulseStart) continue;

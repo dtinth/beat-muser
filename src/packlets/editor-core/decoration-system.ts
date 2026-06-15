@@ -2,8 +2,9 @@
  * @packageDocumentation
  *
  * Decoration system for extension worker decorations. Stores decoration
- * specs produced by extension workers in pulse/lane coordinates. The
- * RenderSlice reads these and converts to pixel positions during frame
+ * specs produced by extension workers in pulse/lane coordinates with
+ * optional anchorX for horizontal offset within a lane (0=left, 1=right).
+ * The RenderSlice reads these and converts to pixel positions during frame
  * computation, as specified in ADR 020.
  */
 
@@ -11,11 +12,14 @@ import { atom } from "nanostores";
 
 export interface LineDecorationSpec {
   type: "line";
-  from: { pulse: number; lane: number; anchor: "bottom" | "center" | "grid" };
-  to: { pulse: number; lane: number; anchor: "bottom" | "center" | "grid" };
+  from: { pulse: number; lane: number; anchor: "bottom" | "center" | "grid"; anchorX?: number };
+  to: { pulse: number; lane: number; anchor: "bottom" | "center" | "grid"; anchorX?: number };
   color: string;
   width: number;
-  /** Optional cubic bezier control points in normalized space (0–1). Worker-computed. (0,0) = from endpoint, (1,1) = to endpoint. */
+  /**
+   * Optional cubic bezier control points in normalized space (0–1).
+   * Worker-computed. (0,0) = source endpoint (dec.to), (1,1) = destination endpoint (dec.from).
+   */
   cp1?: { x: number; y: number };
   cp2?: { x: number; y: number };
   zIndex: number;
