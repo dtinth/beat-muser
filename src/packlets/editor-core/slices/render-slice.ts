@@ -617,33 +617,21 @@ export class RenderSlice extends Slice {
           if (dec.from.pulse < pulseStart && dec.to.pulse < pulseStart) continue;
           if (dec.from.pulse >= pulseEnd && dec.to.pulse >= pulseEnd) continue;
 
-          // Convert optional cubic bezier CPs from pulse/lane to pixel space
-          let cp1Pixel: { x: number; y: number } | undefined;
-          let cp2Pixel: { x: number; y: number } | undefined;
+          // Convert optional cubic bezier CPs from normalized space to pixel space
           const cp1 = dec.cp1;
           const cp2 = dec.cp2;
-          if (cp1) {
-            const cp1Col = dec.levelId
-              ? columns.find((c) => c.laneIndex === cp1.lane && c.levelId === dec.levelId)
-              : columns.find((c) => c.laneIndex === cp1.lane);
-            if (cp1Col) {
-              cp1Pixel = {
-                x: cp1Col.x + cp1Col.width / 2,
-                y: trackHeight - cp1.pulse * scaleY - 7,
-              };
-            }
-          }
-          if (cp2) {
-            const cp2Col = dec.levelId
-              ? columns.find((c) => c.laneIndex === cp2.lane && c.levelId === dec.levelId)
-              : columns.find((c) => c.laneIndex === cp2.lane);
-            if (cp2Col) {
-              cp2Pixel = {
-                x: cp2Col.x + cp2Col.width / 2,
-                y: trackHeight - cp2.pulse * scaleY - 7,
-              };
-            }
-          }
+          const cp1Pixel = cp1
+            ? {
+                x: fromColCenter + cp1.x * (toColCenter - fromColCenter),
+                y: fromCenterY + cp1.y * (toCenterY - fromCenterY),
+              }
+            : undefined;
+          const cp2Pixel = cp2
+            ? {
+                x: fromColCenter + cp2.x * (toColCenter - fromColCenter),
+                y: fromCenterY + cp2.y * (toCenterY - fromCenterY),
+              }
+            : undefined;
 
           const allX = [fromColCenter, toColCenter];
           const allY = [fromCenterY, toCenterY];

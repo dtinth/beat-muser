@@ -15,9 +15,9 @@ export interface LineDecorationSpec {
   to: { pulse: number; lane: number; anchor: "bottom" | "center" | "grid" };
   color: string;
   width: number;
-  /** Optional cubic bezier control points in pulse/lane space. Worker-computed. */
-  cp1?: { pulse: number; lane: number };
-  cp2?: { pulse: number; lane: number };
+  /** Optional cubic bezier control points in normalized space (0–1). Worker-computed. (0,0) = from endpoint, (1,1) = to endpoint. */
+  cp1?: { x: number; y: number };
+  cp2?: { x: number; y: number };
   zIndex: number;
   /** Level ID this decoration belongs to. Used to scope rendering to the correct level. */
   levelId?: string;
