@@ -260,6 +260,17 @@ describe("snapPulse", () => {
     expect(engine.snapPulse(240, "1/4")).toBe(240);
   });
 
+  it("snaps to the measure boundary when it is the closest row", () => {
+    const engine = createTimingEngine([], []);
+    // 4/4 measure [0, 960), 1/4 snap = 240. Interior points: 0, 240, 480, 720.
+    // A pulse near the end of the measure should snap to 960 (next downbeat),
+    // not be clamped to the last interior point (720).
+    expect(engine.snapPulse(900, "1/4")).toBe(960);
+    expect(engine.snapPulse(959, "1/4")).toBe(960);
+    // Still snaps to the interior point when that is closer.
+    expect(engine.snapPulse(820, "1/4")).toBe(720);
+  });
+
   it("snaps to the nearest 1/16 grid point", () => {
     const engine = createTimingEngine([], []);
     // 1/16 snap = 60 pulses per snap.

@@ -257,8 +257,20 @@ export function createTimingEngine(
           ? boundaries[measureIdx + 1]
           : computeNextBoundary(measureStart, findSigIndex(measureStart))[0];
 
-      const snapped = measureStart + Math.round((pulse - measureStart) / interval) * interval;
-      return Math.max(measureStart, Math.min(snapped, measureEnd - interval));
+      const snapped = Math.max(
+        measureStart,
+        Math.min(
+          measureStart + Math.round((pulse - measureStart) / interval) * interval,
+          measureEnd,
+        ),
+      );
+      // The measure boundary (next downbeat) is also a valid grid row. Snap to
+      // it when it's closer than the nearest in-measure point, rather than
+      // clamping to the last interior grid line.
+      if (Math.abs(measureEnd - pulse) < Math.abs(snapped - pulse)) {
+        return measureEnd;
+      }
+      return snapped;
     },
 
     getMeasureAtPulse(pulse) {

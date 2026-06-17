@@ -481,10 +481,10 @@ describe("EditorController", () => {
 
       // Content height = 3112, viewport = 480, initial scroll = 2632.
       // Hover at viewport y=250 → contentY=2882 → rawPulse = (3072-2882)/0.2 = 950.
-      // Snap 1/16 = 60. 950/60 = 15.83 → round to 16 → 960.
-      // Clamped to [0, 900] (measure end 960 minus interval 60), so 900.
+      // Snap 1/16 = 60. 950/60 = 15.83 → round to 16 → 960, which is the measure
+      // boundary (next downbeat) and the closest grid row, so 960.
       editor.pointerMove({ x: 250, y: 250 });
-      editor.playhead.shouldBeAtPulse(900);
+      editor.playhead.shouldBeAtPulse(960);
     });
 
     test("scrolling updates the playhead to follow the mouse position", () => {
