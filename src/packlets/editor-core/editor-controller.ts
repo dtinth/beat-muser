@@ -197,6 +197,9 @@ export class EditorController {
       const currentPulse = this.cursor.$cursorPulse.get();
       const snapped = this.snapToGrid(currentPulse);
       this.cursor.$cursorPulse.set(snapped);
+      // The snap grid lines depend on the snap setting, so redraw immediately
+      // instead of waiting for the next pointer move to trigger a rerender.
+      this.render.requestRerender();
     });
 
     this.ctx.get(ColumnsSlice).$columns.subscribe(() => {
@@ -274,7 +277,9 @@ export class EditorController {
         const contentHeight = this.getContentHeight();
         const playheadContentY = contentHeight - pulse * scaleY;
         const viewportHeight = this.getViewportHeight();
-        const targetScrollY = playheadContentY - viewportHeight * 0.4;
+        // Position the playhead 75% down the viewport (75% of the chart visible
+        // above the cursor, 25% below).
+        const targetScrollY = playheadContentY - viewportHeight * 0.75;
         this.outbox.emit("setScroll", { x: 0, y: Math.max(0, targetScrollY) });
       },
     });
