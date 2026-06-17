@@ -400,6 +400,10 @@ export class EditorController {
     this.ctx.get(EditorCommandSlice).deleteSelection();
   }
 
+  nudgeBpm(delta: number): void {
+    this.ctx.get(EditorCommandSlice).nudgeBpm(delta);
+  }
+
   async copySelection(): Promise<void> {
     await this.ctx.get(ClipperSlice).copySelection();
   }

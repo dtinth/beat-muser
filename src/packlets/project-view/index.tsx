@@ -873,6 +873,18 @@ export function ProjectViewPage() {
       execute: () => controller.zoomOut(),
     });
     commands.add({
+      id: "bpmIncrease",
+      title: "Increase BPM",
+      shortcut: "Shift+Equal",
+      execute: () => controller.nudgeBpm(1),
+    });
+    commands.add({
+      id: "bpmDecrease",
+      title: "Decrease BPM",
+      shortcut: "Shift+Minus",
+      execute: () => controller.nudgeBpm(-1),
+    });
+    commands.add({
       id: "snapIncrease",
       title: "Increase Snap",
       shortcut: "BracketRight",

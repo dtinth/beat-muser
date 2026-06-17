@@ -2037,11 +2037,13 @@ describe("EditorController", () => {
       const chunkCount = Math.max(1, Math.floor(seconds * 120));
       const peak = new Float32Array(chunkCount);
       const rms = new Float32Array(chunkCount);
+      const centroid = new Float32Array(chunkCount);
       for (let i = 0; i < chunkCount; i++) {
         peak[i] = (i + 1) / chunkCount;
         rms[i] = peak[i] * 0.7;
+        centroid[i] = i / chunkCount;
       }
-      return { peak, rms, durationSec: seconds, sampleRate: 48000 };
+      return { peak, rms, centroid, durationSec: seconds, sampleRate: 48000 };
     }
 
     function setChannelPath(editor: EditorTester, channelId: string, path: string): void {

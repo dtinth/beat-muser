@@ -9,7 +9,7 @@ export async function computeWaveformData(audioBuffer: AudioBuffer): Promise<Wav
     channelData.push(audioBuffer.getChannelData(c));
   }
 
-  const { peak, rms } = await computePeakAndRmsAsync(
+  const { peak, rms, centroid } = await computePeakAndRmsAsync(
     channelData,
     audioBuffer.sampleRate,
     CHUNKS_PER_SECOND,
@@ -18,6 +18,7 @@ export async function computeWaveformData(audioBuffer: AudioBuffer): Promise<Wav
   return {
     peak,
     rms,
+    centroid,
     durationSec: audioBuffer.duration,
     sampleRate: audioBuffer.sampleRate,
   };
