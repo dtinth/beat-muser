@@ -147,7 +147,20 @@ export const ProjectToolbar: FC<{ controller: EditorController }> = ({ controlle
         />
         <ToolbarDropdown
           value={zoomPercent}
-          options={["25%", "50%", "75%", "100%", "125%", "150%", "200%", "400%"]}
+          options={[
+            "25%",
+            "50%",
+            "75%",
+            "100%",
+            "125%",
+            "150%",
+            "200%",
+            "300%",
+            "400%",
+            "500%",
+            "600%",
+            "800%",
+          ]}
           onSelect={(value) => {
             const pct = parseInt(value.replace("%", ""), 10);
             controller.setZoom(pct / 100);

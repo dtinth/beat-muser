@@ -60,7 +60,7 @@ interface WaveformSegment {
   width: number;
   rpLength: number;
   color: string;
-  getWaveformPixels(): { peak: Float32Array; rms: Float32Array };
+  getWaveformPixels(): { peak: Float32Array; rms: Float32Array; centroid: Float32Array };
 }
 
 export class RenderSlice extends Slice {
@@ -682,7 +682,7 @@ export class RenderSlice extends Slice {
         // Pixel-level visibility: segments from the same event share pulseStart/End
         // but differ in Y position. Skip those outside the viewport's Y range.
         if (segment.y + segment.rpLength <= scrollY || segment.y >= scrollY + viewH) continue;
-        const { peak, rms } = segment.getWaveformPixels();
+        const { peak, rms, centroid } = segment.getWaveformPixels();
         specs.push({
           key: segment.key,
           type: "waveform",
@@ -693,6 +693,7 @@ export class RenderSlice extends Slice {
           data: {
             peak,
             rms,
+            centroid,
             color: segment.color,
             width: segment.width,
           },
@@ -970,7 +971,7 @@ export class RenderSlice extends Slice {
         return { startFrame: frameStart, endFrame: frameEnd };
       };
 
-      const segments = computeWaveformSegments(wd.peak, wd.rms, {
+      const segments = computeWaveformSegments(wd.peak, wd.rms, wd.centroid, {
         rpLength,
         maxSegmentPixels: 512,
         getFrameRange,

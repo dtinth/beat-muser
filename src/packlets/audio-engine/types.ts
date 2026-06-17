@@ -1,6 +1,8 @@
 export interface WaveformData {
   peak: Float32Array;
   rms: Float32Array;
+  /** Normalized (0..1, log-frequency) spectral centroid per frame; "brightness". */
+  centroid: Float32Array;
   durationSec: number;
   sampleRate: number;
 }

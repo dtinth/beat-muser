@@ -2,14 +2,20 @@ import { describe, expect, test } from "vite-plus/test";
 import { computeWaveformSegments } from "./waveform-segments.ts";
 
 describe("computeWaveformSegments", () => {
-  function makeWaveformData(length = 120): { peak: Float32Array; rms: Float32Array } {
+  function makeWaveformData(length = 120): {
+    peak: Float32Array;
+    rms: Float32Array;
+    centroid: Float32Array;
+  } {
     const peak = new Float32Array(length);
     const rms = new Float32Array(length);
+    const centroid = new Float32Array(length);
     for (let i = 0; i < length; i++) {
       peak[i] = (i + 1) / length;
       rms[i] = peak[i] * 0.7;
+      centroid[i] = i / length;
     }
-    return { peak, rms };
+    return { peak, rms, centroid };
   }
 
   function linearFrameRange(
@@ -28,8 +34,8 @@ describe("computeWaveformSegments", () => {
   }
 
   test("1:1 mapping — one frame per pixel, single segment", () => {
-    const { peak, rms } = makeWaveformData(120);
-    const segments = computeWaveformSegments(peak, rms, {
+    const { peak, rms, centroid } = makeWaveformData(120);
+    const segments = computeWaveformSegments(peak, rms, centroid, {
       rpLength: 120,
       maxSegmentPixels: 512,
       getFrameRange: linearFrameRange(0, 120),
@@ -51,8 +57,8 @@ describe("computeWaveformSegments", () => {
   });
 
   test("downsampling — 2 frames per pixel", () => {
-    const { peak, rms } = makeWaveformData(240);
-    const segments = computeWaveformSegments(peak, rms, {
+    const { peak, rms, centroid } = makeWaveformData(240);
+    const segments = computeWaveformSegments(peak, rms, centroid, {
       rpLength: 120,
       maxSegmentPixels: 512,
       getFrameRange: linearFrameRange(0, 240),
@@ -70,8 +76,8 @@ describe("computeWaveformSegments", () => {
   });
 
   test("upsampling — 1 frame per 2 pixels", () => {
-    const { peak, rms } = makeWaveformData(60);
-    const segments = computeWaveformSegments(peak, rms, {
+    const { peak, rms, centroid } = makeWaveformData(60);
+    const segments = computeWaveformSegments(peak, rms, centroid, {
       rpLength: 120,
       maxSegmentPixels: 512,
       getFrameRange: linearFrameRange(0, 60),
@@ -88,8 +94,8 @@ describe("computeWaveformSegments", () => {
   });
 
   test("partitioning — splits into max 512px segments", () => {
-    const { peak, rms } = makeWaveformData(1500);
-    const segments = computeWaveformSegments(peak, rms, {
+    const { peak, rms, centroid } = makeWaveformData(1500);
+    const segments = computeWaveformSegments(peak, rms, centroid, {
       rpLength: 1500,
       maxSegmentPixels: 512,
       getFrameRange: linearFrameRange(0, 1500),
@@ -110,8 +116,8 @@ describe("computeWaveformSegments", () => {
   });
 
   test("non-zero startChunk", () => {
-    const { peak, rms } = makeWaveformData(120);
-    const segments = computeWaveformSegments(peak, rms, {
+    const { peak, rms, centroid } = makeWaveformData(120);
+    const segments = computeWaveformSegments(peak, rms, centroid, {
       rpLength: 30,
       maxSegmentPixels: 512,
       getFrameRange: linearFrameRange(60, 30),

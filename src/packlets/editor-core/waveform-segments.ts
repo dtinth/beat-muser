@@ -1,12 +1,13 @@
 export interface WaveformSegmentSpec {
   rpStart: number;
   rpLength: number;
-  getWaveformPixels(): { peak: Float32Array; rms: Float32Array };
+  getWaveformPixels(): { peak: Float32Array; rms: Float32Array; centroid: Float32Array };
 }
 
 export function computeWaveformSegments(
   peak: Float32Array,
   rms: Float32Array,
+  centroid: Float32Array,
   options: {
     rpLength: number;
     maxSegmentPixels: number;
@@ -32,7 +33,7 @@ export function computeWaveformSegments(
       rpStart: segRpStart,
       rpLength: segRpLength,
       getWaveformPixels: (() => {
-        let cached: { peak: Float32Array; rms: Float32Array } | null = null;
+        let cached: { peak: Float32Array; rms: Float32Array; centroid: Float32Array } | null = null;
         return () => {
           if (cached) return cached;
           cached = computePixels();
@@ -41,6 +42,7 @@ export function computeWaveformSegments(
         function computePixels() {
           const segPeak = new Float32Array(segRpLength);
           const segRms = new Float32Array(segRpLength);
+          const segCentroid = new Float32Array(segRpLength);
 
           for (let rp = 0; rp < segRpLength; rp++) {
             const renderingPos = segRpStart + rp;
@@ -49,6 +51,7 @@ export function computeWaveformSegments(
             if (!frameRange || frameRange.startFrame >= frameRange.endFrame) {
               segPeak[rp] = 0;
               segRms[rp] = 0;
+              segCentroid[rp] = 0;
               continue;
             }
 
@@ -57,22 +60,29 @@ export function computeWaveformSegments(
             if (start >= end) {
               segPeak[rp] = 0;
               segRms[rp] = 0;
+              segCentroid[rp] = 0;
               continue;
             }
 
             let maxPeak = 0;
             let sumRms = 0;
+            let centroidNum = 0;
+            let centroidDen = 0;
             let count = 0;
             for (let f = start; f < end; f++) {
               maxPeak = Math.max(maxPeak, peak[f]);
               sumRms += rms[f];
+              // Loudness-weight the centroid so quiet frames don't skew the color.
+              centroidNum += centroid[f] * rms[f];
+              centroidDen += rms[f];
               count++;
             }
             segPeak[rp] = maxPeak;
             segRms[rp] = count > 0 ? sumRms / count : 0;
+            segCentroid[rp] = centroidDen > 0 ? centroidNum / centroidDen : 0;
           }
 
-          return { peak: segPeak, rms: segRms };
+          return { peak: segPeak, rms: segRms, centroid: segCentroid };
         }
       })(),
     });

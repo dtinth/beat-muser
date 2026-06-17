@@ -67,4 +67,38 @@ describe("computePeakAndRms", () => {
     expect(result.peak[0]).toBeCloseTo(0.2, 5);
     expect(result.peak[1]).toBeCloseTo(0.8, 5);
   });
+
+  test("silent audio produces zero centroid", () => {
+    const sampleRate = 48000;
+    const data = new Float32Array(sampleRate);
+    const result = computePeakAndRms([data], sampleRate, 120);
+
+    expect(result.centroid).toHaveLength(120);
+    for (let i = 0; i < 120; i++) {
+      expect(result.centroid[i]).toBe(0);
+    }
+  });
+
+  test("higher-frequency tone yields higher centroid than lower-frequency tone", () => {
+    const sampleRate = 48000;
+    const makeTone = (freq: number) => {
+      const data = new Float32Array(sampleRate);
+      for (let i = 0; i < data.length; i++) {
+        data[i] = 0.5 * Math.sin((2 * Math.PI * freq * i) / sampleRate);
+      }
+      return data;
+    };
+
+    const low = computePeakAndRms([makeTone(200)], sampleRate, 120);
+    const high = computePeakAndRms([makeTone(8000)], sampleRate, 120);
+
+    // Sample a frame from the steady middle of each tone.
+    const lowCentroid = low.centroid[60];
+    const highCentroid = high.centroid[60];
+
+    expect(highCentroid).toBeGreaterThan(lowCentroid);
+    // Normalized centroid stays within [0, 1].
+    expect(lowCentroid).toBeGreaterThanOrEqual(0);
+    expect(highCentroid).toBeLessThanOrEqual(1);
+  });
 });

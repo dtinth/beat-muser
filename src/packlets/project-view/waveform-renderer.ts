@@ -3,8 +3,27 @@ import type { RenderHandle } from "../scrollable-canvas/index.tsx";
 interface WaveformRendererData {
   peak: Float32Array;
   rms: Float32Array;
+  /** Normalized (0..1) spectral centroid per row; drives the hue. */
+  centroid: Float32Array;
   color: string;
   width: number;
+}
+
+// Color lookup for the spectral centroid → hue mapping. The centroid is a
+// "brightness" measure: low values (bass) map to deep blue, high values
+// (treble) sweep through cyan/green/yellow up to red. Precomputed once so the
+// per-pixel hot loop only indexes an array instead of building HSL strings.
+const HUE_LUT_SIZE = 64;
+const HUE_LUT: string[] = Array.from({ length: HUE_LUT_SIZE }, (_, i) => {
+  const t = i / (HUE_LUT_SIZE - 1);
+  // t=0 → 240° (blue), t=1 → 0° (red)
+  const hue = 240 * (1 - t);
+  return `hsl(${hue.toFixed(0)}, 85%, 58%)`;
+});
+
+function centroidColor(value: number): string {
+  const idx = Math.max(0, Math.min(HUE_LUT_SIZE - 1, Math.round(value * (HUE_LUT_SIZE - 1))));
+  return HUE_LUT[idx];
 }
 
 export function createWaveformRenderer(): (data: unknown) => RenderHandle<WaveformRendererData> {
@@ -27,6 +46,7 @@ export function createWaveformRenderer(): (data: unknown) => RenderHandle<Wavefo
         if (
           nd.peak === last.peak &&
           nd.rms === last.rms &&
+          nd.centroid === last.centroid &&
           nd.color === last.color &&
           nd.width === last.width
         )
@@ -39,7 +59,7 @@ export function createWaveformRenderer(): (data: unknown) => RenderHandle<Wavefo
 }
 
 function drawWaveform(canvas: HTMLCanvasElement, data: WaveformRendererData): void {
-  const { peak, rms, color, width } = data;
+  const { peak, rms, centroid, width } = data;
   const rpLength = peak.length;
 
   const dpr = window.devicePixelRatio || 1;
@@ -63,7 +83,9 @@ function drawWaveform(canvas: HTMLCanvasElement, data: WaveformRendererData): vo
     const rmsHalfWidth = rmsVal * maxBarHalfWidth;
     const peakHalfWidth = peakVal * maxBarHalfWidth;
 
-    ctx.fillStyle = color;
+    const fill = centroidColor(centroid[audioIdx]);
+
+    ctx.fillStyle = fill;
     ctx.globalAlpha = 0.65;
     ctx.fillRect(centerX - rmsHalfWidth, py, rmsHalfWidth * 2, 1);
 
