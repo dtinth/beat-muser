@@ -14,6 +14,8 @@ import { useToast } from "../toast/index.tsx";
 import { ProjectLayout } from "../project-layout/index.tsx";
 import { ModalManager, ModalHost } from "../modal-manager/index.ts";
 import { SidebarPanel } from "../sidebar-panel/index.tsx";
+import { FilesPanel } from "./files-panel.tsx";
+import type { ProjectFileSystem } from "../file-system/index.ts";
 import { perf } from "../perf/index.ts";
 import { useInView } from "react-intersection-observer";
 import { ScrollableCanvas } from "../scrollable-canvas/index.tsx";
@@ -152,9 +154,11 @@ function DebugContent() {
 function RightPanels({
   controller,
   modalManager,
+  fileSystem,
 }: {
   controller: EditorController;
   modalManager: ModalManager;
+  fileSystem: ProjectFileSystem;
 }) {
   const selectedChartId = useStore(controller.$selectedChartId);
   const hiddenLevelIds = useStore(controller.$hiddenLevelIds);
@@ -509,6 +513,10 @@ function RightPanels({
                 </Flex>
               </Flex>
             ),
+          },
+          {
+            label: "Files",
+            content: <FilesPanel fileSystem={fileSystem} modalManager={modalManager} />,
           },
           {
             label: "Debug",
@@ -1270,7 +1278,13 @@ export function ProjectViewPage() {
     <>
       <ProjectLayout
         leftPanels={<LeftPanels modalManager={modalManager} controller={controller} />}
-        rightPanels={<RightPanels controller={controller} modalManager={modalManager} />}
+        rightPanels={
+          <RightPanels
+            controller={controller}
+            modalManager={modalManager}
+            fileSystem={fileSystem}
+          />
+        }
         toolbar={<ProjectToolbar controller={controller} />}
         timeline={<ScrollableCanvas behavior={behaviorFactory} />}
       />
