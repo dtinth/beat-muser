@@ -17,3 +17,10 @@ test("throws for missing file", async () => {
   const fs = createFileSystemFromExample("demo1");
   await expect(fs.readText("demo1/nonexistent.json")).rejects.toThrow();
 });
+
+test("is read-only", async () => {
+  const fs = createFileSystemFromExample("demo1");
+  expect(fs.readOnly).toBe(true);
+  await expect(fs.writeFile("demo1/x.json", "{}")).rejects.toThrow();
+  await expect(fs.deleteFile("demo1/beatmap.json")).rejects.toThrow();
+});
