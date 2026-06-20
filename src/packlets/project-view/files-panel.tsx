@@ -48,10 +48,10 @@ export function FilesPanel({
   }, [refresh]);
 
   const handleUpload = useCallback(
-    async (fileList: FileList) => {
+    async (uploads: File[]) => {
       const taken = new Set((await fileSystem.listFiles()).map((f) => f.path));
       let uploaded = 0;
-      for (const file of Array.from(fileList)) {
+      for (const file of uploads) {
         let path = file.name;
         if (taken.has(path)) {
           const choice = await modalManager.select({
@@ -151,9 +151,11 @@ export function FilesPanel({
         multiple
         style={{ display: "none" }}
         onChange={(e) => {
-          const fileList = e.target.files;
-          if (fileList && fileList.length > 0) void handleUpload(fileList);
+          // Capture the files synchronously: resetting `value` below empties the
+          // live FileList before the async upload would otherwise read it.
+          const selected = e.target.files ? Array.from(e.target.files) : [];
           e.target.value = "";
+          if (selected.length > 0) void handleUpload(selected);
         }}
       />
 
