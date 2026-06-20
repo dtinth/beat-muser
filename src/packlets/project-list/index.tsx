@@ -1,9 +1,9 @@
 /**
  * @packageDocumentation
  *
- * Home page listing saved projects. Supports opening a folder via the
- * File System API, creating a demo project, and removing projects from
- * the local index.
+ * Home page listing saved projects. Supports creating a new IndexedDB-backed
+ * project, opening a folder via the File System API, creating a demo project,
+ * and removing projects from the local index.
  */
 
 import { useCallback, useState } from "react";
@@ -15,14 +15,23 @@ import {
   Flex,
   Heading,
   Text,
+  TextField,
   DropdownMenu,
   IconButton,
   Dialog,
 } from "@radix-ui/themes";
+import { uuidv7 } from "uuidv7";
 import { addProject, removeProject } from "../project-store/index.ts";
 import { showDirectoryPicker } from "../file-system/index.ts";
 import { useToast } from "../toast/index.tsx";
 import type { Project } from "../project-store/types.ts";
+
+function isFileSystemAccessSupported(): boolean {
+  return (
+    typeof (window as unknown as { showDirectoryPicker?: unknown }).showDirectoryPicker ===
+    "function"
+  );
+}
 
 export function ProjectListPage() {
   const projects = useLoaderData() as Project[];
@@ -30,8 +39,38 @@ export function ProjectListPage() {
   const revalidator = useRevalidator();
   const { showError } = useToast();
   const [demoOpen, setDemoOpen] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  const handleCreateProject = useCallback(async () => {
+    const name = newName.trim();
+    if (name === "") return;
+    try {
+      const project = await addProject(name, {
+        provider: "indexeddb",
+        storeId: uuidv7(),
+      });
+      setNewOpen(false);
+      setNewName("");
+      void navigate(`/projects/${project.slug}`);
+    } catch (error) {
+      console.error(error);
+      showError({
+        title: "Failed to create project",
+        description: (error as Error).message,
+      });
+    }
+  }, [newName, navigate, showError]);
 
   const handleOpenFolder = useCallback(async () => {
+    if (!isFileSystemAccessSupported()) {
+      showError({
+        title: "Open Folder is not available in this browser",
+        description:
+          "Opening a project folder uses the File System Access API, which currently requires a Chromium-based desktop browser (Chrome, Edge, or Brave). On iPad and other unsupported browsers, use New Project instead.",
+      });
+      return;
+    }
     try {
       const handle = await showDirectoryPicker();
       const project = await addProject(handle.name, {
@@ -91,7 +130,10 @@ export function ProjectListPage() {
       <Flex direction="column" gap="4" align="center">
         <Heading size="8">Beat Muser</Heading>
         <Flex gap="2">
-          <Button onClick={handleOpenFolder}>Open Folder</Button>
+          <Button onClick={() => setNewOpen(true)}>New Project</Button>
+          <Button variant="soft" onClick={handleOpenFolder}>
+            Open Folder
+          </Button>
           <Button variant="soft" onClick={() => setDemoOpen(true)}>
             Try Demo
           </Button>
@@ -136,6 +178,39 @@ export function ProjectListPage() {
           ))}
         </Flex>
       </Flex>
+
+      <Dialog.Root open={newOpen} onOpenChange={setNewOpen}>
+        <Dialog.Content maxWidth="450px">
+          <Dialog.Title>New Project</Dialog.Title>
+          <Dialog.Description size="2" mb="4">
+            Files for this project are stored in your browser (IndexedDB). Upload audio and export
+            your work from the Files panel inside the editor.
+          </Dialog.Description>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreateProject();
+            }}
+          >
+            <TextField.Root
+              placeholder="Project name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              autoFocus
+            />
+            <Flex gap="2" mt="4" justify="end">
+              <Dialog.Close>
+                <Button variant="soft" color="gray" type="button">
+                  Cancel
+                </Button>
+              </Dialog.Close>
+              <Button type="submit" disabled={newName.trim() === ""}>
+                Create
+              </Button>
+            </Flex>
+          </form>
+        </Dialog.Content>
+      </Dialog.Root>
 
       <Dialog.Root open={demoOpen} onOpenChange={setDemoOpen}>
         <Dialog.Content maxWidth="450px">
