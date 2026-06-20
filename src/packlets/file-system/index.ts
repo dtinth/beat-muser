@@ -1,25 +1,21 @@
 /**
  * @packageDocumentation
  *
- * Virtual file system abstraction. Provides a unified interface over the
- * browser's File System API (real directories) and an in-memory demo file
- * system for example projects.
+ * Virtual file system abstraction. Provides a unified {@link ProjectFileSystem}
+ * interface over three backends: the browser's File System Access API (real
+ * directories), an in-memory read-only file system for bundled example
+ * projects, and an IndexedDB-backed store for browsers without File System
+ * Access (see ADR 023). Backends are selected by `createProjectFileSystem` in
+ * the project-store packlet, which owns the `ProjectSource` type.
  */
 
-import type { ProjectSource } from "../project-store/types.ts";
-import type { ProjectFileSystem, FileEntry } from "./types.ts";
-import { createFileSystemFromHandle } from "./real-fs.ts";
-import { createFileSystemFromExample } from "./demo-fs.ts";
-import { showDirectoryPicker } from "./picker.ts";
-
-export function createProjectFileSystem(source: ProjectSource): ProjectFileSystem {
-  switch (source.provider) {
-    case "filesystem":
-      return createFileSystemFromHandle(source.handle);
-    case "examples":
-      return createFileSystemFromExample(source.name);
-  }
-}
-
-export { showDirectoryPicker };
-export type { ProjectFileSystem, FileEntry };
+export { createFileSystemFromHandle } from "./real-fs.ts";
+export { createFileSystemFromExample } from "./demo-fs.ts";
+export {
+  createFileSystemFromIndexedDb,
+  deleteIndexedDbStore,
+  FileNotFoundError,
+  isFileNotFoundError,
+} from "./indexeddb-fs.ts";
+export { showDirectoryPicker } from "./picker.ts";
+export type { ProjectFileSystem, FileEntry } from "./types.ts";

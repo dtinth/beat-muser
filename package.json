@@ -14,6 +14,7 @@
   "dependencies": {
     "@nanostores/react": "^1.1.0",
     "@radix-ui/themes": "^3.3.0",
+    "idb": "^8.0.3",
     "idb-keyval": "^6.2.2",
     "lucide-react": "^1.8.0",
     "nanoevents": "^9.1.0",
@@ -39,6 +40,7 @@
     "allure-playwright": "^3.7.1",
     "allure-vitest": "^3.7.1",
     "badge-maker": "^5.0.2",
+    "fake-indexeddb": "^6.2.5",
     "typescript": "~6.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:"

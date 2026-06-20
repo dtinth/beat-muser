@@ -13,8 +13,9 @@ import {
   getProjectBySlug,
   DEMO_SLUG,
   createDemoProjectFile,
+  createProjectFileSystem,
 } from "./packlets/project-store/index.ts";
-import { createProjectFileSystem } from "./packlets/file-system/index.ts";
+import { isFileNotFoundError } from "./packlets/file-system/index.ts";
 import { parseProjectFile } from "./packlets/project-format/index.ts";
 import type { ProjectFile } from "./packlets/project-format/index.ts";
 import { getExtensionManager } from "./packlets/extensions/index.ts";
@@ -79,34 +80,24 @@ export const router = createBrowserRouter([
           } else {
             const fs = createProjectFileSystem(source);
             try {
-              const handle = source.handle;
-              const permission = await (handle as any).requestPermission({ mode: "read" }); // TS DOM types missing requestPermission
-              if (permission !== "granted") {
-                throw new Error(
-                  "Folder access was denied. Reopen the project to re-grant permission.",
-                );
+              // The File System Access API requires re-granting read permission
+              // each session; other backends need no permission gate.
+              if (source.provider === "filesystem") {
+                const permission = await (source.handle as any).requestPermission({ mode: "read" }); // TS DOM types missing requestPermission
+                if (permission !== "granted") {
+                  throw new Response(
+                    "Folder access was denied. Reopen the project to re-grant permission.",
+                    { status: 403 },
+                  );
+                }
               }
-            } catch (e) {
-              console.error("Permission or read error:", e);
-              if (e instanceof DOMException && e.name === "NotFoundError") {
-                projectFile = {
-                  schemaVersion: 2,
-                  version: uuidv7(),
-                  metadata: { title: "Untitled", artist: "", genre: "" },
-                  entities: [],
-                };
-              } else {
-                throw new Response(`Failed to load project: ${(e as Error).message}`, {
-                  status: 500,
-                });
-              }
-            }
-            try {
               const json = await fs.readText("beat-muser-project.json");
               projectFile = parseProjectFile(json);
             } catch (error) {
-              const isNotFound = error instanceof DOMException && error.name === "NotFoundError";
-              if (isNotFound) {
+              if (error instanceof Response) throw error;
+              // A missing project file (or a deleted folder) means a fresh,
+              // empty project rather than a load failure.
+              if (isFileNotFoundError(error)) {
                 projectFile = {
                   schemaVersion: 2,
                   version: uuidv7(),

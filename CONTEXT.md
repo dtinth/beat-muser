@@ -131,6 +131,24 @@ _Avoid_: scroll velocity event (use "Soflan event")
 **Soflan column**:
 A timeline column that displays Soflan markers for a specific level. One column per level, stacked to the right of sound lanes. Soflan events are placed by pencil-clicking the column and editing the values in a dialog (same pattern as BPM).
 
+### File system & projects
+
+**Project source**:
+A discriminated union identifying where a project's files live: `filesystem` (a File System Access directory handle), `examples` (bundled read-only demo files), or `indexeddb` (file blobs stored in IndexedDB under an independent `storeId`). Persisted in the project metadata; resolved by `createProjectFileSystem` into a **Project file system**.
+_Avoid_: storage backend, provider (without "Project source" qualifier)
+
+**Project file system**:
+The `ProjectFileSystem` abstraction (`file-system` packlet) giving uniform path-based access over any **Project source**: `listFiles`, `readFile`, `readText`, `writeFile`, `deleteFile`, and a `readOnly` flag. The only abstraction seam consumers touch — the route loader, project view, and audio engine never branch on **Project source**.
+_Avoid_: virtual filesystem (informal only), VFS
+
+**IndexedDB-backed project**:
+A project whose files are stored as blobs in IndexedDB (a dedicated `files` store keyed by `[storeId, path]`), for browsers lacking the File System Access API — notably iPad Safari. IndexedDB is a secondary store accepted only out of necessity, never the primary one for desktop projects. Files enter and leave via the **Project Files panel**.
+_Avoid_: local project, browser project
+
+**Project Files panel**:
+The second tab of the Sounds panel (right sidebar). Lists the **Project file system**'s files with upload (`writeFile`), per-file download (`readFile` → object URL), and delete; write actions are disabled when the file system is `readOnly`. Has a manual refresh button because the underlying files may change outside the app. _Known limitation:_ uploaded or replaced files require a page reload before the audio engine re-decodes them.
+_Avoid_: asset manager, file browser
+
 ## Relationships
 
 - A **Chart** contains one or more **Levels**
@@ -138,6 +156,9 @@ A timeline column that displays Soflan markers for a specific level. One column 
 - A **Game mode** contains one or more **Lane definitions**
 - The **Game mode registry** holds zero or more **Game modes**
 - **Column definitions** are derived from visible **Levels** + their referenced **Game mode** layouts
+- A **Project** has exactly one **Project source**, resolved into a **Project file system**
+- A **Sound channel**'s path is resolved against the **Project file system**; the **Audio engine** reads its bytes via `readFile`
+- The **Project Files panel** uploads, downloads, and deletes entries in the **Project file system**
 - A **Project** contains zero or more **Sound groups**
 - A **Sound group** contains one or more **Sound channels**
 - A **Sound event** references exactly one **Sound channel**
