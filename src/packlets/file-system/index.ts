@@ -18,4 +18,5 @@ export {
   isFileNotFoundError,
 } from "./indexeddb-fs.ts";
 export { showDirectoryPicker } from "./picker.ts";
+export { nextAvailableName } from "./naming.ts";
 export type { ProjectFileSystem, FileEntry } from "./types.ts";
