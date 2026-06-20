@@ -34,7 +34,7 @@ import {
 } from "../editor-core/index.ts";
 import type { ProjectFile } from "../project-format/index.ts";
 import type { ProjectSource } from "../project-store/types.ts";
-import { createProjectFileSystem } from "../file-system/index.ts";
+import { createProjectFileSystem } from "../project-store/index.ts";
 import { createAudioEngine, startAudioPlayback } from "../audio-engine/index.ts";
 import { createTimelineBehaviorFactory } from "./timeline-behavior.ts";
 import { ProjectToolbar } from "./project-toolbar.tsx";

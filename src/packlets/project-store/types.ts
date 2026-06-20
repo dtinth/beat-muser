@@ -1,6 +1,7 @@
 export type ProjectSource =
   | { provider: "filesystem"; handle: FileSystemDirectoryHandle }
-  | { provider: "examples"; name: string };
+  | { provider: "examples"; name: string }
+  | { provider: "indexeddb"; storeId: string };
 
 export interface Project {
   id: string;

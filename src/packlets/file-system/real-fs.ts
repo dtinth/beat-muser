@@ -33,6 +33,7 @@ export function createFileSystemFromHandle(handle: FileSystemDirectoryHandle): P
   }
 
   return {
+    readOnly: false,
     async listFiles() {
       return getEntries(handle);
     },
@@ -50,6 +51,14 @@ export function createFileSystemFromHandle(handle: FileSystemDirectoryHandle): P
       const writable = await fileHandle.createWritable();
       await writable.write(content);
       await writable.close();
+    },
+    async deleteFile(path: string) {
+      const parts = path.split("/");
+      let dir = handle;
+      for (let i = 0; i < parts.length - 1; i++) {
+        dir = await dir.getDirectoryHandle(parts[i]);
+      }
+      await dir.removeEntry(parts[parts.length - 1]);
     },
   };
 }

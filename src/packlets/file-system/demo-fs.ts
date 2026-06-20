@@ -36,6 +36,7 @@ export function createFileSystemFromExample(name: string): ProjectFileSystem {
   }
 
   return {
+    readOnly: true,
     async listFiles() {
       return getEntries();
     },
@@ -54,6 +55,9 @@ export function createFileSystemFromExample(name: string): ProjectFileSystem {
       return content;
     },
     async writeFile() {
+      throw new Error("Demo file system is read-only");
+    },
+    async deleteFile() {
       throw new Error("Demo file system is read-only");
     },
   };

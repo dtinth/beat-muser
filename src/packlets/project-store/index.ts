@@ -10,6 +10,24 @@ import { get, set } from "idb-keyval";
 import { uuidv7 } from "uuidv7";
 import type { Project, ProjectSource } from "./types.ts";
 import { slugify } from "./slugify.ts";
+import {
+  createFileSystemFromHandle,
+  createFileSystemFromExample,
+  createFileSystemFromIndexedDb,
+  deleteIndexedDbStore,
+  type ProjectFileSystem,
+} from "../file-system/index.ts";
+
+export function createProjectFileSystem(source: ProjectSource): ProjectFileSystem {
+  switch (source.provider) {
+    case "filesystem":
+      return createFileSystemFromHandle(source.handle);
+    case "examples":
+      return createFileSystemFromExample(source.name);
+    case "indexeddb":
+      return createFileSystemFromIndexedDb(source.storeId);
+  }
+}
 
 const PROJECTS_KEY = "projects";
 
@@ -57,7 +75,11 @@ export async function addProject(displayName: string, source: ProjectSource): Pr
 
 export async function removeProject(slug: string): Promise<void> {
   const projects = await getAllProjects();
+  const project = projects.find((p) => p.slug === slug);
   await saveProjects(projects.filter((p) => p.slug !== slug));
+  if (project?.source.provider === "indexeddb") {
+    await deleteIndexedDbStore(project.source.storeId);
+  }
 }
 
 export async function touchProject(slug: string): Promise<void> {
