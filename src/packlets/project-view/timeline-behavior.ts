@@ -235,6 +235,21 @@ function createColumnCursorRenderer(): (data: unknown) => RenderHandle<{}> {
   };
 }
 
+function createOverlapIndicatorRenderer(): () => RenderHandle<{}> {
+  return () => {
+    const el = document.createElement("div");
+    // A warning ring drawn over a cell that holds 2+ stacked entities. Sits
+    // above the markers (higher zIndex) but never intercepts pointer events so
+    // the entities underneath stay clickable.
+    el.style.boxSizing = "border-box";
+    el.style.border = "2px solid var(--red-9)";
+    el.style.borderRadius = "3px";
+    el.style.boxShadow = "0 0 0 1px var(--red-a6), 0 0 5px var(--red-9)";
+    el.style.pointerEvents = "none";
+    return { dom: el, update() {} };
+  };
+}
+
 function createDecorationArrowRenderer(): Renderer {
   return (data: unknown) => {
     const d = data as { angle: number; color: string };
@@ -321,6 +336,7 @@ const rendererMap: Record<string, Renderer> = {
   "selection-box": createSelectionBoxRenderer(),
   waveform: createWaveformRenderer(),
   "column-cursor": createColumnCursorRenderer(),
+  "overlap-indicator": createOverlapIndicatorRenderer(),
   "decoration-line": createDecorationLineRenderer(),
   "decoration-arrow": createDecorationArrowRenderer(),
 };
