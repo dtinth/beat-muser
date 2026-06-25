@@ -131,6 +131,10 @@ _Avoid_: scroll velocity event (use "Soflan event")
 **Soflan column**:
 A timeline column that displays Soflan markers for a specific level. One column per level, stacked to the right of sound lanes. Soflan events are placed by pencil-clicking the column and editing the values in a dialog (same pattern as BPM).
 
+**Overlap indicator**:
+A warning ring drawn around a timeline cell that holds two or more committed entity markers at the same column and pulse (e.g. duplicate notes on the same level/lane/pulse, or multiple BPM changes at one pulse). Computed by the **Render slice** as a post-pass over event markers and rendered above them without intercepting pointer events. Drag ghosts are excluded so an in-progress drag never flags an overlap.
+_Avoid_: collision marker, duplicate badge
+
 ### File system & projects
 
 **Project source**:
