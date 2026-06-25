@@ -838,6 +838,37 @@ export class RenderSlice extends Slice {
       }
     }); // end computeSpecs:grid
 
+    // --- Overlap indicators ---
+    // Two or more committed entity markers sharing the same cell (column + pulse,
+    // i.e. identical x/y) are stacked on top of each other. Surface those cells
+    // with a warning ring so duplicates are visible. Drag ghosts carry no
+    // entityId and are excluded so an in-progress drag never flags an overlap.
+    const cellCounts = new Map<string, { x: number; y: number; width: number; count: number }>();
+    for (const spec of specs) {
+      if (spec.type !== "event-marker" || !spec.entityId) continue;
+      const key = `${spec.x}:${spec.y}`;
+      const cell = cellCounts.get(key);
+      if (cell) {
+        cell.count++;
+      } else {
+        cellCounts.set(key, { x: spec.x, y: spec.y, width: spec.width, count: 1 });
+      }
+    }
+    for (const [key, cell] of cellCounts) {
+      if (cell.count < 2) continue;
+      specs.push({
+        key: `overlap-${key}`,
+        type: "overlap-indicator",
+        x: cell.x,
+        y: cell.y,
+        width: cell.width,
+        height: 14,
+        data: { count: cell.count },
+        testId: "overlap-indicator",
+        zIndex: 5,
+      });
+    }
+
     return specs;
   }
 
