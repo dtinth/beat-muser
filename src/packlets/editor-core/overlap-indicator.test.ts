@@ -18,7 +18,7 @@ function bpmAt(chartId: string, y: number, bpm: number): Entity {
 }
 
 function overlapSpecs(editor: EditorTester) {
-  return editor.instance.$visibleRenderObjects.get().filter((s) => s.type === "overlap-indicator");
+  return editor.instance.getVisibleRenderObjects().filter((s) => s.type === "overlap-indicator");
 }
 
 describe("overlap indicator", () => {

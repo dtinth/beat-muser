@@ -175,7 +175,7 @@ export class EditorTester {
   }
 
   eventRect(entityId: string): Rect {
-    const specs = this.instance.$visibleRenderObjects.get();
+    const specs = this.instance.getVisibleRenderObjects();
     const spec = specs.find((s) => s.key.endsWith(`-${entityId}`));
     expect(spec).toBeDefined();
     return { x: spec!.x, y: spec!.y, width: spec!.width, height: spec!.height };
@@ -256,7 +256,7 @@ export class EditorTester {
       expect(engine.formatTime(seconds)).toBe(expected);
     },
     shouldHavePositionRelativeToViewport: (expectedY: number) => {
-      const specs = this.instance.$visibleRenderObjects.get();
+      const specs = this.instance.getVisibleRenderObjects();
       const playhead = specs.find((s) => s.type === "playhead");
       expect(playhead).toBeDefined();
       const playheadViewportY = playhead!.y - this.instance.ctx.get(ViewportSlice).$scroll.get().y;
