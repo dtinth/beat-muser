@@ -60,6 +60,7 @@ Event-based chart format (PPQN 240, default BPM 60) with versioned metadata, cha
 - `{ provider: 'filesystem', handle: FileSystemDirectoryHandle }`
 - `{ provider: 'examples', name: string }`
 - `{ provider: 'indexeddb', storeId: string }` — files stored as blobs in IndexedDB, for browsers without the File System Access API (iPad Safari). See ADR 023.
+- `{ provider: 'webdav', url, username?, password? }` — files stored on a remote WebDAV server (reference target: dufs). See ADR 024.
 - `__demo__` slug bypasses IndexedDB, loads from demo VFS
 - `createProjectFileSystem` lives in `project-store` (which owns `ProjectSource`); `file-system` is a backend-only packlet to avoid a cycle.
 

@@ -14,6 +14,7 @@ import {
   createFileSystemFromHandle,
   createFileSystemFromExample,
   createFileSystemFromIndexedDb,
+  createFileSystemFromWebDav,
   deleteIndexedDbStore,
   type ProjectFileSystem,
 } from "../file-system/index.ts";
@@ -26,6 +27,8 @@ export function createProjectFileSystem(source: ProjectSource): ProjectFileSyste
       return createFileSystemFromExample(source.name);
     case "indexeddb":
       return createFileSystemFromIndexedDb(source.storeId);
+    case "webdav":
+      return createFileSystemFromWebDav(source);
   }
 }
 

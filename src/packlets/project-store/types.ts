@@ -1,7 +1,8 @@
 export type ProjectSource =
   | { provider: "filesystem"; handle: FileSystemDirectoryHandle }
   | { provider: "examples"; name: string }
-  | { provider: "indexeddb"; storeId: string };
+  | { provider: "indexeddb"; storeId: string }
+  | { provider: "webdav"; url: string; username?: string; password?: string };
 
 export interface Project {
   id: string;
