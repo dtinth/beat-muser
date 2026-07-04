@@ -2,8 +2,8 @@
  * @packageDocumentation
  *
  * Home page listing saved projects. Supports creating a new IndexedDB-backed
- * project, opening a folder via the File System API, creating a demo project,
- * and removing projects from the local index.
+ * project, opening a folder via the File System API, connecting a WebDAV
+ * server, creating a demo project, and removing projects from the local index.
  */
 
 import { useCallback, useState } from "react";
@@ -41,6 +41,11 @@ export function ProjectListPage() {
   const [demoOpen, setDemoOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [newName, setNewName] = useState("");
+  const [webdavOpen, setWebdavOpen] = useState(false);
+  const [webdavName, setWebdavName] = useState("");
+  const [webdavUrl, setWebdavUrl] = useState("");
+  const [webdavUser, setWebdavUser] = useState("");
+  const [webdavPass, setWebdavPass] = useState("");
 
   const handleCreateProject = useCallback(async () => {
     const name = newName.trim();
@@ -61,6 +66,32 @@ export function ProjectListPage() {
       });
     }
   }, [newName, navigate, showError]);
+
+  const handleConnectWebDav = useCallback(async () => {
+    const name = webdavName.trim();
+    const url = webdavUrl.trim();
+    if (name === "" || url === "") return;
+    const user = webdavUser.trim();
+    try {
+      const project = await addProject(name, {
+        provider: "webdav",
+        url,
+        ...(user !== "" ? { username: user, password: webdavPass } : {}),
+      });
+      setWebdavOpen(false);
+      setWebdavName("");
+      setWebdavUrl("");
+      setWebdavUser("");
+      setWebdavPass("");
+      void navigate(`/projects/${project.slug}`);
+    } catch (error) {
+      console.error(error);
+      showError({
+        title: "Failed to connect WebDAV server",
+        description: (error as Error).message,
+      });
+    }
+  }, [webdavName, webdavUrl, webdavUser, webdavPass, navigate, showError]);
 
   const handleOpenFolder = useCallback(async () => {
     if (!isFileSystemAccessSupported()) {
@@ -134,6 +165,9 @@ export function ProjectListPage() {
           <Button variant="soft" onClick={handleOpenFolder}>
             Open Folder
           </Button>
+          <Button variant="soft" onClick={() => setWebdavOpen(true)}>
+            Connect WebDAV
+          </Button>
           <Button variant="soft" onClick={() => setDemoOpen(true)}>
             Try Demo
           </Button>
@@ -206,6 +240,60 @@ export function ProjectListPage() {
               </Dialog.Close>
               <Button type="submit" disabled={newName.trim() === ""}>
                 Create
+              </Button>
+            </Flex>
+          </form>
+        </Dialog.Content>
+      </Dialog.Root>
+
+      <Dialog.Root open={webdavOpen} onOpenChange={setWebdavOpen}>
+        <Dialog.Content maxWidth="450px">
+          <Dialog.Title>Connect a WebDAV Server</Dialog.Title>
+          <Dialog.Description size="2" mb="4">
+            Files for this project live on a remote WebDAV server (e.g. dufs). The server must
+            enable CORS and, if writing, allow uploads and deletes. Leave the username blank for
+            anonymous access.
+          </Dialog.Description>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleConnectWebDav();
+            }}
+          >
+            <Flex direction="column" gap="2">
+              <TextField.Root
+                placeholder="Project name"
+                value={webdavName}
+                onChange={(e) => setWebdavName(e.target.value)}
+                autoFocus
+              />
+              <TextField.Root
+                placeholder="Server URL (https://host:5000/path/)"
+                value={webdavUrl}
+                onChange={(e) => setWebdavUrl(e.target.value)}
+              />
+              <TextField.Root
+                placeholder="Username (optional)"
+                value={webdavUser}
+                onChange={(e) => setWebdavUser(e.target.value)}
+                autoComplete="username"
+              />
+              <TextField.Root
+                type="password"
+                placeholder="Password (optional)"
+                value={webdavPass}
+                onChange={(e) => setWebdavPass(e.target.value)}
+                autoComplete="current-password"
+              />
+            </Flex>
+            <Flex gap="2" mt="4" justify="end">
+              <Dialog.Close>
+                <Button variant="soft" color="gray" type="button">
+                  Cancel
+                </Button>
+              </Dialog.Close>
+              <Button type="submit" disabled={webdavName.trim() === "" || webdavUrl.trim() === ""}>
+                Connect
               </Button>
             </Flex>
           </form>
