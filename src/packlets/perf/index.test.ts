@@ -55,6 +55,26 @@ describe("perf", () => {
     expect(renderNumbers.length).toBe(100);
   });
 
+  test("onEvent delivers every event, unaffected by eviction", () => {
+    const perf = createPerf();
+    const seen: string[] = [];
+    const unsubscribe = perf.onEvent((event) => seen.push(event.type));
+
+    // Exceed the 100-render eviction cap; the listener must still see all.
+    for (let i = 0; i < 105; i++) {
+      perf.incrementCounter("renderNumber");
+      perf.measure(`t${i}`, () => {});
+    }
+    expect(seen).toHaveLength(105);
+    expect(seen[0]).toBe("t0");
+    expect(seen[104]).toBe("t104");
+
+    unsubscribe();
+    perf.incrementCounter("renderNumber");
+    perf.measure("after", () => {});
+    expect(seen).toHaveLength(105);
+  });
+
   test("multiple measure calls within same render share the render number", () => {
     const perf = createPerf();
 

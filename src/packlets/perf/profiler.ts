@@ -259,21 +259,28 @@ export function runRenderProfile(
     const contentHeight = info.contentHeight;
     const centerY = contentHeight / 2;
 
-    const totalFrames = warmupFrames + measureFrames;
+    // One extra frame: the warmup/measure boundary frame is a pure reference
+    // point (records lastT, no sample), so measureFrames samples need
+    // measureFrames frames after it.
+    const totalFrames = warmupFrames + measureFrames + 1;
     let frameIndex = 0;
     const samples: FrameSample[] = [];
     let lastT = 0;
     let wallStart = 0;
 
-    // Snapshot the current perf event watermark so we can isolate events
-    // emitted during profiling without destructively clearing global state.
-    let lastEventCount = perf.$state.get().events.length;
+    // Collect events by subscription rather than by index into the perf
+    // state array — that array is evicted (filtered in place) once more than
+    // 100 render numbers accumulate, which would invalidate a watermark.
+    const pendingEvents: { type: string; duration: number }[] = [];
+    const unsubscribe = perf.onEvent((event) => {
+      pendingEvents.push(event);
+    });
 
     function frameLoop(t: number) {
       if (frameIndex === warmupFrames) {
         wallStart = performance.now();
-        // Reset our event watermark at the start of the measured run.
-        lastEventCount = perf.$state.get().events.length;
+        // Discard events from warmup frames.
+        pendingEvents.length = 0;
         lastT = t;
       }
 
@@ -282,16 +289,9 @@ export function runRenderProfile(
       const scrollY = centerY - scrollRangeHalf + progress * 2 * scrollRangeHalf;
       target.setScroll({ x: 0, y: Math.max(0, scrollY) });
 
-      frameIndex++;
-
       if (frameIndex > warmupFrames) {
-        // Collect perf events emitted since last frame
-        const allEvents = perf.$state.get().events;
-        const frameEvents = allEvents.slice(lastEventCount);
-        lastEventCount = allEvents.length;
-
         const measures: Record<string, number[]> = {};
-        for (const ev of frameEvents) {
+        for (const ev of pendingEvents) {
           let arr = measures[ev.type];
           if (!arr) {
             arr = [];
@@ -299,6 +299,7 @@ export function runRenderProfile(
           }
           arr.push(ev.duration);
         }
+        pendingEvents.length = 0;
 
         const deltaMs = t - lastT;
         const domNodeCount = target.getDomNodeCount?.() ?? null;
@@ -307,9 +308,12 @@ export function runRenderProfile(
         lastT = t;
       }
 
+      frameIndex++;
+
       if (frameIndex < totalFrames) {
         requestAnimationFrame(frameLoop);
       } else {
+        unsubscribe();
         const wallTimeMs = performance.now() - wallStart;
         const scrollInfo = target.getScrollInfo();
         resolve({
