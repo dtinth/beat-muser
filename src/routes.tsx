@@ -12,7 +12,6 @@ import {
   listProjects,
   getProjectBySlug,
   DEMO_SLUG,
-  createDemoProjectFile,
   createProjectFileSystem,
 } from "./packlets/project-store/index.ts";
 import { isFileNotFoundError } from "./packlets/file-system/index.ts";
@@ -65,7 +64,7 @@ export const router = createBrowserRouter([
 
           let source: ProjectSource;
           if (params.slug === DEMO_SLUG) {
-            source = { provider: "examples", name: "demo" };
+            source = { provider: "examples", name: "recursivedescent" };
           } else {
             const project = await getProjectBySlug(params.slug!);
             if (!project) {
@@ -75,9 +74,7 @@ export const router = createBrowserRouter([
           }
 
           let projectFile: ProjectFile;
-          if (source.provider === "examples") {
-            projectFile = createDemoProjectFile();
-          } else {
+          {
             const fs = createProjectFileSystem(source);
             try {
               // The File System Access API requires re-granting read permission
