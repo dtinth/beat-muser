@@ -30,6 +30,7 @@ import type {
 } from "../scrollable-canvas/index.tsx";
 import type { EditorController, TimelineRenderSpec } from "../editor-core/index.ts";
 import { createWaveformRenderer } from "./waveform-renderer.ts";
+import { setProfilerTarget } from "../perf/profiler-registry.ts";
 
 // ---------------------------------------------------------------------------
 // Renderers
@@ -375,6 +376,28 @@ export function createTimelineBehaviorFactory(
       ctx.refresh();
     });
 
+    // Register the profiler target so the Debug tab and Playwright script can
+    // run a render profile against the live canvas without importing editor code.
+    const unregisterProfilerTarget = setProfilerTarget({
+      setScroll(point) {
+        ctx.setScroll(point);
+      },
+      getScrollInfo() {
+        return {
+          scrollTop: ctx.scrollTop,
+          scrollLeft: ctx.scrollLeft,
+          viewportWidth: ctx.viewportWidth,
+          viewportHeight: ctx.viewportHeight,
+          contentHeight: controller.getContentHeight(),
+        };
+      },
+      getDomNodeCount() {
+        // Count children of the scroll layer (visible DOM nodes).
+        const layer = document.querySelector<HTMLElement>('[data-testid="scroll-layer"]');
+        return layer ? layer.childElementCount : 0;
+      },
+    });
+
     return {
       getContentSize() {
         return {
@@ -419,6 +442,7 @@ export function createTimelineBehaviorFactory(
       [Symbol.dispose]() {
         unsubOutbox();
         unsubVisible();
+        unregisterProfilerTarget();
       },
     };
   };

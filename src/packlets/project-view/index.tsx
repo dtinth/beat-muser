@@ -17,6 +17,8 @@ import { SidebarPanel } from "../sidebar-panel/index.tsx";
 import { FilesPanel } from "./files-panel.tsx";
 import type { ProjectFileSystem } from "../file-system/index.ts";
 import { perf } from "../perf/index.ts";
+import { getProfilerTarget } from "../perf/profiler-registry.ts";
+import { runRenderProfile, formatProfileReport } from "../perf/profiler.ts";
 import { useInView } from "react-intersection-observer";
 import { ScrollableCanvas } from "../scrollable-canvas/index.tsx";
 import { getExtensionManager } from "../extensions/index.ts";
@@ -30,6 +32,7 @@ import {
   SOUND_GROUP,
   SOUND_CHANNEL,
   SoundChannelSlice,
+  WaveformSlice,
   EditEntityUserAction,
   ProjectSlice,
   PPQN,
@@ -46,6 +49,19 @@ import {
   CommandSet,
   KeyboardShortcutHandler,
 } from "../command-registry/index.ts";
+
+// ---------------------------------------------------------------------------
+// Global window API for Playwright / headless profiling
+// ---------------------------------------------------------------------------
+
+declare global {
+  interface Window {
+    /** Returns the full plain-text profile report. Available while the project view is mounted. */
+    __beatMuserProfilePerformance?: () => Promise<string>;
+    /** Resolves when all audio files have finished decoding. Available while the project view is mounted. */
+    __beatMuserAudioReady?: () => Promise<void>;
+  }
+}
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -97,11 +113,13 @@ function EditableField({
   );
 }
 
-function DebugContent() {
+function DebugContent({ controller }: { controller: EditorController }) {
   const { ref } = useInView();
   const state = useStore(perf.$state);
   const events = state.events;
   const counters = state.counters;
+  const [profiling, setProfiling] = useState(false);
+  const [profileReport, setProfileReport] = useState<string | null>(null);
 
   const statsByType = useMemo(() => {
     const groups = new Map<string, number[]>();
@@ -127,6 +145,69 @@ function DebugContent() {
     return result.sort((a, b) => a.type.localeCompare(b.type));
   }, [events]);
 
+  async function handleProfile() {
+    const target = getProfilerTarget();
+    if (!target || profiling) return;
+    setProfiling(true);
+    setProfileReport(null);
+    try {
+      const result = await runRenderProfile(target);
+      const report = formatProfileReport(result);
+      console.log(report);
+      setProfileReport(report);
+    } finally {
+      setProfiling(false);
+    }
+  }
+
+  // Expose profile fn on window so Playwright can call it.
+  // This is declared in the global augmentation in this file.
+  useEffect(() => {
+    window.__beatMuserProfilePerformance = async () => {
+      const target = getProfilerTarget();
+      if (!target) throw new Error("No profiler target registered");
+      const result = await runRenderProfile(target);
+      return formatProfileReport(result);
+    };
+
+    // Audio readiness: resolve when all known waveform paths are "ready" or
+    // terminal ("decoding-failed") — i.e. no path is still loading/generating.
+    window.__beatMuserAudioReady = () => {
+      return new Promise<void>((resolve) => {
+        const waveformSlice = controller.ctx.get(WaveformSlice);
+        function check() {
+          const statusMap = waveformSlice.$waveformStatus.get();
+          const paths = controller.ctx.get(SoundChannelSlice).$soundFilePaths.get();
+          if (paths.length === 0) {
+            // No audio files — nothing to wait for.
+            resolve();
+            return true;
+          }
+          const statuses = paths.map((p) => statusMap.get(p) ?? "nothing");
+          const allSettled = statuses.every(
+            (s) => s === "ready" || s === "decoding-failed" || s === "nothing",
+          );
+          const anyReady = statuses.some((s) => s === "ready");
+          if (allSettled && anyReady) {
+            resolve();
+            return true;
+          }
+          return false;
+        }
+        if (!check()) {
+          const unsub = waveformSlice.$waveformStatus.subscribe(() => {
+            if (check()) unsub();
+          });
+        }
+      });
+    };
+
+    return () => {
+      delete window.__beatMuserProfilePerformance;
+      delete window.__beatMuserAudioReady;
+    };
+  }, [controller]);
+
   return (
     <Flex ref={ref} direction="column" style={{ gap: 8 }}>
       <Text size="1" color="gray">
@@ -147,6 +228,26 @@ function DebugContent() {
       <Text size="1" color="gray">
         {events.length} events
       </Text>
+      <Button size="1" disabled={profiling} onClick={() => void handleProfile()}>
+        {profiling ? "Profiling..." : "Profile Performance"}
+      </Button>
+      {profileReport && (
+        <pre
+          style={{
+            fontFamily: "monospace",
+            fontSize: 10,
+            whiteSpace: "pre-wrap",
+            overflowY: "auto",
+            maxHeight: 300,
+            backgroundColor: "var(--gray-2)",
+            padding: 8,
+            borderRadius: 4,
+            margin: 0,
+          }}
+        >
+          {profileReport}
+        </pre>
+      )}
     </Flex>
   );
 }
@@ -520,7 +621,7 @@ function RightPanels({
           },
           {
             label: "Debug",
-            content: <DebugContent />,
+            content: <DebugContent controller={controller} />,
           },
         ]}
       />
@@ -1083,6 +1184,18 @@ export function ProjectViewPage() {
         if (state === "playing" || state === "paused") {
           controller.stopPlayback();
         }
+      },
+    });
+    commands.add({
+      id: "profilePerformance",
+      title: "Profile Performance",
+      execute: () => {
+        const target = getProfilerTarget();
+        if (!target) return;
+        void runRenderProfile(target).then((result) => {
+          const report = formatProfileReport(result);
+          console.log(report);
+        });
       },
     });
     const unregister = commands.registerTo(globalCommandRegistry);
