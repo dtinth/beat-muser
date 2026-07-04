@@ -6,6 +6,7 @@
 
 import { describe, expect, test, vi } from "vite-plus/test";
 import { RenderObjectReconciler } from "./reconciler.ts";
+import { positionElement } from "./index.tsx";
 import type { RenderHandle, RenderObject } from "./index.tsx";
 
 function makeRenderer() {
@@ -201,5 +202,85 @@ describe("RenderObjectReconciler", () => {
 
     expect(onRemove).toHaveBeenCalledTimes(1);
     // Should not throw even though Symbol.dispose is missing
+  });
+});
+
+describe("positionElement", () => {
+  function makeEl(): HTMLElement {
+    return {
+      style: {} as CSSStyleDeclaration,
+      dataset: {} as DOMStringMap,
+    } as unknown as HTMLElement;
+  }
+
+  function makeObj(overrides?: Partial<RenderObject>): RenderObject {
+    return {
+      key: "test",
+      x: 10,
+      y: 20,
+      width: 100,
+      height: 50,
+      renderer: vi.fn() as unknown as RenderObject["renderer"],
+      data: {},
+      ...overrides,
+    };
+  }
+
+  test("first call writes all style properties", () => {
+    const el = makeEl();
+    const obj = makeObj({ zIndex: 2, opacity: 0.5, testId: "my-el" });
+    positionElement(el, obj);
+
+    expect(el.style.position).toBe("absolute");
+    expect(el.style.left).toBe("10px");
+    expect(el.style.top).toBe("20px");
+    expect(el.style.width).toBe("100px");
+    expect(el.style.height).toBe("50px");
+    expect(el.style.zIndex).toBe("2");
+    expect(el.style.opacity).toBe("0.5");
+    expect(el.dataset.testid).toBe("my-el");
+    expect(el.dataset.key).toBe("test");
+  });
+
+  test("second call with same values does not touch style", () => {
+    const el = makeEl();
+    const obj = makeObj();
+    positionElement(el, obj);
+
+    // Replace style with a tracked version for the second call
+    const setterCalls: string[] = [];
+    const trackingStyle = new Proxy(el.style, {
+      set(target, prop, value) {
+        setterCalls.push(String(prop));
+        (target as unknown as Record<string, unknown>)[String(prop)] = value;
+        return true;
+      },
+    });
+    (el as unknown as { style: CSSStyleDeclaration }).style = trackingStyle;
+
+    positionElement(el, obj); // Same data — should skip all style writes
+    expect(setterCalls).toHaveLength(0);
+  });
+
+  test("second call with changed x only updates left", () => {
+    const el = makeEl();
+    positionElement(el, makeObj({ x: 10 }));
+
+    const setterCalls: string[] = [];
+    const trackingStyle = new Proxy(el.style, {
+      set(target, prop, value) {
+        setterCalls.push(String(prop));
+        (target as unknown as Record<string, unknown>)[String(prop)] = value;
+        return true;
+      },
+    });
+    (el as unknown as { style: CSSStyleDeclaration }).style = trackingStyle;
+
+    positionElement(el, makeObj({ x: 99 }));
+    expect(setterCalls).toContain("left");
+    // Should not touch top, width, height
+    expect(setterCalls).not.toContain("top");
+    expect(setterCalls).not.toContain("width");
+    expect(setterCalls).not.toContain("height");
   });
 });
