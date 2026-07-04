@@ -40,7 +40,7 @@ export class PointerInteractionSlice extends Slice {
     const contentX = point.x + scroll.x;
     const contentY = point.y + scroll.y;
 
-    const specs = this.ctx.get(RenderSlice).$visibleRenderObjects.get();
+    const specs = this.ctx.get(RenderSlice).getVisibleRenderObjects();
     const HIT_TOLERANCE = 4;
 
     let bestId: string | null = null;

@@ -306,7 +306,7 @@ describe("EditorController", () => {
           }),
       });
 
-      const specs = editor.instance.$visibleRenderObjects.get();
+      const specs = editor.instance.getVisibleRenderObjects();
       const soflanMarkers = specs.filter((s) => s.key.startsWith("soflan-"));
       expect(soflanMarkers.length).toBeGreaterThan(0);
       const marker = soflanMarkers[0]!;
@@ -631,8 +631,8 @@ describe("EditorController", () => {
       });
 
       editor.pointerDown(Rect.center(editor.eventRect(bpmEntity!.id)));
-      const spec = editor.instance.$visibleRenderObjects
-        .get()
+      const spec = editor.instance
+        .getVisibleRenderObjects()
         .find((s) => s.key.endsWith(`-${bpmEntity!.id}`));
       expect(spec).toBeDefined();
       expect((spec!.data as Record<string, unknown>).selected).toBe(true);
@@ -720,7 +720,7 @@ describe("EditorController", () => {
       expect(editor.instance.ctx.get(SelectionSlice).$selection.get().size).toBe(0);
 
       // But render specs should show preview as selected.
-      const specs = editor.instance.$visibleRenderObjects.get();
+      const specs = editor.instance.getVisibleRenderObjects();
       const specA = specs.find((s) => s.key === `bpm-${bpmA!.id}`);
       const specB = specs.find((s) => s.key === `bpm-${bpmB!.id}`);
       expect((specA!.data as Record<string, unknown>).selected).toBe(true);
@@ -1097,7 +1097,7 @@ describe("EditorController", () => {
           }),
       });
       editor.instance.ctx.get(CursorSlice).$cursorColumnId.set("time-sig");
-      const specs = editor.instance.$visibleRenderObjects.get();
+      const specs = editor.instance.getVisibleRenderObjects();
       const cursorSpec = specs.find((s) => s.type === "column-cursor");
       expect(cursorSpec).toBeDefined();
       expect(cursorSpec!.width).toBe(16); // 2x height
@@ -1114,7 +1114,7 @@ describe("EditorController", () => {
             p.addLevel(chart.id, "Easy", "beat-7k");
           }),
       });
-      const specs = editor.instance.$visibleRenderObjects.get();
+      const specs = editor.instance.getVisibleRenderObjects();
       const cursorSpec = specs.find((s) => s.type === "column-cursor");
       expect(cursorSpec).toBeUndefined();
     });
@@ -1610,7 +1610,7 @@ describe("EditorController", () => {
       const center = Rect.center(editor.eventRect(noteEntity!.id));
       editor.pointerMove({ x: center.x, y: center.y + 50 });
 
-      const specs = editor.instance.$visibleRenderObjects.get();
+      const specs = editor.instance.getVisibleRenderObjects();
       const original = specs.find((s) => s.key === `note-${noteEntity!.id}`);
       const ghost = specs.find((s) => s.key === `note-ghost-${noteEntity!.id}`);
 
@@ -1735,7 +1735,7 @@ describe("EditorController", () => {
         y: Rect.center(fromRect).y + 10,
       });
 
-      const specs = editor.instance.$visibleRenderObjects.get();
+      const specs = editor.instance.getVisibleRenderObjects();
       const ghost = specs.find((s) => s.key === `note-ghost-${noteEntity!.id}`);
       expect(ghost).toBeDefined();
       expect(ghost!.x).toBe(targetCol!.x);
@@ -2411,7 +2411,7 @@ describe("EditorController", () => {
           }),
       });
 
-      const specs = editor.instance.$visibleRenderObjects.get();
+      const specs = editor.instance.getVisibleRenderObjects();
       const noteSpec = specs.find((s) => s.type === "event-marker" && s.testId === "note");
       expect(noteSpec).toBeDefined();
       expect((noteSpec!.data as { backgroundColor: string }).backgroundColor).toBe("#ff0000");
@@ -2455,7 +2455,7 @@ describe("EditorController", () => {
           }),
       });
 
-      const specs = editor.instance.$visibleRenderObjects.get();
+      const specs = editor.instance.getVisibleRenderObjects();
       const noteSpec = specs.find((s) => s.type === "event-marker" && s.testId === "note");
       expect(noteSpec).toBeDefined();
       // Should fall back to lane noteColor
@@ -2490,7 +2490,7 @@ describe("EditorController", () => {
       ]);
       editor.instance.ctx.get(RenderSlice).requestRerender();
 
-      const specs = editor.instance.$visibleRenderObjects.get();
+      const specs = editor.instance.getVisibleRenderObjects();
       const lineSpecs = specs.filter((s) => s.type === "decoration-line");
       expect(lineSpecs).toHaveLength(1);
       // The line should anchor to Level B's columns (lane 1, 2), not Level A's
@@ -2528,7 +2528,7 @@ describe("EditorController", () => {
       ]);
       editor.instance.ctx.get(RenderSlice).requestRerender();
 
-      const specs = editor.instance.$visibleRenderObjects.get();
+      const specs = editor.instance.getVisibleRenderObjects();
       const arrowSpecs = specs.filter((s) => s.type === "decoration-arrow");
       expect(arrowSpecs).toHaveLength(1);
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();

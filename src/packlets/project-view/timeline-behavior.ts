@@ -372,7 +372,7 @@ export function createTimelineBehaviorFactory(
       ctx.setScroll(point);
     });
 
-    const unsubVisible = controller.$visibleRenderObjects.subscribe(() => {
+    const unsubVisible = controller.onRenderRequested(() => {
       ctx.refresh();
     });
 
@@ -436,7 +436,7 @@ export function createTimelineBehaviorFactory(
       },
 
       getVisibleObjects(): RenderObject[] {
-        return controller.$visibleRenderObjects.get().map(specToRenderObject);
+        return controller.getVisibleRenderObjects().map(specToRenderObject);
       },
 
       [Symbol.dispose]() {

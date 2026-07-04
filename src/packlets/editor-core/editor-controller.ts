@@ -94,8 +94,12 @@ export class EditorController {
     return this.ctx.get(ToolSlice).$activeTool;
   }
 
-  get $visibleRenderObjects() {
-    return this.ctx.get(RenderSlice).$visibleRenderObjects;
+  getVisibleRenderObjects() {
+    return this.ctx.get(RenderSlice).getVisibleRenderObjects();
+  }
+
+  onRenderRequested(cb: () => void): () => void {
+    return this.ctx.get(RenderSlice).onRenderRequested(cb);
   }
 
   private get viewport(): ViewportSlice {

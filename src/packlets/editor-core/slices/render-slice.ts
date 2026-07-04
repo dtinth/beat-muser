@@ -1,4 +1,5 @@
-import { atom, computed, type ReadableAtom } from "nanostores";
+import { computed, type ReadableAtom } from "nanostores";
+import { createNanoEvents } from "nanoevents";
 import { Slice } from "../slice.ts";
 import type { EditorContext } from "../editor-context.ts";
 import { ProjectSlice } from "./project-slice.ts";
@@ -66,17 +67,22 @@ interface WaveformSegment {
 export class RenderSlice extends Slice {
   static readonly sliceKey = "render";
 
-  $rerenderRequestCount = atom(0);
-
-  $visibleRenderObjects: ReadableAtom<TimelineRenderSpec[]>;
-
   $waveformSlices!: ReadableAtom<WaveformSegment[]>;
+
+  private _specsDirty = true;
+  private _cachedSpecs: TimelineRenderSpec[] = [];
+
+  private _renderEvents = createNanoEvents<{
+    renderRequested: () => void;
+  }>();
 
   private _lastWaveformFingerprint = "";
   private _cachedWaveformSlices: WaveformSegment[] = [];
 
   constructor(ctx: EditorContext) {
     super(ctx);
+    // IMPORTANT: emitter must be created before any subscriptions below,
+    // because nanostores calls the subscriber immediately on first subscribe().
     ctx.get(ProjectSlice).entityManager.$mutationVersion.subscribe(() => {
       this.requestRerender();
     });
@@ -110,12 +116,25 @@ export class RenderSlice extends Slice {
     $extensionDecorations.subscribe(() => {
       this.requestRerender();
     });
-
-    this.$visibleRenderObjects = computed([this.$rerenderRequestCount], () => this.computeSpecs());
   }
 
   requestRerender(): void {
-    this.$rerenderRequestCount.set(this.$rerenderRequestCount.get() + 1);
+    this._specsDirty = true;
+    this._renderEvents.emit("renderRequested");
+  }
+
+  /** Returns cached render specs, recomputing only when dirty. */
+  getVisibleRenderObjects(): TimelineRenderSpec[] {
+    if (this._specsDirty) {
+      this._cachedSpecs = this.computeSpecs();
+      this._specsDirty = false;
+    }
+    return this._cachedSpecs;
+  }
+
+  /** Subscribe to render-requested events. Returns an unsubscribe function. */
+  onRenderRequested(cb: () => void): () => void {
+    return this._renderEvents.on("renderRequested", cb);
   }
 
   private computeSpecs(): TimelineRenderSpec[] {
