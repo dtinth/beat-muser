@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vite-plus/test";
+import { describe, expect, test, vi } from "vite-plus/test";
 import { createPerf } from "./index.ts";
 
 describe("perf", () => {
@@ -73,6 +73,35 @@ describe("perf", () => {
     perf.incrementCounter("renderNumber");
     perf.measure("after", () => {});
     expect(seen).toHaveLength(105);
+  });
+
+  test("two quick measure() calls trigger at most one atom notification after the flush delay", () => {
+    vi.useFakeTimers();
+    try {
+      // Use a non-zero interval so notifications are coalesced
+      const perf = createPerf({ notifyIntervalMs: 100 });
+      let notifyCount = 0;
+      const unsub = perf.$state.subscribe(() => {
+        notifyCount++;
+      });
+      // nanostores calls subscriber immediately on subscribe — reset
+      notifyCount = 0;
+
+      perf.incrementCounter("renderNumber");
+      perf.measure("a", () => {});
+      perf.measure("b", () => {});
+
+      // No flush yet — notifications should be 0
+      expect(notifyCount).toBe(0);
+
+      // Advance timers to flush
+      vi.runAllTimers();
+      expect(notifyCount).toBe(1);
+
+      unsub();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("multiple measure calls within same render share the render number", () => {

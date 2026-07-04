@@ -33,7 +33,17 @@ export interface Perf {
   $state: ReturnType<typeof atom<PerfState>>;
 }
 
-export function createPerf(): Perf {
+export interface CreatePerfOptions {
+  /**
+   * Interval in ms between coalesced `$state` notifications. Defaults to 250.
+   * Pass 0 to notify synchronously (useful in tests that check notification timing).
+   */
+  notifyIntervalMs?: number;
+}
+
+export function createPerf(options?: CreatePerfOptions): Perf {
+  const notifyIntervalMs = options?.notifyIntervalMs ?? 250;
+
   const state: PerfState = {
     events: [],
     counters: { renderNumber: 0, reconcileNumber: 0 },
@@ -44,6 +54,22 @@ export function createPerf(): Perf {
   const eventListeners = new Set<(event: PerfEvent) => void>();
 
   const renderNumbers = new Set<number>();
+
+  let flushPending = false;
+
+  function scheduleFlush() {
+    if (notifyIntervalMs === 0) {
+      // Synchronous mode: notify immediately (used in tests)
+      $state.set({ ...state });
+      return;
+    }
+    if (flushPending) return;
+    flushPending = true;
+    setTimeout(() => {
+      flushPending = false;
+      $state.set({ ...state });
+    }, notifyIntervalMs);
+  }
 
   function evictIfNeeded() {
     if (renderNumbers.size <= 100) return;
@@ -59,7 +85,7 @@ export function createPerf(): Perf {
         renderNumbers.add(state.counters.renderNumber);
         evictIfNeeded();
       }
-      $state.set({ ...state });
+      scheduleFlush();
     },
     measure<T>(type: string, fn: () => T): T {
       const start = performance.now();
@@ -75,7 +101,7 @@ export function createPerf(): Perf {
       state.events.push(event);
       renderNumbers.add(rn);
       evictIfNeeded();
-      $state.set({ ...state });
+      scheduleFlush();
       for (const listener of eventListeners) listener(event);
       return result;
     },
