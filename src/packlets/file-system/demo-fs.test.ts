@@ -1,26 +1,30 @@
 import { test, expect } from "vite-plus/test";
 import { createFileSystemFromExample } from "./demo-fs.ts";
+import { parseProjectFile } from "../project-format/index.ts";
 
-test("lists files for demo1", async () => {
-  const fs = createFileSystemFromExample("demo1");
+test("lists files for the recursivedescent example", async () => {
+  const fs = createFileSystemFromExample("recursivedescent");
   const files = await fs.listFiles();
-  expect(files.some((f) => f.name === "beatmap.json")).toBe(true);
+  expect(files.some((f) => f.name === "beat-muser-project.json")).toBe(true);
+  expect(files.some((f) => f.name === "synth.ogg")).toBe(true);
 });
 
-test("reads beatmap.json for demo1", async () => {
-  const fs = createFileSystemFromExample("demo1");
-  const text = await fs.readText("demo1/beatmap.json");
-  expect(JSON.parse(text)).toEqual({});
+test("exposes paths relative to the example directory", async () => {
+  const fs = createFileSystemFromExample("recursivedescent");
+  const text = await fs.readText("beat-muser-project.json");
+  const project = parseProjectFile(text);
+  expect(project.metadata.title).toBe("RECURSIVE DESCENT");
+  expect(project.entities.length).toBeGreaterThan(0);
 });
 
 test("throws for missing file", async () => {
-  const fs = createFileSystemFromExample("demo1");
-  await expect(fs.readText("demo1/nonexistent.json")).rejects.toThrow();
+  const fs = createFileSystemFromExample("recursivedescent");
+  await expect(fs.readText("nonexistent.json")).rejects.toThrow();
 });
 
 test("is read-only", async () => {
-  const fs = createFileSystemFromExample("demo1");
+  const fs = createFileSystemFromExample("recursivedescent");
   expect(fs.readOnly).toBe(true);
-  await expect(fs.writeFile("demo1/x.json", "{}")).rejects.toThrow();
-  await expect(fs.deleteFile("demo1/beatmap.json")).rejects.toThrow();
+  await expect(fs.writeFile("x.json", "{}")).rejects.toThrow();
+  await expect(fs.deleteFile("beat-muser-project.json")).rejects.toThrow();
 });

@@ -90,11 +90,11 @@ export function ProjectListPage() {
   }, [navigate, showError]);
 
   const handleTryDemo = useCallback(
-    async (name: string) => {
+    async (exampleName: string, displayName: string) => {
       try {
-        const project = await addProject(name, {
+        const project = await addProject(displayName, {
           provider: "examples",
-          name,
+          name: exampleName,
         });
         setDemoOpen(false);
         void navigate(`/projects/${project.slug}`);
@@ -219,11 +219,11 @@ export function ProjectListPage() {
             Select a demo project to explore the app.
           </Dialog.Description>
           <Flex direction="column" gap="2">
-            <Button variant="soft" onClick={() => handleTryDemo("demo1")}>
-              Demo 1
-            </Button>
-            <Button variant="soft" onClick={() => handleTryDemo("demo2")}>
-              Demo 2
+            <Button
+              variant="soft"
+              onClick={() => handleTryDemo("recursivedescent", "RECURSIVE DESCENT")}
+            >
+              RECURSIVE DESCENT
             </Button>
           </Flex>
         </Dialog.Content>
