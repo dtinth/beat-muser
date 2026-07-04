@@ -374,24 +374,87 @@ function mountScrollableCanvas(
   };
 }
 
-function positionElement(el: HTMLElement, obj: RenderObject) {
-  el.style.position = "absolute";
-  el.style.left = `${obj.x}px`;
-  el.style.top = `${obj.y}px`;
-  el.style.width = `${obj.width}px`;
-  el.style.height = `${obj.height}px`;
-  if (obj.zIndex !== undefined) {
-    el.style.zIndex = String(obj.zIndex);
-  } else {
-    el.style.removeProperty("z-index");
+interface ElementCache {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number | undefined;
+  opacity: number | undefined;
+  testId: string | undefined;
+}
+
+const elementCache = new WeakMap<HTMLElement, ElementCache>();
+
+export function positionElement(el: HTMLElement, obj: RenderObject) {
+  const prev = elementCache.get(el);
+
+  if (!prev) {
+    // First call: write everything including position: absolute
+    el.style.position = "absolute";
+    el.style.left = `${obj.x}px`;
+    el.style.top = `${obj.y}px`;
+    el.style.width = `${obj.width}px`;
+    el.style.height = `${obj.height}px`;
+    if (obj.zIndex !== undefined) {
+      el.style.zIndex = String(obj.zIndex);
+    }
+    if (obj.opacity !== undefined) {
+      el.style.opacity = String(obj.opacity);
+    }
+    if (obj.testId) {
+      el.dataset.testid = obj.testId;
+    }
+    el.dataset.key = obj.key;
+    elementCache.set(el, {
+      x: obj.x,
+      y: obj.y,
+      width: obj.width,
+      height: obj.height,
+      zIndex: obj.zIndex,
+      opacity: obj.opacity,
+      testId: obj.testId,
+    });
+    return;
   }
-  if (obj.opacity !== undefined) {
-    el.style.opacity = String(obj.opacity);
-  } else {
-    el.style.removeProperty("opacity");
+
+  // Subsequent calls: only touch changed fields
+  if (prev.x !== obj.x) {
+    el.style.left = `${obj.x}px`;
+    prev.x = obj.x;
   }
-  if (obj.testId) {
-    el.dataset.testid = obj.testId;
+  if (prev.y !== obj.y) {
+    el.style.top = `${obj.y}px`;
+    prev.y = obj.y;
   }
-  el.dataset.key = obj.key;
+  if (prev.width !== obj.width) {
+    el.style.width = `${obj.width}px`;
+    prev.width = obj.width;
+  }
+  if (prev.height !== obj.height) {
+    el.style.height = `${obj.height}px`;
+    prev.height = obj.height;
+  }
+  if (prev.zIndex !== obj.zIndex) {
+    if (obj.zIndex !== undefined) {
+      el.style.zIndex = String(obj.zIndex);
+    } else {
+      el.style.removeProperty("z-index");
+    }
+    prev.zIndex = obj.zIndex;
+  }
+  if (prev.opacity !== obj.opacity) {
+    if (obj.opacity !== undefined) {
+      el.style.opacity = String(obj.opacity);
+    } else {
+      el.style.removeProperty("opacity");
+    }
+    prev.opacity = obj.opacity;
+  }
+  if (prev.testId !== obj.testId) {
+    if (obj.testId) {
+      el.dataset.testid = obj.testId;
+    }
+    prev.testId = obj.testId;
+  }
 }

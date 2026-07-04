@@ -47,27 +47,34 @@ function createGridLineRenderer(): (data: unknown) => RenderHandle<GridLineData>
     const el = document.createElement("div");
     el.style.backgroundColor = d.color;
 
+    // Always create the label element; show/hide via textContent
+    const labelEl = document.createElement("span");
+    labelEl.style.position = "absolute";
+    labelEl.style.left = "4px";
+    labelEl.style.top = "-7px";
+    labelEl.style.fontSize = "10px";
+    labelEl.style.color = "var(--gray-11)";
+    labelEl.style.fontFamily = "var(--default-font-family)";
+    labelEl.style.pointerEvents = "none";
     if (d.label) {
-      const labelEl = document.createElement("span");
       labelEl.textContent = d.label;
-      labelEl.style.position = "absolute";
-      labelEl.style.left = "4px";
-      labelEl.style.top = "-7px";
-      labelEl.style.fontSize = "10px";
-      labelEl.style.color = "var(--gray-11)";
-      labelEl.style.fontFamily = "var(--default-font-family)";
-      labelEl.style.pointerEvents = "none";
       el.appendChild(labelEl);
     }
+
+    let last = d;
 
     return {
       dom: el,
       update(newData: unknown) {
         const nd = newData as GridLineData;
+        if (nd.color === last.color && nd.label === last.label) return;
+        last = nd;
         el.style.backgroundColor = nd.color;
-        const labelEl = el.querySelector("span");
-        if (labelEl && nd.label !== undefined) {
+        if (nd.label !== undefined) {
           labelEl.textContent = nd.label;
+          if (!labelEl.parentNode) el.appendChild(labelEl);
+        } else {
+          labelEl.textContent = "";
         }
       },
     };
@@ -99,10 +106,15 @@ function createColumnBgRenderer(): (data: unknown) => RenderHandle<ColumnBgData>
       el.appendChild(border);
     }
 
+    let last = d;
+
     return {
       dom: el,
       update(newData: unknown) {
         const nd = newData as ColumnBgData;
+        if (nd.backgroundColor === last.backgroundColor && nd.showBorder === last.showBorder)
+          return;
+        last = nd;
         if (nd.backgroundColor) {
           el.style.backgroundColor = nd.backgroundColor;
         }
@@ -128,10 +140,14 @@ function createColumnTitleRenderer(): (data: unknown) => RenderHandle<ColumnTitl
     el.style.fontFamily = "var(--default-font-family)";
     el.style.pointerEvents = "none";
 
+    let last = d;
+
     return {
       dom: el,
       update(newData: unknown) {
         const nd = newData as ColumnTitleData;
+        if (nd.title === last.title) return;
+        last = nd;
         el.textContent = nd.title;
       },
     };
@@ -179,11 +195,20 @@ function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarke
     textEl.textContent = d.text;
     el.appendChild(textEl);
 
+    let last = d;
+
     return {
       dom: el,
       update(newData: unknown) {
         const nd = newData as EventMarkerData;
-        el.style.backgroundColor = nd.backgroundColor;
+        if (
+          nd.text === last.text &&
+          nd.backgroundColor === last.backgroundColor &&
+          nd.textColor === last.textColor &&
+          nd.selected === last.selected
+        )
+          return;
+        last = nd;
         textEl.textContent = nd.text;
         if (nd.selected) {
           el.style.backgroundColor = "var(--cyan-10)";
@@ -263,10 +288,13 @@ function createDecorationArrowRenderer(): Renderer {
     el.style.backgroundColor = d.color;
     const safeAngle = Number.isFinite(d.angle) ? d.angle : 0;
     el.style.transform = `rotate(${90 - safeAngle}deg)`;
+    let last = d;
     return {
       dom: el,
       update(newData: unknown) {
         const nd = newData as typeof d;
+        if (nd.color === last.color && nd.angle === last.angle) return;
+        last = nd;
         el.style.backgroundColor = nd.color;
         const a = Number.isFinite(nd.angle) ? nd.angle : 0;
         el.style.transform = `rotate(${90 - a}deg)`;
