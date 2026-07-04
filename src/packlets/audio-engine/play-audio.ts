@@ -9,8 +9,17 @@ export interface AudioPlaybackOptions {
   channelGains: Map<string, GainNode>;
   /** Lookahead window size in playback seconds (default 0.2). */
   lookaheadPlaybackSec?: number;
-  /** Tick interval in milliseconds (default 25). */
+  /** Audio-scheduling tick interval in milliseconds (default 25). */
   tickIntervalMs?: number;
+  /**
+   * Schedules a visual-position frame (default `requestAnimationFrame`). The
+   * visual loop is decoupled from the audio tick so playback follows the
+   * display's native refresh rate (60Hz, 120Hz on ProMotion, …) instead of
+   * being capped at the ~40Hz audio scheduler.
+   */
+  requestFrame?: (callback: () => void) => number;
+  /** Cancels a scheduled frame (default `cancelAnimationFrame`). */
+  cancelFrame?: (handle: number) => void;
 }
 
 interface ActiveSource {
@@ -28,6 +37,8 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     channelGains,
     lookaheadPlaybackSec: window = 0.2,
     tickIntervalMs = 25,
+    requestFrame = (callback) => globalThis.requestAnimationFrame(callback),
+    cancelFrame = (handle) => globalThis.cancelAnimationFrame(handle),
   } = options;
 
   if (!Number.isFinite(rate) || rate <= 0) {
@@ -36,8 +47,13 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
 
   const startContextTime = audioContext.currentTime;
   let tickTimer: ReturnType<typeof setInterval> | null = null;
+  let frameHandle: number | null = null;
   const activeSources: ActiveSource[] = [];
   let stopped = false;
+
+  function currentPlaybackSec(): number {
+    return (audioContext.currentTime - startContextTime) * rate;
+  }
 
   function stop(): void {
     if (stopped) return;
@@ -46,6 +62,10 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     if (tickTimer !== null) {
       clearInterval(tickTimer);
       tickTimer = null;
+    }
+    if (frameHandle !== null) {
+      cancelFrame(frameHandle);
+      frameHandle = null;
     }
     for (const { source } of activeSources) {
       try {
@@ -61,19 +81,32 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
   if (playback.abortSignal.aborted) return () => {};
   playback.abortSignal.addEventListener("abort", onAbort, { once: true });
 
+  // Audio scheduling runs on a coarse lookahead timer — it only needs to queue
+  // notes *ahead* of the clock, so smoothness is irrelevant here.
   function scheduleEvents(): void {
     if (stopped) return;
-    const currentContextTime = audioContext.currentTime;
-    const currentPlaybackSec = (currentContextTime - startContextTime) * rate;
-    const lookaheadPlaybackSec = currentPlaybackSec + window;
+    const lookaheadPlaybackSec = currentPlaybackSec() + window;
 
     const events = playback.getEvents(lookaheadPlaybackSec);
-
-    playback.onPlaybackTimeChange(currentPlaybackSec);
 
     for (const event of events) {
       scheduleEvent(event);
     }
+  }
+
+  // Visual position runs on its own frame loop so the playhead/scroll follow
+  // the display's refresh rate rather than the 25ms audio tick. Reading
+  // `audioContext.currentTime` per frame keeps it exactly in sync with audio.
+  function updateVisualTime(): void {
+    if (stopped) return;
+    playback.onPlaybackTimeChange(currentPlaybackSec());
+  }
+
+  function frameLoop(): void {
+    if (stopped) return;
+    updateVisualTime();
+    if (stopped) return;
+    frameHandle = requestFrame(frameLoop);
   }
 
   function scheduleEvent(event: PlaybackEvent): void {
@@ -109,14 +142,18 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     };
   }
 
-  function startTick(): void {
+  function start(): void {
     if (stopped) return;
+    // Schedule imminent audio and emit the initial position synchronously.
     scheduleEvents();
     if (stopped) return;
+    updateVisualTime();
+    if (stopped) return;
     tickTimer = setInterval(scheduleEvents, tickIntervalMs);
+    frameHandle = requestFrame(frameLoop);
   }
 
-  startTick();
+  start();
 
   return stop;
 }
