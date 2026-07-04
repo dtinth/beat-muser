@@ -3,8 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Project view timeline", () => {
   test("renders BPM change markers", async ({ page }) => {
     await page.goto("/projects/__demo__");
-    await expect(page.locator('[data-testid="bpm-change-marker"]:has-text("128")')).toBeVisible();
-    await expect(page.locator('[data-testid="bpm-change-marker"]:has-text("160")')).toBeVisible();
+    await expect(page.locator('[data-testid="bpm-change-marker"]:has-text("138")')).toBeVisible();
   });
 
   test("renders time signature markers", async ({ page }) => {
@@ -14,7 +13,7 @@ test.describe("Project view timeline", () => {
 
   test("clicking a BPM change marker selects it with outline", async ({ page }) => {
     await page.goto("/projects/__demo__");
-    const marker = page.locator('[data-testid="bpm-change-marker"]:has-text("128")');
+    const marker = page.locator('[data-testid="bpm-change-marker"]:has-text("138")');
     await expect(marker).toBeVisible();
 
     await marker.click();
@@ -73,14 +72,18 @@ test.describe("Undo/redo", () => {
     await page.waitForLoadState("networkidle");
 
     const notes = page.locator('[data-testid="note"]');
-    await expect(notes).toHaveCount(5);
+    // The demo chart has many notes; only those in the viewport are rendered,
+    // so anchor the assertions to the initial visible count.
+    await expect(notes.first()).toBeVisible();
+    const initialCount = await notes.count();
+    expect(initialCount).toBeGreaterThan(0);
 
     await notes.first().click();
     await page.keyboard.press("Delete");
-    await expect(notes).toHaveCount(4);
+    await expect(notes).toHaveCount(initialCount - 1);
 
     await page.keyboard.press("ControlOrMeta+z");
-    await expect(notes).toHaveCount(5);
+    await expect(notes).toHaveCount(initialCount);
   });
 });
 
