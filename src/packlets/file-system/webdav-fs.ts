@@ -90,8 +90,13 @@ export function createFileSystemFromWebDav(config: WebDavConfig): ProjectFileSys
 
   function authHeaders(): Record<string, string> {
     if (config.username === undefined) return {};
-    const token = btoa(`${config.username}:${config.password ?? ""}`);
-    return { Authorization: `Basic ${token}` };
+    // Base64 of the UTF-8 bytes, not of the raw string: `btoa` throws on any
+    // code point above U+00FF, so a Thai or emoji character in the credentials
+    // would otherwise crash every request (RFC 7617 also mandates UTF-8).
+    const bytes = new TextEncoder().encode(`${config.username}:${config.password ?? ""}`);
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return { Authorization: `Basic ${btoa(binary)}` };
   }
 
   function urlFor(path: string): string {

@@ -215,6 +215,14 @@ test("sends HTTP Basic auth header when credentials are configured", async () =>
   expect(requests.at(-1)?.authorization).toBe(`Basic ${btoa("user:pass")}`);
 });
 
+test("encodes non-Latin1 credentials as UTF-8 without crashing", async () => {
+  const { requests } = installServer({ "a.txt": "hi" });
+  const fs = createFileSystemFromWebDav({ url: BASE, username: "สมชาย", password: "🔑" });
+  await fs.readText("a.txt");
+  const expected = `Basic ${Buffer.from("สมชาย:🔑", "utf-8").toString("base64")}`;
+  expect(requests.at(-1)?.authorization).toBe(expected);
+});
+
 test("omits the auth header for anonymous access", async () => {
   const { requests } = installServer({ "a.txt": "hi" });
   const fs = createFileSystemFromWebDav({ url: BASE });
