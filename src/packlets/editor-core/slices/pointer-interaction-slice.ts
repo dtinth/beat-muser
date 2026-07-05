@@ -346,4 +346,17 @@ export class PointerInteractionSlice extends Slice {
       .get(BoxSelectionSlice)
       .finalize(this.ctx.get(ProjectSlice).entityManager.entitiesWithComponent(EVENT));
   }
+
+  /**
+   * Abort the in-progress interaction without committing it. Fired when the
+   * browser takes over the pointer (e.g. a touch-scroll starts), which emits a
+   * `pointercancel` and no matching `pointerup`. Discards any pending drag or
+   * box selection so the editor doesn't get stuck in a dragging state.
+   */
+  handlePointerCancel(): void {
+    this.ctx.get(DragSlice).cancelDrag();
+    this.dragFlatList = [];
+    this.ctx.get(BoxSelectionSlice).cancel();
+    this.ctx.get(RenderSlice).requestRerender();
+  }
 }

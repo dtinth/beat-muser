@@ -385,6 +385,10 @@ export class EditorController {
     this.pointer.handlePointerUp();
   }
 
+  handlePointerCancel(): void {
+    this.pointer.handlePointerCancel();
+  }
+
   setTool(tool: "select" | "pencil" | "erase" | "pan"): void {
     this.ctx.get(ToolSlice).setTool(tool);
   }

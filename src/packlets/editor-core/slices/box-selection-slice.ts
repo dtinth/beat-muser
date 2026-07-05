@@ -63,6 +63,11 @@ export class BoxSelectionSlice extends Slice {
     };
   }
 
+  /** Abort the in-progress box selection without changing the selection. */
+  cancel(): void {
+    this.boxSelection = { active: false, startCol: 0, endCol: 0, startPulse: 0, endPulse: 0 };
+  }
+
   finalize(entities: Entity[]): Set<string> {
     const box = this.boxSelection;
     if (!box.active) return new Set();

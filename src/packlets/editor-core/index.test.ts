@@ -1622,6 +1622,102 @@ describe("EditorController", () => {
       editor.pointerUp();
     });
   });
+  describe("pointer cancel", () => {
+    test("cancel discards a pending drag without moving the entity", () => {
+      let noteEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+      const center = Rect.center(editor.eventRect(noteEntity!.id));
+      editor.pointerMove({ x: center.x, y: center.y + 50 });
+
+      // Browser seizes the pointer for a scroll → pointercancel, no pointerup.
+      editor.pointerCancel();
+
+      const em = editor.instance.getEntityManager();
+      const updated = em.get(noteEntity!.id);
+      // Position is unchanged (the in-progress move is discarded).
+      expect((updated!.components[EVENT.key] as { y: number }).y).toBe(500);
+      // No dangling drag state: a later pointerup is a no-op.
+      editor.pointerUp();
+      expect((em.get(noteEntity!.id)!.components[EVENT.key] as { y: number }).y).toBe(500);
+    });
+
+    test("cancel does not create an undo action", () => {
+      let noteEntity: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            const level = p.addLevel(chart.id, "Easy", "beat-7k");
+            p.addChart(
+              "Hard",
+              (c) => {
+                noteEntity = c.note(500, 1, level.id);
+              },
+              1000,
+            );
+          }),
+      });
+
+      editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
+      const center = Rect.center(editor.eventRect(noteEntity!.id));
+      editor.pointerMove({ x: center.x, y: center.y + 50 });
+      editor.pointerCancel();
+
+      const history = editor.instance.ctx.get(HistorySlice).$history.get();
+      expect(history.undo.length).toBe(0);
+    });
+
+    test("cancel aborts a box selection without changing the selection", () => {
+      let bpmA: Entity;
+      let bpmB: Entity;
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            p.addChart(
+              "Hard",
+              (c) => {
+                bpmA = c.bpmChange(200, 120);
+                bpmB = c.bpmChange(600, 150);
+              },
+              1000,
+            );
+          }),
+      });
+
+      const rectA = editor.eventRect(bpmA!.id);
+      const rectB = editor.eventRect(bpmB!.id);
+      const top = Math.min(rectA.y, rectB.y) - 10;
+      const bottom = Math.max(rectA.y + rectA.height, rectB.y + rectB.height) + 10;
+
+      editor.pointerDown({ x: rectA.x + rectA.width / 2, y: top });
+      editor.pointerMove({ x: rectA.x + rectA.width / 2, y: bottom });
+
+      // Box selection is previewing but not yet committed.
+      expect(editor.instance.ctx.get(SelectionSlice).$selection.get().size).toBe(0);
+
+      editor.pointerCancel();
+
+      // Selection stays empty; the box is gone (no committed selection).
+      editor.selection.shouldBeEmpty();
+      const specs = editor.instance.getVisibleRenderObjects();
+      expect(specs.some((s) => s.type === "selection-box")).toBe(false);
+    });
+  });
   describe("horizontal dragging", () => {
     test("dragging a note to a different lane (same level)", () => {
       let noteEntity: Entity;
