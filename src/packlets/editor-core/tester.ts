@@ -174,6 +174,10 @@ export class EditorTester {
     this.instance.handlePointerUp();
   }
 
+  pointerCancel() {
+    this.instance.handlePointerCancel();
+  }
+
   eventRect(entityId: string): Rect {
     const specs = this.instance.getVisibleRenderObjects();
     const spec = specs.find((s) => s.key.endsWith(`-${entityId}`));

@@ -461,6 +461,9 @@ export function createTimelineBehaviorFactory(
         if (event.type === "pointerup") {
           controller.handlePointerUp();
         }
+        if (event.type === "pointercancel") {
+          controller.handlePointerCancel();
+        }
       },
 
       getVisibleObjects(): RenderObject[] {

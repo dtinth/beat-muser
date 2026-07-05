@@ -170,6 +170,9 @@ export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvas
         overflow: "auto",
         width: "100%",
         height: "100%",
+        // Both are required: React does not auto-prefix inline styles, and
+        // iPadOS/desktop Safari only honors the `-webkit-` variant.
+        WebkitUserSelect: "none",
         userSelect: "none",
       }}
     >
@@ -337,10 +340,20 @@ function mountScrollableCanvas(
     behaviorInstance.onPointerEvent?.(e, contentX, contentY);
   }
 
+  // iPadOS Safari (and desktop WebKit) still start a native text selection /
+  // drag-image gesture on a mouse drag even with `user-select: none` and
+  // `preventDefault()` on pointerdown. Cancelling `selectstart`/`dragstart`
+  // directly is the reliable way to suppress it. The canvas has no selectable
+  // text of its own, so this is safe.
+  const preventDefault = (e: Event) => e.preventDefault();
+
   container.addEventListener("scroll", handleScroll, { passive: true });
+  container.addEventListener("selectstart", preventDefault);
+  container.addEventListener("dragstart", preventDefault);
   container.addEventListener("pointerdown", handlePointerEvent);
   container.addEventListener("pointermove", handlePointerEvent);
   container.addEventListener("pointerup", handlePointerEvent);
+  container.addEventListener("pointercancel", handlePointerEvent);
 
   const resizeObserver = new ResizeObserver(() => {
     const vw = container.clientWidth;
@@ -366,9 +379,12 @@ function mountScrollableCanvas(
     isDisposed = true;
     resizeObserver.disconnect();
     container.removeEventListener("scroll", handleScroll);
+    container.removeEventListener("selectstart", preventDefault);
+    container.removeEventListener("dragstart", preventDefault);
     container.removeEventListener("pointerdown", handlePointerEvent);
     container.removeEventListener("pointermove", handlePointerEvent);
     container.removeEventListener("pointerup", handlePointerEvent);
+    container.removeEventListener("pointercancel", handlePointerEvent);
     reconciler.disposeAll();
     behaviorInstance[Symbol.dispose]?.();
   };
