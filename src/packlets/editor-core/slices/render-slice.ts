@@ -688,6 +688,54 @@ export class RenderSlice extends Slice {
             } as Record<string, unknown>,
             zIndex: 2,
           });
+        } else if (dec.type === "rect") {
+          const fromCol = dec.levelId
+            ? columns.find((c) => c.laneIndex === dec.from.lane && c.levelId === dec.levelId)
+            : columns.find((c) => c.laneIndex === dec.from.lane);
+          const toCol = dec.levelId
+            ? columns.find((c) => c.laneIndex === dec.to.lane && c.levelId === dec.levelId)
+            : columns.find((c) => c.laneIndex === dec.to.lane);
+          if (!fromCol || !toCol) continue;
+
+          if (dec.from.pulse < pulseStart && dec.to.pulse < pulseStart) continue;
+          if (dec.from.pulse >= pulseEnd && dec.to.pulse >= pulseEnd) continue;
+
+          const left = Math.min(fromCol.x, toCol.x);
+          const right = Math.max(fromCol.x + fromCol.width, toCol.x + toCol.width);
+          const fromY = trackHeight - dec.from.pulse * scaleY;
+          const toY = trackHeight - dec.to.pulse * scaleY;
+          const top = Math.min(fromY, toY);
+          const bottom = Math.max(fromY, toY);
+
+          specs.push({
+            key: `decoration-rect-${dec.from.pulse}-${dec.from.lane}-${dec.to.pulse}-${dec.to.lane}-${dec.levelId ?? ""}`,
+            type: "decoration-rect",
+            x: left,
+            y: top,
+            width: right - left,
+            height: bottom - top,
+            data: { color: dec.color } as Record<string, unknown>,
+            zIndex: dec.zIndex,
+          });
+        } else if (dec.type === "marker") {
+          const col = dec.levelId
+            ? columns.find((c) => c.laneIndex === dec.lane && c.levelId === dec.levelId)
+            : columns.find((c) => c.laneIndex === dec.lane);
+          if (!col) continue;
+          if (dec.pulse < pulseStart || dec.pulse >= pulseEnd) continue;
+
+          const EVENT_HEIGHT = 14;
+          const y = trackHeight - dec.pulse * scaleY - EVENT_HEIGHT;
+          specs.push({
+            key: `decoration-marker-${dec.pulse}-${dec.lane}-${dec.levelId ?? ""}`,
+            type: "decoration-marker",
+            x: col.x,
+            y,
+            width: col.width,
+            height: EVENT_HEIGHT,
+            data: { style: dec.style } as Record<string, unknown>,
+            zIndex: dec.zIndex,
+          });
         }
       }
     }); // end computeSpecs:decorations
