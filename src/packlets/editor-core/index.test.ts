@@ -2633,4 +2633,213 @@ describe("EditorController", () => {
       expect(arrowSpecs[0]!.x).toBe(levelBLane1Col.x);
     });
   });
+
+  describe("rect decoration", () => {
+    function setup(chartSize = 1000) {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, chartSize);
+            p.addLevel(chart.id, "Level A", "beat-7k");
+          }),
+      });
+      const levelId = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0]!
+        .id;
+      return { editor, levelId };
+    }
+
+    function rectSpecs(editor: EditorTester) {
+      return editor.instance.getVisibleRenderObjects().filter((s) => s.type === "decoration-rect");
+    }
+
+    test("spans the full lane-column width and pulse range (forward order)", () => {
+      const { editor, levelId } = setup();
+      $extensionDecorations.set([
+        {
+          type: "rect",
+          from: { pulse: 240, lane: 1 },
+          to: { pulse: 480, lane: 3 },
+          color: "#ff0000",
+          zIndex: 1,
+          levelId,
+        },
+      ]);
+      editor.instance.ctx.get(RenderSlice).requestRerender();
+
+      const specs = rectSpecs(editor);
+      expect(specs).toHaveLength(1);
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const lane1Col = columns.find((c) => c.levelId === levelId && c.laneIndex === 1)!;
+      const lane3Col = columns.find((c) => c.levelId === levelId && c.laneIndex === 3)!;
+      const scaleY = editor.instance.ctx.get(ViewportSlice).getScaleY();
+      const trackHeight = editor.instance.ctx.get(ViewportSlice).getTrackHeight();
+
+      const expectedLeft = Math.min(lane1Col.x, lane3Col.x);
+      const expectedRight = Math.max(lane1Col.x + lane1Col.width, lane3Col.x + lane3Col.width);
+      const y240 = trackHeight - 240 * scaleY;
+      const y480 = trackHeight - 480 * scaleY;
+      const expectedTop = Math.min(y240, y480);
+      const expectedBottom = Math.max(y240, y480);
+
+      expect(specs[0]!.x).toBe(expectedLeft);
+      expect(specs[0]!.width).toBe(expectedRight - expectedLeft);
+      expect(specs[0]!.y).toBe(expectedTop);
+      expect(specs[0]!.height).toBe(expectedBottom - expectedTop);
+    });
+
+    test("normalizes when from.lane > to.lane and from.pulse > to.pulse", () => {
+      const { editor, levelId } = setup();
+      $extensionDecorations.set([
+        {
+          type: "rect",
+          from: { pulse: 480, lane: 3 },
+          to: { pulse: 240, lane: 1 },
+          color: "#ff0000",
+          zIndex: 1,
+          levelId,
+        },
+      ]);
+      editor.instance.ctx.get(RenderSlice).requestRerender();
+
+      const specs = rectSpecs(editor);
+      expect(specs).toHaveLength(1);
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const lane1Col = columns.find((c) => c.levelId === levelId && c.laneIndex === 1)!;
+      const lane3Col = columns.find((c) => c.levelId === levelId && c.laneIndex === 3)!;
+      const scaleY = editor.instance.ctx.get(ViewportSlice).getScaleY();
+      const trackHeight = editor.instance.ctx.get(ViewportSlice).getTrackHeight();
+
+      const expectedLeft = Math.min(lane1Col.x, lane3Col.x);
+      const expectedRight = Math.max(lane1Col.x + lane1Col.width, lane3Col.x + lane3Col.width);
+      const y240 = trackHeight - 240 * scaleY;
+      const y480 = trackHeight - 480 * scaleY;
+      const expectedTop = Math.min(y240, y480);
+      const expectedBottom = Math.max(y240, y480);
+
+      expect(specs[0]!.x).toBe(expectedLeft);
+      expect(specs[0]!.width).toBe(expectedRight - expectedLeft);
+      expect(specs[0]!.y).toBe(expectedTop);
+      expect(specs[0]!.height).toBe(expectedBottom - expectedTop);
+    });
+
+    test("is culled when the whole pulse range is outside the visible window", () => {
+      // Default scroll position shows pulses near the start of a long chart,
+      // so a decoration near the very end sits well outside the visible window.
+      const { editor, levelId } = setup(20000);
+      $extensionDecorations.set([
+        {
+          type: "rect",
+          from: { pulse: 19000, lane: 1 },
+          to: { pulse: 19100, lane: 3 },
+          color: "#ff0000",
+          zIndex: 1,
+          levelId,
+        },
+      ]);
+      editor.instance.ctx.get(RenderSlice).requestRerender();
+      expect(rectSpecs(editor)).toHaveLength(0);
+    });
+
+    test("is skipped when a lane's column cannot be found", () => {
+      const { editor, levelId } = setup();
+      $extensionDecorations.set([
+        {
+          type: "rect",
+          from: { pulse: 240, lane: 999 },
+          to: { pulse: 480, lane: 3 },
+          color: "#ff0000",
+          zIndex: 1,
+          levelId,
+        },
+      ]);
+      editor.instance.ctx.get(RenderSlice).requestRerender();
+      expect(rectSpecs(editor)).toHaveLength(0);
+    });
+
+    test("is skipped when levelId does not match any column", () => {
+      const { editor } = setup();
+      $extensionDecorations.set([
+        {
+          type: "rect",
+          from: { pulse: 240, lane: 1 },
+          to: { pulse: 480, lane: 3 },
+          color: "#ff0000",
+          zIndex: 1,
+          levelId: "nonexistent-level",
+        },
+      ]);
+      editor.instance.ctx.get(RenderSlice).requestRerender();
+      expect(rectSpecs(editor)).toHaveLength(0);
+    });
+  });
+
+  describe("marker decoration", () => {
+    function markerSpecs(editor: EditorTester) {
+      return editor.instance
+        .getVisibleRenderObjects()
+        .filter((s) => s.type === "decoration-marker");
+    }
+
+    test("produces a render spec positioned/sized like an event marker", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 1000);
+            p.addLevel(chart.id, "Level A", "beat-7k");
+          }),
+      });
+      const levelId = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0]!
+        .id;
+      $extensionDecorations.set([
+        {
+          type: "marker",
+          pulse: 240,
+          lane: 1,
+          anchor: "center",
+          style: "warning",
+          zIndex: 5,
+          levelId,
+        },
+      ]);
+      editor.instance.ctx.get(RenderSlice).requestRerender();
+
+      const specs = markerSpecs(editor);
+      expect(specs).toHaveLength(1);
+      const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
+      const lane1Col = columns.find((c) => c.levelId === levelId && c.laneIndex === 1)!;
+      const scaleY = editor.instance.ctx.get(ViewportSlice).getScaleY();
+      const trackHeight = editor.instance.ctx.get(ViewportSlice).getTrackHeight();
+
+      expect(specs[0]!.x).toBe(lane1Col.x);
+      expect(specs[0]!.width).toBe(lane1Col.width);
+      expect(specs[0]!.height).toBe(14);
+      expect(specs[0]!.y).toBe(trackHeight - 240 * scaleY - 14);
+      expect((specs[0]!.data as { style: string }).style).toBe("warning");
+    });
+
+    test("is culled when outside the visible pulse range", () => {
+      const editor = new EditorTester({
+        getProjectToLoad: () =>
+          makeProject((p) => {
+            const chart = p.addChart("Hard", undefined, 20000);
+            p.addLevel(chart.id, "Level A", "beat-7k");
+          }),
+      });
+      const levelId = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0]!
+        .id;
+      $extensionDecorations.set([
+        {
+          type: "marker",
+          pulse: 19000,
+          lane: 1,
+          anchor: "center",
+          style: "warning",
+          zIndex: 5,
+          levelId,
+        },
+      ]);
+      editor.instance.ctx.get(RenderSlice).requestRerender();
+      expect(markerSpecs(editor)).toHaveLength(0);
+    });
+  });
 });

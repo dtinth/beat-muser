@@ -39,7 +39,32 @@ export interface ArrowDecorationSpec {
   levelId?: string;
 }
 
-export type DecorationSpec = LineDecorationSpec | ArrowDecorationSpec;
+export interface RectDecorationSpec {
+  type: "rect";
+  from: { pulse: number; lane: number };
+  to: { pulse: number; lane: number };
+  color: string;
+  zIndex: number;
+  /** Level ID this decoration belongs to. Used to scope rendering to the correct level. */
+  levelId?: string;
+}
+
+export interface MarkerDecorationSpec {
+  type: "marker";
+  pulse: number;
+  lane: number;
+  anchor: "bottom" | "center" | "grid";
+  style: "warning";
+  zIndex: number;
+  /** Level ID this decoration belongs to. Used to scope rendering to the correct level. */
+  levelId?: string;
+}
+
+export type DecorationSpec =
+  | LineDecorationSpec
+  | ArrowDecorationSpec
+  | RectDecorationSpec
+  | MarkerDecorationSpec;
 
 /** Reactive atom holding all current decoration specs from all workers. */
 export const $decorationSpecs = atom<DecorationSpec[]>([]);
