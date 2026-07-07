@@ -43,7 +43,7 @@ _Avoid_: default values (conflicts with manifest defaults), preset
 A sidebar panel that reads the active game mode's property sets and renders UI controls for each property definition. When entities are selected, it reads the matching component values from those entities and displays them. Changing a control writes the new value to selected entities and updates current property values. Shows "multiple" when selected entities have varying values for the same property.
 
 **Decoration spec**:
-A render description produced by the extension worker, expressed in pulse/lane coordinates. Types: `line` (connecting two points), `fill` (colored region), `label` (text overlay). Each point specifies an **anchor mode**. The editor converts pulse/lane to pixel coordinates, handles culling, and composites decorations into the timeline.
+A render description produced by the extension worker, expressed in pulse/lane coordinates. Types: `line` (connecting two points), `fill` (colored region), `label` (text overlay), `rect` (a lane × pulse-range box, e.g. for a lightning-bolt-style highlight), `marker` (a single-point warning indicator for extension-detected validity issues). Each point specifies an **anchor mode**, except `rect`, whose box is defined directly by its `from`/`to` pulse and lane range rather than by anchoring a single point. The editor converts pulse/lane to pixel coordinates, handles culling, and composites decorations into the timeline.
 _Avoid_: render object, overlay (without "decoration" qualifier)
 
 **Anchor mode**:
