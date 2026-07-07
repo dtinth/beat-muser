@@ -355,6 +355,89 @@ function createDecorationLineRenderer(): Renderer {
   };
 }
 
+// Fixed set of zigzag turning points (as fractions of width/height) tracing a
+// single diagonal "lightning bolt" from top-left-ish to bottom-right-ish.
+const RECT_ZIGZAG_POINTS: readonly [number, number][] = [
+  [0.5, 0],
+  [0.2, 0.25],
+  [0.7, 0.5],
+  [0.3, 0.75],
+  [0.5, 1],
+];
+
+function createDecorationRectRenderer(): Renderer {
+  return (data: unknown) => {
+    const d = data as { color: string };
+    const el = document.createElement("div");
+    el.style.boxSizing = "border-box";
+    el.style.width = "100%";
+    el.style.height = "100%";
+    el.style.pointerEvents = "none";
+    el.style.position = "relative";
+    el.style.border = `2px solid ${d.color}`;
+
+    // A 0–100 viewBox with preserveAspectRatio="none" lets the zigzag points
+    // be plain percentages of the box, so it always fills whatever size the
+    // render object currently has without needing to read (possibly stale)
+    // layout dimensions from the DOM.
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.style.position = "absolute";
+    svg.style.top = "0";
+    svg.style.left = "0";
+    svg.style.display = "block";
+    svg.style.width = "100%";
+    svg.style.height = "100%";
+    el.appendChild(svg);
+
+    const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    polyline.setAttribute(
+      "points",
+      RECT_ZIGZAG_POINTS.map(([fx, fy]) => `${fx * 100},${fy * 100}`).join(" "),
+    );
+    polyline.setAttribute("fill", "none");
+    polyline.setAttribute("stroke-linecap", "round");
+    polyline.setAttribute("stroke-linejoin", "round");
+    polyline.setAttribute("vector-effect", "non-scaling-stroke");
+    polyline.setAttribute("stroke-width", "3");
+    svg.appendChild(polyline);
+
+    function setStyle(nd: typeof d) {
+      el.style.border = `2px solid ${nd.color}`;
+      polyline.setAttribute("stroke", nd.color);
+    }
+
+    let last = d;
+    setStyle(d);
+
+    return {
+      dom: el,
+      update(newData: unknown) {
+        const nd = newData as typeof d;
+        if (nd.color === last.color) return;
+        last = nd;
+        setStyle(nd);
+      },
+    };
+  };
+}
+
+function createDecorationMarkerRenderer(): Renderer {
+  return () => {
+    const el = document.createElement("div");
+    // Same visual language as the core overlap indicator's warning ring.
+    el.style.boxSizing = "border-box";
+    el.style.width = "100%";
+    el.style.height = "100%";
+    el.style.border = "2px solid var(--red-9)";
+    el.style.borderRadius = "3px";
+    el.style.boxShadow = "0 0 0 1px var(--red-a6), 0 0 5px var(--red-9)";
+    el.style.pointerEvents = "none";
+    return { dom: el, update() {} };
+  };
+}
+
 const rendererMap: Record<string, Renderer> = {
   "column-bg": createColumnBgRenderer(),
   "column-title": createColumnTitleRenderer(),
@@ -368,6 +451,8 @@ const rendererMap: Record<string, Renderer> = {
   "overlap-indicator": createOverlapIndicatorRenderer(),
   "decoration-line": createDecorationLineRenderer(),
   "decoration-arrow": createDecorationArrowRenderer(),
+  "decoration-rect": createDecorationRectRenderer(),
+  "decoration-marker": createDecorationMarkerRenderer(),
 };
 
 function specToRenderObject(spec: TimelineRenderSpec): RenderObject {
