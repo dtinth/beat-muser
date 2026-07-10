@@ -21,6 +21,10 @@ function formatBytes(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function FilesPanel({
   fileSystem,
   modalManager,
@@ -39,7 +43,7 @@ export function FilesPanel({
       setFiles(entries);
     } catch (error) {
       console.error(error);
-      showError({ title: "Failed to list files", description: (error as Error).message });
+      showError({ title: "Failed to list files", description: errorMessage(error) });
     }
   }, [fileSystem, showError]);
 
@@ -54,6 +58,7 @@ export function FilesPanel({
       for (const file of uploads) {
         let path = file.name;
         if (taken.has(path)) {
+          // oxlint-disable-next-line no-await-in-loop -- an interactive conflict-resolution modal must be shown and resolved one file at a time; the choice also feeds the `taken` set that later iterations dedup against.
           const choice = await modalManager.select({
             title: `"${file.name}" already exists`,
             items: [
@@ -66,6 +71,7 @@ export function FilesPanel({
           if (choice.value === "keep") path = nextAvailableName(taken, file.name);
         }
         try {
+          // oxlint-disable-next-line no-await-in-loop -- uploads are written sequentially so `taken` accumulates each committed name in order for the "keep both" dedup of subsequent files.
           await fileSystem.writeFile(path, await file.arrayBuffer());
           taken.add(path);
           uploaded++;
@@ -73,7 +79,7 @@ export function FilesPanel({
           console.error(error);
           showError({
             title: `Failed to upload ${file.name}`,
-            description: (error as Error).message,
+            description: errorMessage(error),
           });
         }
       }
@@ -99,7 +105,7 @@ export function FilesPanel({
         console.error(error);
         showError({
           title: `Failed to download ${entry.name}`,
-          description: (error as Error).message,
+          description: errorMessage(error),
         });
       }
     },
@@ -121,7 +127,7 @@ export function FilesPanel({
         console.error(error);
         showError({
           title: `Failed to delete ${entry.name}`,
-          description: (error as Error).message,
+          description: errorMessage(error),
         });
       }
     },
@@ -131,14 +137,14 @@ export function FilesPanel({
   return (
     <Flex direction="column" style={{ gap: 8 }}>
       <Flex justify="between" align="center">
-        {!fileSystem.readOnly ? (
-          <Button size="1" variant="soft" onClick={() => inputRef.current?.click()}>
-            <Upload size={14} /> Upload
-          </Button>
-        ) : (
+        {fileSystem.readOnly ? (
           <Text size="1" color="gray">
             Read-only
           </Text>
+        ) : (
+          <Button size="1" variant="soft" onClick={() => inputRef.current?.click()}>
+            <Upload size={14} /> Upload
+          </Button>
         )}
         <IconButton size="1" variant="ghost" title="Refresh" onClick={() => void refresh()}>
           <RefreshCw size={14} />

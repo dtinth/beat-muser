@@ -10,15 +10,18 @@ import { Box, Flex, Heading, Link } from "@radix-ui/themes";
 import { useMatches, useNavigate } from "react-router";
 import type { Project } from "../project-store/types.ts";
 
+function isProject(value: unknown): value is Project {
+  return typeof value === "object" && value !== null && "displayName" in value && "slug" in value;
+}
+
 /**
  * Returns the project data from the current route matches, if any.
  */
 function useCurrentProject(): Project | null {
   const matches = useMatches();
   for (const match of matches) {
-    const data = match.data as Project | undefined;
-    if (data && "displayName" in data && "slug" in data) {
-      return data;
+    if (isProject(match.loaderData)) {
+      return match.loaderData;
     }
   }
   return null;

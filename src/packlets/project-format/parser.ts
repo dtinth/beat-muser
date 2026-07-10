@@ -5,18 +5,19 @@
  * Throws a descriptive error if the data does not conform to the schema.
  */
 
-import { Errors } from "typebox/value";
+import { Check, Errors } from "typebox/value";
 import { ProjectFileSchema } from "./schema.ts";
 import type { ProjectFile } from "./types.ts";
 
 export function parseProjectFile(json: string): ProjectFile {
-  const parsed = JSON.parse(json);
-  if (!parsed || typeof parsed !== "object") {
+  const parsed: unknown = JSON.parse(json);
+  if (parsed === null || typeof parsed !== "object") {
     throw new Error("Invalid project file: expected a JSON object");
   }
-  const errors = Errors(ProjectFileSchema, parsed);
-  if (errors.length > 0) {
-    const details = errors.map((e) => `${e.instancePath || "/"}: ${e.message}`).join(", ");
+  if (!Check(ProjectFileSchema, parsed)) {
+    const details = Errors(ProjectFileSchema, parsed)
+      .map((e) => `${e.instancePath || "/"}: ${e.message}`)
+      .join(", ");
     throw new Error(`Invalid project file: ${details}`);
   }
   return parsed;

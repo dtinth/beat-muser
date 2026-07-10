@@ -1,38 +1,38 @@
 import { describe, expect, test } from "vite-plus/test";
 import { computeWaveformSegments } from "./waveform-segments.ts";
 
+function makeWaveformData(length = 120): {
+  peak: Float32Array;
+  rms: Float32Array;
+  centroid: Float32Array;
+} {
+  const peak = new Float32Array(length);
+  const rms = new Float32Array(length);
+  const centroid = new Float32Array(length);
+  for (let i = 0; i < length; i++) {
+    peak[i] = (i + 1) / length;
+    rms[i] = peak[i] * 0.7;
+    centroid[i] = i / length;
+  }
+  return { peak, rms, centroid };
+}
+
+function linearFrameRange(
+  startChunk: number,
+  chunkCount: number,
+): (renderingPos: number, rpLength: number) => { startFrame: number; endFrame: number } | null {
+  return (renderingPos: number, rpLength: number) => {
+    const fs = startChunk + Math.floor((renderingPos * chunkCount) / rpLength);
+    const fe = startChunk + Math.ceil(((renderingPos + 1) * chunkCount) / rpLength);
+    return { startFrame: fs, endFrame: fe };
+  };
+}
+
+function getPixels(segment: ReturnType<typeof computeWaveformSegments>[0]) {
+  return segment.getWaveformPixels();
+}
+
 describe("computeWaveformSegments", () => {
-  function makeWaveformData(length = 120): {
-    peak: Float32Array;
-    rms: Float32Array;
-    centroid: Float32Array;
-  } {
-    const peak = new Float32Array(length);
-    const rms = new Float32Array(length);
-    const centroid = new Float32Array(length);
-    for (let i = 0; i < length; i++) {
-      peak[i] = (i + 1) / length;
-      rms[i] = peak[i] * 0.7;
-      centroid[i] = i / length;
-    }
-    return { peak, rms, centroid };
-  }
-
-  function linearFrameRange(
-    startChunk: number,
-    chunkCount: number,
-  ): (renderingPos: number, rpLength: number) => { startFrame: number; endFrame: number } | null {
-    return (renderingPos: number, rpLength: number) => {
-      const fs = startChunk + Math.floor((renderingPos * chunkCount) / rpLength);
-      const fe = startChunk + Math.ceil(((renderingPos + 1) * chunkCount) / rpLength);
-      return { startFrame: fs, endFrame: fe };
-    };
-  }
-
-  function getPixels(segment: ReturnType<typeof computeWaveformSegments>[0]) {
-    return segment.getWaveformPixels();
-  }
-
   test("1:1 mapping — one frame per pixel, single segment", () => {
     const { peak, rms, centroid } = makeWaveformData(120);
     const segments = computeWaveformSegments(peak, rms, centroid, {

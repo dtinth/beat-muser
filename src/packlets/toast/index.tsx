@@ -5,7 +5,7 @@
  * notifications (success, error, info) across the app.
  */
 
-import { createContext, useCallback, useContext, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
 import { Toaster, toast } from "sonner";
 
 interface ToastOptions {
@@ -36,8 +36,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     toast.success(options.title, { description: options.description });
   }, []);
 
+  const value = useMemo(() => ({ showError, showSuccess }), [showError, showSuccess]);
+
   return (
-    <ToastContext.Provider value={{ showError, showSuccess }}>
+    <ToastContext.Provider value={value}>
       {children}
       <Toaster richColors position="top-right" />
     </ToastContext.Provider>

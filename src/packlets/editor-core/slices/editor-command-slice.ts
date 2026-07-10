@@ -1,5 +1,4 @@
 import { Slice } from "../slice.ts";
-import type { EditorContext } from "../editor-context.ts";
 import { SelectionSlice } from "./selection-slice.ts";
 import { ProjectSlice } from "./project-slice.ts";
 import { HistorySlice } from "./history-slice.ts";
@@ -11,10 +10,6 @@ import { DeleteUserAction, BatchEditEntitiesUserAction } from "../user-actions.t
 
 export class EditorCommandSlice extends Slice {
   static readonly sliceKey = "editorCommand";
-
-  constructor(ctx: EditorContext) {
-    super(ctx);
-  }
 
   deleteSelection(): void {
     const selection = this.ctx.get(SelectionSlice).$selection.get();
@@ -39,7 +34,7 @@ export class EditorCommandSlice extends Slice {
     const em = this.ctx.get(ProjectSlice).entityManager;
     const chartId = this.ctx.get(ChartSlice).$selectedChartId.get();
     const inChart = (entity: Entity) => {
-      if (!chartId) return true;
+      if (chartId === null || chartId === "") return true;
       const ref = em.getComponent(entity, CHART_REF);
       return !ref || ref.chartId === chartId;
     };
@@ -55,13 +50,13 @@ export class EditorCommandSlice extends Slice {
 
     if (targets.length === 0) {
       const cursorPulse = this.ctx.get(CursorSlice).$cursorPulse.get();
-      const governing = em
+      const governing: Entity | undefined = em
         .entitiesWithComponent(BPM_CHANGE)
         .filter((e) => inChart(e) && (em.getComponent(e, EVENT)?.y ?? 0) <= cursorPulse)
-        .sort(
+        .toSorted(
           (a, b) => (em.getComponent(b, EVENT)?.y ?? 0) - (em.getComponent(a, EVENT)?.y ?? 0),
         )[0];
-      if (governing) targets = [governing];
+      if (governing !== undefined) targets = [governing];
     }
 
     if (targets.length === 0) return;

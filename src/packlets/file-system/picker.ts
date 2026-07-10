@@ -1,3 +1,9 @@
-export async function showDirectoryPicker(): Promise<FileSystemDirectoryHandle> {
-  return (window as any).showDirectoryPicker();
+declare global {
+  interface Window {
+    showDirectoryPicker(): Promise<FileSystemDirectoryHandle>;
+  }
+}
+
+export function showDirectoryPicker(): Promise<FileSystemDirectoryHandle> {
+  return window.showDirectoryPicker();
 }

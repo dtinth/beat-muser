@@ -74,8 +74,8 @@ export function ToolbarButton({ icon, label, active, onClick }: ToolbarButtonPro
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: active ? "var(--accent-5)" : undefined,
-        color: active ? "var(--accent-11)" : undefined,
+        background: active === true ? "var(--accent-5)" : undefined,
+        color: active === true ? "var(--accent-11)" : undefined,
       }}
     >
       {icon}

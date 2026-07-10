@@ -4,6 +4,10 @@ import { makeBadge } from "badge-maker";
 
 const OUTPUT_DIR = process.argv[2] || "ci-reports";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function colorForTestRate(passed: number, total: number): string {
   const rate = total === 0 ? 0 : passed / total;
   if (rate === 1) return "brightgreen";
@@ -26,9 +30,13 @@ function generateTestsBadge() {
   let passed = 0;
   let total = 0;
   try {
-    const summary = JSON.parse(readFileSync(summaryPath, "utf-8"));
-    passed = summary.stats?.passed ?? 0;
-    total = summary.stats?.total ?? 0;
+    const parsed: unknown = JSON.parse(readFileSync(summaryPath, "utf-8"));
+    if (isRecord(parsed) && isRecord(parsed.stats)) {
+      const p = parsed.stats.passed;
+      const t = parsed.stats.total;
+      if (typeof p === "number") passed = p;
+      if (typeof t === "number") total = t;
+    }
   } catch {
     // fallback: count allure-results files
   }
@@ -52,9 +60,11 @@ function generatePlaywrightBadge() {
     const files = readdirSync(resultsDir);
     for (const file of files) {
       if (!file.endsWith(".json")) continue;
-      const data = JSON.parse(readFileSync(join(resultsDir, file), "utf-8"));
-      if (data.status === "passed") passed++;
-      if (["passed", "failed", "broken", "skipped"].includes(data.status)) total++;
+      const parsed: unknown = JSON.parse(readFileSync(join(resultsDir, file), "utf-8"));
+      const status = isRecord(parsed) ? parsed.status : undefined;
+      if (status === "passed") passed++;
+      if (typeof status === "string" && ["passed", "failed", "broken", "skipped"].includes(status))
+        total++;
     }
   } catch {
     // no results
@@ -93,8 +103,11 @@ function generateCoverageBadge() {
   const summaryPath = join(OUTPUT_DIR, "coverage", "coverage-summary.json");
   let pct = 0;
   try {
-    const summary = JSON.parse(readFileSync(summaryPath, "utf-8"));
-    pct = summary.total?.lines?.pct ?? 0;
+    const parsed: unknown = JSON.parse(readFileSync(summaryPath, "utf-8"));
+    if (isRecord(parsed) && isRecord(parsed.total) && isRecord(parsed.total.lines)) {
+      const p = parsed.total.lines.pct;
+      if (typeof p === "number") pct = p;
+    }
   } catch {
     // no coverage
   }

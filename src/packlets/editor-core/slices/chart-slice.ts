@@ -27,7 +27,7 @@ export class ChartSlice extends Slice {
     super(ctx);
     const charts = this.getCharts();
     if (charts.length > 0) {
-      this.$selectedChartId.set(charts[0]!.id);
+      this.$selectedChartId.set(charts[0].id);
     }
     this.setupAutoExtend();
   }
@@ -58,7 +58,7 @@ export class ChartSlice extends Slice {
 
   getSelectedChart(): Entity | undefined {
     const id = this.$selectedChartId.get();
-    if (!id) return undefined;
+    if (id === null || id === "") return undefined;
     return this.ctx.get(ProjectSlice).entityManager.get(id);
   }
 
@@ -77,11 +77,10 @@ export class ChartSlice extends Slice {
   setChartSize(pulses: number): void {
     const chart = this.getSelectedChart();
     if (!chart) return;
+    const chartComponent = this.ctx.get(ProjectSlice).entityManager.getComponent(chart, CHART);
     const oldComponents = structuredClone(chart.components);
-    const newComponents = {
-      ...oldComponents,
-      chart: { ...(oldComponents.chart as object), size: pulses },
-    };
+    const newComponents = structuredClone(chart.components);
+    newComponents[CHART.key] = { ...chartComponent, size: pulses };
     this.ctx
       .get(HistorySlice)
       .applyAction(new EditEntityUserAction(this.ctx, chart.id, oldComponents, newComponents));
@@ -89,7 +88,7 @@ export class ChartSlice extends Slice {
 
   getMaxEventPulse(): number {
     const chartId = this.$selectedChartId.get();
-    if (!chartId) return 0;
+    if (chartId === null || chartId === "") return 0;
     const em = this.ctx.get(ProjectSlice).entityManager;
     let maxPulse = 0;
     for (const entity of em.entitiesWithComponent(EVENT)) {
@@ -142,7 +141,7 @@ export class ChartSlice extends Slice {
         () => {
           if (this.$selectedChartId.get() === chartId) {
             const remaining = this.getCharts();
-            this.$selectedChartId.set(remaining.length > 0 ? remaining[0]!.id : null);
+            this.$selectedChartId.set(remaining.length > 0 ? remaining[0].id : null);
           }
         },
         () => {

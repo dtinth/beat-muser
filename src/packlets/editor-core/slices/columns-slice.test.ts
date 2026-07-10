@@ -37,7 +37,7 @@ describe("column-flat-list", () => {
           levelId: "l1",
           laneIndex: 8,
           affinity: "gameplay",
-        } as TimelineColumn,
+        },
         {
           id: "level-l1-lane-1",
           title: "1",
@@ -46,7 +46,7 @@ describe("column-flat-list", () => {
           levelId: "l1",
           laneIndex: 1,
           affinity: "gameplay",
-        } as TimelineColumn,
+        },
         {
           id: "level-l1-lane-2",
           title: "2",
@@ -55,7 +55,7 @@ describe("column-flat-list", () => {
           levelId: "l1",
           laneIndex: 2,
           affinity: "gameplay",
-        } as TimelineColumn,
+        },
         { id: "spacer-level-2", title: "", width: 8, x: 272 },
         {
           id: "level-l2-lane-8",
@@ -65,7 +65,7 @@ describe("column-flat-list", () => {
           levelId: "l2",
           laneIndex: 8,
           affinity: "gameplay",
-        } as TimelineColumn,
+        },
         {
           id: "level-l2-lane-1",
           title: "1",
@@ -74,7 +74,7 @@ describe("column-flat-list", () => {
           levelId: "l2",
           laneIndex: 1,
           affinity: "gameplay",
-        } as TimelineColumn,
+        },
         { id: "spacer-sound", title: "", width: 8, x: 372 },
         {
           id: "sound-lane-0",
@@ -83,7 +83,7 @@ describe("column-flat-list", () => {
           x: 380,
           soundLane: 0,
           affinity: "sound",
-        } as TimelineColumn,
+        },
         {
           id: "sound-lane-1",
           title: "Sound 2",
@@ -91,7 +91,7 @@ describe("column-flat-list", () => {
           x: 480,
           soundLane: 1,
           affinity: "sound",
-        } as TimelineColumn,
+        },
       ];
 
       const list = buildFlatList(columns, gameplayCol);
@@ -116,7 +116,7 @@ describe("column-flat-list", () => {
           x: 104,
           soundLane: 0,
           affinity: "sound",
-        } as TimelineColumn,
+        },
         {
           id: "sound-lane-1",
           title: "Sound 2",
@@ -124,7 +124,7 @@ describe("column-flat-list", () => {
           x: 204,
           soundLane: 1,
           affinity: "sound",
-        } as TimelineColumn,
+        },
         {
           id: "sound-lane-2",
           title: "Sound 3",
@@ -132,7 +132,7 @@ describe("column-flat-list", () => {
           x: 304,
           soundLane: 2,
           affinity: "sound",
-        } as TimelineColumn,
+        },
       ];
 
       const list = buildFlatList(columns, soundCol);

@@ -23,6 +23,6 @@ test("selecting demo navigates to project page", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Try Demo" }).click();
   await page.getByRole("button", { name: "RECURSIVE DESCENT" }).click();
-  await expect(page).toHaveURL(/\/projects\/recursive-descent$/);
+  await expect(page).toHaveURL(/\/projects\/recursive-descent$/u);
   await expect(page.getByRole("button", { name: "Select" })).toBeVisible();
 });

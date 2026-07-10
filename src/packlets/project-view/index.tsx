@@ -5,7 +5,7 @@
  * editor toolbar, chart panels, and a ScrollableCanvas timeline.
  */
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { useStore } from "@nanostores/react";
 import { useParams, useRouteError, useLoaderData } from "react-router";
 import { Pencil, Plus, Eye, EyeOff, Trash2, ChevronRight, ChevronDown } from "lucide-react";
@@ -63,6 +63,26 @@ declare global {
   }
 }
 
+/**
+ * Style reset for icon controls rendered as native `<button>` elements. A
+ * real button gives us keyboard activation and the correct a11y role for free
+ * (unlike a `<div>`), while these overrides keep the original inline-icon look.
+ */
+/** No-op cleanup returned from effects whose active branch is conditional. */
+function noop() {}
+
+const ICON_BUTTON_STYLE: CSSProperties = {
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  background: "none",
+  border: "none",
+  padding: 0,
+  margin: 0,
+  color: "inherit",
+  font: "inherit",
+};
+
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <Flex direction="column" style={{ gap: 2 }}>
@@ -91,15 +111,17 @@ function EditableField({
     <Flex
       direction="column"
       style={{ gap: 2, cursor: "pointer" }}
-      onClick={async () => {
-        const result = await modalManager.input({
-          title: `Edit ${label}`,
-          value,
-          validate,
-        });
-        if (result !== undefined) {
-          onEdit(result);
-        }
+      onClick={() => {
+        void (async () => {
+          const result = await modalManager.input({
+            title: `Edit ${label}`,
+            value,
+            validate,
+          });
+          if (result !== undefined) {
+            onEdit(result);
+          }
+        })();
       }}
     >
       <Flex justify="between" align="center">
@@ -133,16 +155,16 @@ function DebugContent({ controller }: { controller: EditorController }) {
     }
     const result: { type: string; count: number; min: number; avg: number; max: number }[] = [];
     for (const [type, durations] of groups) {
-      const sorted = [...durations].sort((a, b) => a - b);
+      const sorted = [...durations].toSorted((a, b) => a - b);
       result.push({
         type,
         count: sorted.length,
-        min: sorted[0]!,
+        min: sorted[0],
         avg: sorted.reduce((a, b) => a + b, 0) / sorted.length,
-        max: sorted[sorted.length - 1]!,
+        max: sorted.at(-1)!,
       });
     }
-    return result.sort((a, b) => a.type.localeCompare(b.type));
+    return result.toSorted((a, b) => a.type.localeCompare(b.type));
   }, [events]);
 
   async function handleProfile() {
@@ -163,6 +185,7 @@ function DebugContent({ controller }: { controller: EditorController }) {
   // Expose profile fn on window so Playwright can call it.
   // This is declared in the global augmentation in this file.
   useEffect(() => {
+    // oxlint-disable-next-line no-underscore-dangle -- external test hook name consumed by Playwright (tests/perf.spec.ts)
     window.__beatMuserProfilePerformance = async () => {
       const target = getProfilerTarget();
       if (!target) throw new Error("No profiler target registered");
@@ -172,6 +195,7 @@ function DebugContent({ controller }: { controller: EditorController }) {
 
     // Audio readiness: resolve when all known waveform paths are "ready" or
     // terminal ("decoding-failed") — i.e. no path is still loading/generating.
+    // oxlint-disable-next-line no-underscore-dangle -- external test hook name consumed by Playwright (tests/perf.spec.ts)
     window.__beatMuserAudioReady = () => {
       return new Promise<void>((resolve) => {
         const waveformSlice = controller.ctx.get(WaveformSlice);
@@ -203,7 +227,9 @@ function DebugContent({ controller }: { controller: EditorController }) {
     };
 
     return () => {
+      // oxlint-disable-next-line no-underscore-dangle -- external test hook name consumed by Playwright (tests/perf.spec.ts)
       delete window.__beatMuserProfilePerformance;
+      // oxlint-disable-next-line no-underscore-dangle -- external test hook name consumed by Playwright (tests/perf.spec.ts)
       delete window.__beatMuserAudioReady;
     };
   }, [controller]);
@@ -231,7 +257,7 @@ function DebugContent({ controller }: { controller: EditorController }) {
       <Button size="1" disabled={profiling} onClick={() => void handleProfile()}>
         {profiling ? "Profiling..." : "Profile Performance"}
       </Button>
-      {profileReport && (
+      {profileReport !== null && profileReport !== "" && (
         <pre
           style={{
             fontFamily: "monospace",
@@ -264,10 +290,13 @@ function RightPanels({
   const selectedChartId = useStore(controller.$selectedChartId);
   const hiddenLevelIds = useStore(controller.$hiddenLevelIds);
   const mutationVersion = useStore(controller.getEntityManager().$mutationVersion);
-  const levels = useMemo(
-    () => controller.getLevelsForChart(selectedChartId ?? ""),
-    [selectedChartId, hiddenLevelIds, mutationVersion, controller],
-  );
+  const levels = useMemo(() => {
+    // Recompute when levels are hidden/shown or entities mutate; these values
+    // gate the memo even though `getLevelsForChart` reads them off the controller.
+    void hiddenLevelIds;
+    void mutationVersion;
+    return controller.getLevelsForChart(selectedChartId ?? "");
+  }, [selectedChartId, hiddenLevelIds, mutationVersion, controller]);
   const selectedLevelId = useStore(controller.$selectedLevelId);
 
   const soundGroups = useStore(controller.ctx.get(SoundChannelSlice).$soundGroups);
@@ -277,9 +306,10 @@ function RightPanels({
   );
   const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(new Set());
 
-  const selectedLevelEntity = selectedLevelId
-    ? controller.getEntityManager().get(selectedLevelId)
-    : undefined;
+  const selectedLevelEntity =
+    selectedLevelId !== null && selectedLevelId !== ""
+      ? controller.getEntityManager().get(selectedLevelId)
+      : undefined;
   const selectedLevelComponent = selectedLevelEntity
     ? controller.getEntityManager().getComponent(selectedLevelEntity, LEVEL)
     : undefined;
@@ -306,7 +336,9 @@ function RightPanels({
                           cursor: "pointer",
                           backgroundColor: isSelected ? "var(--accent-3)" : "transparent",
                         }}
-                        onClick={() => controller.setSelectedLevelId(level.id)}
+                        onClick={() => {
+                          controller.setSelectedLevelId(level.id);
+                        }}
                       >
                         <Flex align="center" style={{ gap: 8 }}>
                           <Text size="2">{level.name}</Text>
@@ -315,30 +347,32 @@ function RightPanels({
                           </Text>
                         </Flex>
                         <Flex align="center" style={{ gap: 4 }}>
-                          <div
-                            style={{ cursor: "pointer" }}
+                          <button
+                            type="button"
+                            style={ICON_BUTTON_STYLE}
                             onClick={(e) => {
                               e.stopPropagation();
                               controller.toggleLevelVisibility(level.id);
                             }}
                           >
                             {level.visible ? <Eye size={14} /> : <EyeOff size={14} />}
-                          </div>
-                          <div
-                            style={{ cursor: "pointer" }}
+                          </button>
+                          <button
+                            type="button"
+                            style={ICON_BUTTON_STYLE}
                             onClick={(e) => {
                               e.stopPropagation();
                               controller.removeLevel(level.id);
                             }}
                           >
                             <Trash2 size={14} />
-                          </div>
+                          </button>
                         </Flex>
                       </Flex>
                     );
                   })}
                 </Flex>
-                {selectedChartId && (
+                {selectedChartId !== null && selectedChartId !== "" && (
                   <Flex
                     justify="center"
                     align="center"
@@ -349,30 +383,32 @@ function RightPanels({
                       cursor: "pointer",
                       border: "1px dashed var(--gray-6)",
                     }}
-                    onClick={async () => {
-                      const modes = controller.getGameModes();
-                      const selected = await modalManager.select({
-                        title: "Select Game Mode",
-                        items: modes.map((m) => ({
-                          id: m.mode,
-                          label: m.mode,
-                          detail: `${m.lanes.length} lanes${m.keysounds ? ", keysounds" : ""}`,
-                          value: m.mode,
-                        })),
-                      });
-                      if (selected) {
-                        const modeName = selected.value;
-                        const existingNames = new Set(levels.map((l) => l.name));
-                        let name = modeName;
-                        if (existingNames.has(name)) {
-                          let n = 2;
-                          while (existingNames.has(`${name} #${n}`)) {
-                            n++;
+                    onClick={() => {
+                      void (async () => {
+                        const modes = controller.getGameModes();
+                        const selected = await modalManager.select({
+                          title: "Select Game Mode",
+                          items: modes.map((m) => ({
+                            id: m.mode,
+                            label: m.mode,
+                            detail: `${m.lanes.length} lanes${m.keysounds === true ? ", keysounds" : ""}`,
+                            value: m.mode,
+                          })),
+                        });
+                        if (selected) {
+                          const modeName = selected.value;
+                          const existingNames = new Set(levels.map((l) => l.name));
+                          let name = modeName;
+                          if (existingNames.has(name)) {
+                            let n = 2;
+                            while (existingNames.has(`${name} #${n}`)) {
+                              n++;
+                            }
+                            name = `${name} #${n}`;
                           }
-                          name = `${name} #${n}`;
+                          controller.addLevel(selectedChartId, name, modeName);
                         }
-                        controller.addLevel(selectedChartId, name, modeName);
-                      }
+                      })();
                     }}
                   >
                     <Plus size={14} style={{ marginRight: 4 }} />
@@ -398,11 +434,11 @@ function RightPanels({
                   value={selectedLevelComponent?.name ?? ""}
                   modalManager={modalManager}
                   onEdit={(v) => {
-                    if (!selectedLevelEntity || v.trim() === "") return;
+                    if (v.trim() === "") return;
                     const oldComponents = structuredClone(selectedLevelEntity.components);
                     const newComponents = {
                       ...oldComponents,
-                      level: { ...(oldComponents.level as object), name: v.trim() },
+                      level: { ...selectedLevelComponent, name: v.trim() },
                     };
                     controller.applyAction(
                       new EditEntityUserAction(
@@ -436,6 +472,46 @@ function RightPanels({
                 {soundGroups.map((group) => {
                   const groupChannels = soundChannels.filter((c) => c.groupId === group.id);
                   const isCollapsed = collapsedGroupIds.has(group.id);
+                  const toggleCollapse = () => {
+                    const next = new Set(collapsedGroupIds);
+                    if (next.has(group.id)) {
+                      next.delete(group.id);
+                    } else {
+                      next.add(group.id);
+                    }
+                    setCollapsedGroupIds(next);
+                  };
+                  const editGroupName = () => {
+                    void (async () => {
+                      const entity = controller.getEntityManager().get(group.id);
+                      if (!entity) return;
+                      const result = await modalManager.input({
+                        title: "Edit Group Name",
+                        value: group.name,
+                      });
+                      if (result !== undefined && result.trim() !== "") {
+                        const groupComponent = controller
+                          .getEntityManager()
+                          .getComponent(entity, SOUND_GROUP);
+                        const oldComponents = structuredClone(entity.components);
+                        const newComponents = {
+                          ...oldComponents,
+                          [SOUND_GROUP.key]: {
+                            ...groupComponent,
+                            name: result.trim(),
+                          },
+                        };
+                        controller.applyAction(
+                          new EditEntityUserAction(
+                            controller.ctx,
+                            group.id,
+                            oldComponents,
+                            newComponents,
+                          ),
+                        );
+                      }
+                    })();
+                  };
                   return (
                     <Flex key={group.id} direction="column" style={{ gap: 2 }}>
                       <Flex
@@ -444,21 +520,10 @@ function RightPanels({
                         style={{ padding: "4px 8px", borderRadius: 4 }}
                       >
                         <Flex align="center" style={{ gap: 8 }}>
-                          <div
-                            style={{ cursor: "pointer" }}
-                            onClick={() => {
-                              const next = new Set(collapsedGroupIds);
-                              if (next.has(group.id)) {
-                                next.delete(group.id);
-                              } else {
-                                next.add(group.id);
-                              }
-                              setCollapsedGroupIds(next);
-                            }}
-                          >
+                          <button type="button" style={ICON_BUTTON_STYLE} onClick={toggleCollapse}>
                             {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                          </div>
-                          {group.color && (
+                          </button>
+                          {group.color !== undefined && group.color !== "" && (
                             <div
                               style={{
                                 width: 8,
@@ -474,55 +539,64 @@ function RightPanels({
                           </Text>
                         </Flex>
                         <Flex align="center" style={{ gap: 4 }}>
-                          <div
-                            style={{ cursor: "pointer" }}
-                            onClick={async () => {
-                              const entity = controller.getEntityManager().get(group.id);
-                              if (!entity) return;
-                              const result = await modalManager.input({
-                                title: "Edit Group Name",
-                                value: group.name,
-                              });
-                              if (result !== undefined && result.trim() !== "") {
-                                const oldComponents = structuredClone(entity.components);
-                                const newComponents = {
-                                  ...oldComponents,
-                                  [SOUND_GROUP.key]: {
-                                    ...(oldComponents[SOUND_GROUP.key] as object),
-                                    name: result.trim(),
-                                  },
-                                };
-                                controller.applyAction(
-                                  new EditEntityUserAction(
-                                    controller.ctx,
-                                    group.id,
-                                    oldComponents,
-                                    newComponents,
-                                  ),
-                                );
-                              }
+                          <button type="button" style={ICON_BUTTON_STYLE} onClick={editGroupName}>
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            style={ICON_BUTTON_STYLE}
+                            onClick={() => {
+                              controller.addSoundChannel(group.id);
                             }}
                           >
-                            <Pencil size={12} />
-                          </div>
-                          <div
-                            style={{ cursor: "pointer" }}
-                            onClick={() => controller.addSoundChannel(group.id)}
-                          >
                             <Plus size={14} />
-                          </div>
-                          <div
-                            style={{ cursor: "pointer" }}
-                            onClick={() => controller.removeSoundGroup(group.id)}
+                          </button>
+                          <button
+                            type="button"
+                            style={ICON_BUTTON_STYLE}
+                            onClick={() => {
+                              controller.removeSoundGroup(group.id);
+                            }}
                           >
                             <Trash2 size={14} />
-                          </div>
+                          </button>
                         </Flex>
                       </Flex>
                       {!isCollapsed && (
                         <Flex direction="column" style={{ gap: 2, paddingLeft: 32 }}>
                           {groupChannels.map((channel) => {
                             const isSelected = channel.id === selectedSoundChannelId;
+                            const editFilePath = () => {
+                              void (async () => {
+                                const entity = controller.getEntityManager().get(channel.id);
+                                if (!entity) return;
+                                const result = await modalManager.input({
+                                  title: "Edit File Path",
+                                  value: channel.path,
+                                });
+                                if (result !== undefined) {
+                                  const channelComponent = controller
+                                    .getEntityManager()
+                                    .getComponent(entity, SOUND_CHANNEL);
+                                  const oldComponents = structuredClone(entity.components);
+                                  const newComponents = {
+                                    ...oldComponents,
+                                    [SOUND_CHANNEL.key]: {
+                                      ...channelComponent,
+                                      path: result,
+                                    },
+                                  };
+                                  controller.applyAction(
+                                    new EditEntityUserAction(
+                                      controller.ctx,
+                                      channel.id,
+                                      oldComponents,
+                                      newComponents,
+                                    ),
+                                  );
+                                }
+                              })();
+                            };
                             return (
                               <Flex
                                 key={channel.id}
@@ -534,58 +608,37 @@ function RightPanels({
                                   cursor: "pointer",
                                   backgroundColor: isSelected ? "var(--accent-3)" : "transparent",
                                 }}
-                                onClick={() =>
+                                onClick={() => {
                                   controller.setSelectedSoundChannelId(
                                     isSelected ? null : channel.id,
-                                  )
-                                }
+                                  );
+                                }}
                               >
                                 <Text size="1" color={channel.path ? undefined : "gray"}>
                                   {channel.displayNumber}:{" "}
                                   {channel.path ? channel.path.split("/").pop() : "(blank)"}
                                 </Text>
                                 <Flex align="center" style={{ gap: 4 }}>
-                                  <div
-                                    style={{ cursor: "pointer" }}
-                                    onClick={async (e) => {
+                                  <button
+                                    type="button"
+                                    style={ICON_BUTTON_STYLE}
+                                    onClick={(e) => {
                                       e.stopPropagation();
-                                      const entity = controller.getEntityManager().get(channel.id);
-                                      if (!entity) return;
-                                      const result = await modalManager.input({
-                                        title: "Edit File Path",
-                                        value: channel.path,
-                                      });
-                                      if (result !== undefined) {
-                                        const oldComponents = structuredClone(entity.components);
-                                        const newComponents = {
-                                          ...oldComponents,
-                                          [SOUND_CHANNEL.key]: {
-                                            ...(oldComponents[SOUND_CHANNEL.key] as object),
-                                            path: result,
-                                          },
-                                        };
-                                        controller.applyAction(
-                                          new EditEntityUserAction(
-                                            controller.ctx,
-                                            channel.id,
-                                            oldComponents,
-                                            newComponents,
-                                          ),
-                                        );
-                                      }
+                                      editFilePath();
                                     }}
                                   >
                                     <Pencil size={12} />
-                                  </div>
-                                  <div
-                                    style={{ cursor: "pointer" }}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    style={ICON_BUTTON_STYLE}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       controller.removeSoundChannel(channel.id);
                                     }}
                                   >
                                     <Trash2 size={12} />
-                                  </div>
+                                  </button>
                                 </Flex>
                               </Flex>
                             );
@@ -605,7 +658,9 @@ function RightPanels({
                     cursor: "pointer",
                     border: "1px dashed var(--gray-6)",
                   }}
-                  onClick={() => controller.addSoundGroup()}
+                  onClick={() => {
+                    controller.addSoundGroup();
+                  }}
                 >
                   <Plus size={14} style={{ marginRight: 4 }} />
                   <Text size="1" color="gray">
@@ -648,11 +703,16 @@ function LeftPanels({
 
   const selectedChartId = useStore(controller.$selectedChartId);
   const mutationVersion = useStore(controller.getEntityManager().$mutationVersion);
-  const charts = useMemo(() => controller.getCharts(), [mutationVersion, controller]);
-  const selectedChart = useMemo(
-    () => controller.getEntityManager().get(selectedChartId ?? ""),
-    [selectedChartId, mutationVersion, controller],
-  );
+  const charts = useMemo(() => {
+    // `mutationVersion` gates the memo so charts refresh when entities mutate.
+    void mutationVersion;
+    return controller.getCharts();
+  }, [mutationVersion, controller]);
+  const selectedChart = useMemo(() => {
+    // `mutationVersion` gates the memo so the selection refreshes on mutation.
+    void mutationVersion;
+    return controller.getEntityManager().get(selectedChartId ?? "");
+  }, [selectedChartId, mutationVersion, controller]);
 
   const chartComponent = selectedChart
     ? controller.getEntityManager().getComponent(selectedChart, CHART)
@@ -671,21 +731,27 @@ function LeftPanels({
                   label="Title"
                   value={metadata.title}
                   modalManager={modalManager}
-                  onEdit={(v) => controller.setMetadataField("title", v)}
+                  onEdit={(v) => {
+                    controller.setMetadataField("title", v);
+                  }}
                   validate={(v) => (v.trim() === "" ? "Title is required" : undefined)}
                 />
                 <EditableField
                   label="Artist"
                   value={metadata.artist}
                   modalManager={modalManager}
-                  onEdit={(v) => controller.setMetadataField("artist", v)}
+                  onEdit={(v) => {
+                    controller.setMetadataField("artist", v);
+                  }}
                   validate={(v) => (v.trim() === "" ? "Artist is required" : undefined)}
                 />
                 <EditableField
                   label="Genre"
                   value={metadata.genre}
                   modalManager={modalManager}
-                  onEdit={(v) => controller.setMetadataField("genre", v)}
+                  onEdit={(v) => {
+                    controller.setMetadataField("genre", v);
+                  }}
                 />
               </>
             ),
@@ -701,7 +767,9 @@ function LeftPanels({
               <>
                 <Flex direction="column" style={{ gap: 4 }}>
                   {charts.map((chart) => {
-                    const chartComponent = controller.getEntityManager().getComponent(chart, CHART);
+                    const chartEntryComponent = controller
+                      .getEntityManager()
+                      .getComponent(chart, CHART);
                     const isSelected = chart.id === selectedChartId;
                     return (
                       <Flex
@@ -714,18 +782,21 @@ function LeftPanels({
                           cursor: "pointer",
                           backgroundColor: isSelected ? "var(--accent-3)" : "transparent",
                         }}
-                        onClick={() => controller.setSelectedChartId(chart.id)}
+                        onClick={() => {
+                          controller.setSelectedChartId(chart.id);
+                        }}
                       >
-                        <Text size="2">{chartComponent?.name ?? "Untitled"}</Text>
-                        <div
-                          style={{ cursor: "pointer" }}
+                        <Text size="2">{chartEntryComponent?.name ?? "Untitled"}</Text>
+                        <button
+                          type="button"
+                          style={ICON_BUTTON_STYLE}
                           onClick={(e) => {
                             e.stopPropagation();
                             controller.removeChart(chart.id);
                           }}
                         >
                           <Trash2 size={14} />
-                        </div>
+                        </button>
                       </Flex>
                     );
                   })}
@@ -739,7 +810,9 @@ function LeftPanels({
                     cursor: "pointer",
                     border: "1px dashed var(--gray-6)",
                   }}
-                  onClick={() => controller.addChart()}
+                  onClick={() => {
+                    controller.addChart();
+                  }}
                 >
                   <Plus size={14} style={{ marginRight: 4 }} />
                   <Text size="1" color="gray">
@@ -767,7 +840,7 @@ function LeftPanels({
                     const oldComponents = structuredClone(selectedChart.components);
                     const newComponents = {
                       ...oldComponents,
-                      chart: { ...(oldComponents.chart as object), name: v.trim() },
+                      chart: { ...chartComponent, name: v.trim() },
                     };
                     controller.applyAction(
                       new EditEntityUserAction(
@@ -785,16 +858,17 @@ function LeftPanels({
                   value={String(chartComponent ? controller.getChartSizeQuarterNotes() : 0)}
                   modalManager={modalManager}
                   onEdit={(v) => {
-                    const num = parseInt(v, 10);
+                    const num = Math.trunc(Number(v));
                     if (Number.isNaN(num) || num < 1 || !selectedChart) return;
                     controller.setChartSize(num * PPQN);
                   }}
                   validate={(v) => {
-                    const num = parseInt(v, 10);
+                    const num = Math.trunc(Number(v));
                     if (Number.isNaN(num) || num < 1) return "Must be a positive integer";
                     const min = Math.ceil(controller.getMaxEventPulse() / PPQN);
-                    if (num < min) return `Minimum is ${min} quarter note${min === 1 ? "" : "s"}`;
-                    return undefined;
+                    return num < min
+                      ? `Minimum is ${min} quarter note${min === 1 ? "" : "s"}`
+                      : undefined;
                   }}
                 />
                 <EditableField
@@ -802,12 +876,12 @@ function LeftPanels({
                   value={String(soundLanes)}
                   modalManager={modalManager}
                   onEdit={(v) => {
-                    const num = parseInt(v, 10);
+                    const num = Math.trunc(Number(v));
                     if (Number.isNaN(num) || num < 1 || !selectedChart) return;
                     const oldComponents = structuredClone(selectedChart.components);
                     const newComponents = {
                       ...oldComponents,
-                      chart: { ...(oldComponents.chart as object), soundLanes: num },
+                      chart: { ...chartComponent, soundLanes: num },
                     };
                     controller.applyAction(
                       new EditEntityUserAction(
@@ -819,9 +893,8 @@ function LeftPanels({
                     );
                   }}
                   validate={(v) => {
-                    const num = parseInt(v, 10);
-                    if (Number.isNaN(num) || num < 1) return "Must be a positive integer";
-                    return undefined;
+                    const num = Math.trunc(Number(v));
+                    return Number.isNaN(num) || num < 1 ? "Must be a positive integer" : undefined;
                   }}
                 />
               </>
@@ -847,12 +920,12 @@ function LeftPanels({
 
 export function ProjectViewPage() {
   const { slug: _slug } = useParams<{ slug: string }>();
-  const { projectFile: loadedProject, source } = useLoaderData() as {
+  const { projectFile: loadedProject, source } = useLoaderData<{
     projectFile: ProjectFile;
     source: ProjectSource;
-  };
+  }>();
   const [fileSystem] = useState(() => createProjectFileSystem(source));
-  const error = useRouteError() as Error | undefined;
+  const routeError = useRouteError();
   const { showError, showSuccess } = useToast();
 
   const [controller] = useState(() => {
@@ -914,12 +987,14 @@ export function ProjectViewPage() {
   // Set file export delegate so extension workers can write exported files
   useEffect(() => {
     getExtensionManager().setFileExportDelegate({
-      async exportFile(name: string, data: string) {
-        await fileSystem.writeFile(name, data);
-        showSuccess({ title: `Exported ${name}` });
+      exportFile(name: string, data: string) {
+        void (async () => {
+          await fileSystem.writeFile(name, data);
+          showSuccess({ title: `Exported ${name}` });
+        })();
       },
     });
-  }, [fileSystem]);
+  }, [fileSystem, showSuccess]);
 
   // Push entity data to extension workers for decoration computation
   useEffect(() => {
@@ -932,26 +1007,30 @@ export function ProjectViewPage() {
       }));
       getExtensionManager().pushEntitiesToWorkers(entities);
     });
-    return () => unsub();
+    return () => {
+      unsub();
+    };
   }, [controller]);
 
   useEffect(() => {
-    const unsub1 = controller.outbox.on("playbackPlay", async (playback, rate) => {
-      const engine = audioEngineRef.current;
-      if (!engine) return;
-      if (engine.audioContext.state === "suspended") {
-        await engine.audioContext.resume();
-      }
-      if (playback.abortSignal.aborted) return;
-      const stop = startAudioPlayback({
-        playback,
-        rate,
-        audioContext: engine.audioContext,
-        buffers: engine.buffers,
-        masterGain: engine.masterGain,
-        channelGains: engine.channelGains,
-      });
-      stopPlaybackRef.current = stop;
+    const unsub1 = controller.outbox.on("playbackPlay", (playback, rate) => {
+      void (async () => {
+        const engine = audioEngineRef.current;
+        if (!engine) return;
+        if (engine.audioContext.state === "suspended") {
+          await engine.audioContext.resume();
+        }
+        if (playback.abortSignal.aborted) return;
+        const stop = startAudioPlayback({
+          playback,
+          rate,
+          audioContext: engine.audioContext,
+          buffers: engine.buffers,
+          masterGain: engine.masterGain,
+          channelGains: engine.channelGains,
+        });
+        stopPlaybackRef.current = stop;
+      })();
     });
 
     const unsub2 = controller.outbox.on("playbackStop", (scrollY) => {
@@ -973,48 +1052,60 @@ export function ProjectViewPage() {
       id: "zoomIn",
       title: "Zoom In",
       shortcut: "Equal",
-      execute: () => controller.zoomIn(),
+      execute: () => {
+        controller.zoomIn();
+      },
     });
     commands.add({
       id: "zoomOut",
       title: "Zoom Out",
       shortcut: "Minus",
-      execute: () => controller.zoomOut(),
+      execute: () => {
+        controller.zoomOut();
+      },
     });
     commands.add({
       id: "bpmIncrease",
       title: "Increase BPM",
       shortcut: "Shift+Equal",
-      execute: () => controller.nudgeBpm(1),
+      execute: () => {
+        controller.nudgeBpm(1);
+      },
     });
     commands.add({
       id: "bpmDecrease",
       title: "Decrease BPM",
       shortcut: "Shift+Minus",
-      execute: () => controller.nudgeBpm(-1),
+      execute: () => {
+        controller.nudgeBpm(-1);
+      },
     });
     commands.add({
       id: "snapIncrease",
       title: "Increase Snap",
       shortcut: "BracketRight",
-      execute: () => controller.snapIncrease(),
+      execute: () => {
+        controller.snapIncrease();
+      },
     });
     commands.add({
       id: "snapDecrease",
       title: "Decrease Snap",
       shortcut: "BracketLeft",
-      execute: () => controller.snapDecrease(),
+      execute: () => {
+        controller.snapDecrease();
+      },
     });
     commands.add({
       id: "openCommandPalette",
       title: "Open Command Palette",
       shortcut: "$mod+KeyK",
       execute: () => {
-        const commands = globalCommandRegistry.getAll().filter((c) => c.title);
-        void modalManager
-          .select({
+        void (async () => {
+          const allCommands = globalCommandRegistry.getAll().filter((c) => c.title);
+          const selected = await modalManager.select({
             title: "Commands",
-            items: commands.map((c) => ({
+            items: allCommands.map((c) => ({
               id: c.id,
               label: c.title,
               detail: c.shortcut,
@@ -1022,17 +1113,18 @@ export function ProjectViewPage() {
               value: c,
             })),
             placeholder: "Type a command...",
-          })
-          .then((selected) => {
-            if (selected) selected.value.execute();
           });
+          if (selected) selected.value.execute();
+        })();
       },
     });
     commands.add({
       id: "deleteSelection",
       title: "Delete Selection",
       shortcut: "Delete",
-      execute: () => controller.deleteSelection(),
+      execute: () => {
+        controller.deleteSelection();
+      },
     });
     commands.add({
       id: "copy",
@@ -1056,43 +1148,57 @@ export function ProjectViewPage() {
       id: "undo",
       title: "Undo",
       shortcut: "$mod+KeyZ",
-      execute: () => controller.undo(),
+      execute: () => {
+        controller.undo();
+      },
     });
     commands.add({
       id: "redo",
       title: "Redo",
       shortcut: "$mod+Shift+KeyZ",
-      execute: () => controller.redo(),
+      execute: () => {
+        controller.redo();
+      },
     });
     commands.add({
       id: "navigateUp",
       title: "Navigate Up",
       shortcut: "ArrowUp",
-      execute: () => controller.navigateSnap("up"),
+      execute: () => {
+        controller.navigateSnap("up");
+      },
     });
     commands.add({
       id: "navigateDown",
       title: "Navigate Down",
       shortcut: "ArrowDown",
-      execute: () => controller.navigateSnap("down"),
+      execute: () => {
+        controller.navigateSnap("down");
+      },
     });
     commands.add({
       id: "navigateLeft",
       title: "Navigate Left",
       shortcut: "ArrowLeft",
-      execute: () => controller.navigateColumn("left"),
+      execute: () => {
+        controller.navigateColumn("left");
+      },
     });
     commands.add({
       id: "navigateRight",
       title: "Navigate Right",
       shortcut: "ArrowRight",
-      execute: () => controller.navigateColumn("right"),
+      execute: () => {
+        controller.navigateColumn("right");
+      },
     });
     commands.add({
       id: "toolSelect",
       title: "Select Tool",
       shortcut: "KeyQ",
-      execute: () => controller.setTool("select"),
+      execute: () => {
+        controller.setTool("select");
+      },
     });
     commands.add({
       id: "toolPencil",
@@ -1110,56 +1216,66 @@ export function ProjectViewPage() {
       id: "toolErase",
       title: "Erase Tool",
       shortcut: "KeyE",
-      execute: () => controller.setTool("erase"),
+      execute: () => {
+        controller.setTool("erase");
+      },
     });
     commands.add({
       id: "toolPan",
       title: "Pan Tool",
       shortcut: "KeyR",
-      execute: () => controller.setTool("pan"),
+      execute: () => {
+        controller.setTool("pan");
+      },
     });
     commands.add({
       id: "addSoundGroup",
       title: "Add Sound Group",
-      execute: () => controller.addSoundGroup(),
+      execute: () => {
+        controller.addSoundGroup();
+      },
     });
     commands.add({
       id: "addSoundChannel",
       title: "Add Sound Channel",
-      execute: async () => {
-        const groups = controller.ctx.get(SoundChannelSlice).$soundGroups.get();
-        if (groups.length === 0) return;
-        const selected = await modalManager.select({
-          title: "Select Sound Group",
-          items: groups.map((g) => ({
-            id: g.id,
-            label: g.name,
-            value: g.id,
-          })),
-        });
-        if (selected) {
-          controller.addSoundChannel(selected.value);
-        }
+      execute: () => {
+        void (async () => {
+          const groups = controller.ctx.get(SoundChannelSlice).$soundGroups.get();
+          if (groups.length === 0) return;
+          const selected = await modalManager.select({
+            title: "Select Sound Group",
+            items: groups.map((g) => ({
+              id: g.id,
+              label: g.name,
+              value: g.id,
+            })),
+          });
+          if (selected) {
+            controller.addSoundChannel(selected.value);
+          }
+        })();
       },
     });
     commands.add({
       id: "saveProject",
       title: "Save Project",
       shortcut: "$mod+KeyS",
-      execute: async () => {
-        try {
-          const projectFile = controller.serialize();
-          const json = JSON.stringify(projectFile, null, 2);
-          await fileSystem.writeFile("beat-muser-project.json", json);
-          getExtensionManager().handleAfterSave(projectFile);
-          showSuccess({ title: "Project saved" });
-        } catch (error) {
-          console.error(error);
-          showError({
-            title: "Failed to save project",
-            description: (error as Error).message,
-          });
-        }
+      execute: () => {
+        void (async () => {
+          try {
+            const projectFile = controller.serialize();
+            const json = JSON.stringify(projectFile, null, 2);
+            await fileSystem.writeFile("beat-muser-project.json", json);
+            getExtensionManager().handleAfterSave(projectFile);
+            showSuccess({ title: "Project saved" });
+          } catch (error) {
+            console.error(error);
+            showError({
+              title: "Failed to save project",
+              description: error instanceof Error ? error.message : String(error),
+            });
+          }
+        })();
       },
     });
     commands.add({
@@ -1192,10 +1308,11 @@ export function ProjectViewPage() {
       execute: () => {
         const target = getProfilerTarget();
         if (!target) return;
-        void runRenderProfile(target).then((result) => {
+        void (async () => {
+          const result = await runRenderProfile(target);
           const report = formatProfileReport(result);
           console.log(report);
-        });
+        })();
       },
     });
     const unregister = commands.registerTo(globalCommandRegistry);
@@ -1205,7 +1322,7 @@ export function ProjectViewPage() {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (modalManager.$stack.get().length > 0) return;
-      const target = e.target as HTMLElement | null;
+      const target = e.target instanceof HTMLElement ? e.target : null;
       if (
         target &&
         (target.tagName === "INPUT" ||
@@ -1223,7 +1340,7 @@ export function ProjectViewPage() {
       handler.dispose();
       unregister();
     };
-  }, [controller, modalManager]);
+  }, [controller, modalManager, fileSystem, showError, showSuccess]);
 
   const behaviorFactory = useMemo(() => createTimelineBehaviorFactory(controller), [controller]);
 
@@ -1271,12 +1388,7 @@ export function ProjectViewPage() {
     } else if (info.columnId.startsWith("soflan-")) {
       const entity = controller.getEntityManager().get(info.entityId);
       const soflan = entity
-        ? (controller.getEntityManager().getComponent(entity, SOFLAN) as
-            | {
-                scroll: { numerator: number; denominator: number };
-                skip: { numerator: number; denominator: number };
-              }
-            | undefined)
+        ? controller.getEntityManager().getComponent(entity, SOFLAN)
         : undefined;
       setSoflanEditEntityId(info.entityId);
       setSoflanScrollNum(String(soflan?.scroll.numerator ?? 1));
@@ -1289,31 +1401,34 @@ export function ProjectViewPage() {
   }, [lastPlacedEntityInfo, controller]);
 
   useEffect(() => {
-    if (bpmEditOpen) {
-      const timer = setTimeout(() => bpmInputRef.current?.focus(), 50);
-      return () => clearTimeout(timer);
-    }
+    if (!bpmEditOpen) return noop;
+    const timer = setTimeout(() => bpmInputRef.current?.focus(), 50);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [bpmEditOpen]);
 
   useEffect(() => {
-    if (timeSigEditOpen) {
-      const timer = setTimeout(() => timeSigNumeratorRef.current?.focus(), 50);
-      return () => clearTimeout(timer);
-    }
+    if (!timeSigEditOpen) return noop;
+    const timer = setTimeout(() => timeSigNumeratorRef.current?.focus(), 50);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [timeSigEditOpen]);
 
   useEffect(() => {
-    if (soflanEditOpen) {
-      const timer = setTimeout(() => soflanScrollNumRef.current?.focus(), 50);
-      return () => clearTimeout(timer);
-    }
+    if (!soflanEditOpen) return noop;
+    const timer = setTimeout(() => soflanScrollNumRef.current?.focus(), 50);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [soflanEditOpen]);
 
   const handleBpmConfirm = () => {
-    if (!bpmEditEntityId) return;
+    if (bpmEditEntityId === null || bpmEditEntityId === "") return;
     const entity = controller.getEntityManager().get(bpmEditEntityId);
     if (!entity) return;
-    const newBpm = parseFloat(bpmValue);
+    const newBpm = Number(bpmValue);
     if (Number.isNaN(newBpm) || newBpm <= 0) return;
     const oldComponents = structuredClone(entity.components);
     const newComponents = {
@@ -1328,13 +1443,13 @@ export function ProjectViewPage() {
   };
 
   const handleSoflanConfirm = () => {
-    if (!soflanEditEntityId) return;
+    if (soflanEditEntityId === null || soflanEditEntityId === "") return;
     const entity = controller.getEntityManager().get(soflanEditEntityId);
     if (!entity) return;
-    const scrollNum = parseFloat(soflanScrollNum);
-    const scrollDen = parseFloat(soflanScrollDen);
-    const skipNum = parseFloat(soflanSkipNum);
-    const skipDen = parseFloat(soflanSkipDen);
+    const scrollNum = Number(soflanScrollNum);
+    const scrollDen = Number(soflanScrollDen);
+    const skipNum = Number(soflanSkipNum);
+    const skipDen = Number(soflanSkipDen);
     if (
       Number.isNaN(scrollNum) ||
       Number.isNaN(scrollDen) ||
@@ -1359,11 +1474,11 @@ export function ProjectViewPage() {
   };
 
   const handleTimeSigConfirm = () => {
-    if (!timeSigEditEntityId) return;
+    if (timeSigEditEntityId === null || timeSigEditEntityId === "") return;
     const entity = controller.getEntityManager().get(timeSigEditEntityId);
     if (!entity) return;
-    const num = parseInt(timeSigNumerator, 10);
-    const den = parseInt(timeSigDenominator, 10);
+    const num = Math.trunc(Number(timeSigNumerator));
+    const den = Math.trunc(Number(timeSigDenominator));
     if (Number.isNaN(num) || num <= 0 || Number.isNaN(den) || den <= 0) return;
     const oldComponents = structuredClone(entity.components);
     const newComponents = {
@@ -1378,14 +1493,14 @@ export function ProjectViewPage() {
   };
 
   useEffect(() => {
-    if (error) {
-      console.error(error);
+    if (routeError instanceof Error) {
+      console.error(routeError);
       showError({
         title: "Failed to load project",
-        description: error.message,
+        description: routeError.message,
       });
     }
-  }, [error, showError]);
+  }, [routeError, showError]);
 
   return (
     <>
@@ -1408,13 +1523,20 @@ export function ProjectViewPage() {
             ref={bpmInputRef}
             type="number"
             value={bpmValue}
-            onChange={(e) => setBpmValue(e.target.value)}
+            onChange={(e) => {
+              setBpmValue(e.target.value);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleBpmConfirm();
             }}
           />
           <Flex gap="2" mt="3" justify="end">
-            <Button variant="soft" onClick={() => setBpmEditOpen(false)}>
+            <Button
+              variant="soft"
+              onClick={() => {
+                setBpmEditOpen(false);
+              }}
+            >
               Cancel
             </Button>
             <Button onClick={handleBpmConfirm}>OK</Button>
@@ -1429,7 +1551,9 @@ export function ProjectViewPage() {
               ref={timeSigNumeratorRef}
               type="number"
               value={timeSigNumerator}
-              onChange={(e) => setTimeSigNumerator(e.target.value)}
+              onChange={(e) => {
+                setTimeSigNumerator(e.target.value);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleTimeSigConfirm();
               }}
@@ -1438,14 +1562,21 @@ export function ProjectViewPage() {
             <TextField.Root
               type="number"
               value={timeSigDenominator}
-              onChange={(e) => setTimeSigDenominator(e.target.value)}
+              onChange={(e) => {
+                setTimeSigDenominator(e.target.value);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleTimeSigConfirm();
               }}
             />
           </Flex>
           <Flex gap="2" mt="3" justify="end">
-            <Button variant="soft" onClick={() => setTimeSigEditOpen(false)}>
+            <Button
+              variant="soft"
+              onClick={() => {
+                setTimeSigEditOpen(false);
+              }}
+            >
               Cancel
             </Button>
             <Button onClick={handleTimeSigConfirm}>OK</Button>
@@ -1462,7 +1593,9 @@ export function ProjectViewPage() {
                 ref={soflanScrollNumRef}
                 type="number"
                 value={soflanScrollNum}
-                onChange={(e) => setSoflanScrollNum(e.target.value)}
+                onChange={(e) => {
+                  setSoflanScrollNum(e.target.value);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSoflanConfirm();
                 }}
@@ -1472,7 +1605,9 @@ export function ProjectViewPage() {
               <TextField.Root
                 type="number"
                 value={soflanScrollDen}
-                onChange={(e) => setSoflanScrollDen(e.target.value)}
+                onChange={(e) => {
+                  setSoflanScrollDen(e.target.value);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSoflanConfirm();
                 }}
@@ -1484,7 +1619,9 @@ export function ProjectViewPage() {
               <TextField.Root
                 type="number"
                 value={soflanSkipNum}
-                onChange={(e) => setSoflanSkipNum(e.target.value)}
+                onChange={(e) => {
+                  setSoflanSkipNum(e.target.value);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSoflanConfirm();
                 }}
@@ -1494,7 +1631,9 @@ export function ProjectViewPage() {
               <TextField.Root
                 type="number"
                 value={soflanSkipDen}
-                onChange={(e) => setSoflanSkipDen(e.target.value)}
+                onChange={(e) => {
+                  setSoflanSkipDen(e.target.value);
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSoflanConfirm();
                 }}
@@ -1503,7 +1642,12 @@ export function ProjectViewPage() {
             </Flex>
           </Flex>
           <Flex gap="2" mt="3" justify="end">
-            <Button variant="soft" onClick={() => setSoflanEditOpen(false)}>
+            <Button
+              variant="soft"
+              onClick={() => {
+                setSoflanEditOpen(false);
+              }}
+            >
               Cancel
             </Button>
             <Button onClick={handleSoflanConfirm}>OK</Button>

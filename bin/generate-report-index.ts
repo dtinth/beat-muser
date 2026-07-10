@@ -5,13 +5,13 @@ const PACKLETS_DIR = "src/packlets";
 const OUTPUT_DIR = process.argv[2] || "ci-reports";
 
 function extractSummary(source: string): string | undefined {
-  const block = source.match(/\/\*\*([\s\S]*?)\*\//)?.[1];
-  if (!block) return undefined;
-  let text = block.replace(/^\s*\*\s?/gm, "").trim();
-  text = text.replace(/^(?:@[a-zA-Z]+\s*)+/, "").trim();
-  const paragraph = text.match(/^([\s\S]*?)(?=\n#+\s|\n\n|@[a-zA-Z]|$)/)?.[1];
-  if (!paragraph) return undefined;
-  return paragraph.replace(/\n/g, " ").trim();
+  const block = source.match(/\/\*\*([\s\S]*?)\*\//u)?.[1];
+  if (block === undefined || block === "") return undefined;
+  let text = block.replaceAll(/^\s*\*\s?/gmu, "").trim();
+  text = text.replace(/^(?:@[a-zA-Z]+\s*)+/u, "").trim();
+  const paragraph = text.match(/^([\s\S]*?)(?=\n#+\s|\n\n|@[a-zA-Z]|$)/u)?.[1];
+  if (paragraph === undefined || paragraph === "") return undefined;
+  return paragraph.replaceAll("\n", " ").trim();
 }
 
 function findIndexPath(dir: string): string | undefined {
@@ -32,25 +32,27 @@ const entries = readdirSync(PACKLETS_DIR, { withFileTypes: true })
   .map((d) => {
     const indexPath = findIndexPath(join(PACKLETS_DIR, d.name));
     let description: string | undefined;
-    if (indexPath) {
+    if (indexPath !== undefined) {
       description = extractSummary(readFileSync(indexPath, "utf-8"));
     }
     return { name: d.name, description, indexPath };
   })
-  .sort((a, b) => a.name.localeCompare(b.name));
+  .toSorted((a, b) => a.name.localeCompare(b.name));
 
-const repo = process.env.GITHUB_REPOSITORY || "dtinth/beat-muser";
-const serverUrl = process.env.GITHUB_SERVER_URL || "https://github.com";
+const repo = process.env.GITHUB_REPOSITORY ?? "dtinth/beat-muser";
+const serverUrl = process.env.GITHUB_SERVER_URL ?? "https://github.com";
 const runId = process.env.GITHUB_RUN_ID;
 const sha = process.env.GITHUB_SHA;
-const branch = process.env.GITHUB_REF_NAME || "main";
+const branch = process.env.GITHUB_REF_NAME ?? "main";
 
-const buildUrl = runId ? `${serverUrl}/${repo}/actions/runs/${runId}` : undefined;
-const commitUrl = sha ? `${serverUrl}/${repo}/commit/${sha}` : undefined;
-const shortSha = sha ? sha.slice(0, 7) : "unknown";
+const buildUrl =
+  runId !== undefined && runId !== "" ? `${serverUrl}/${repo}/actions/runs/${runId}` : undefined;
+const commitUrl =
+  sha !== undefined && sha !== "" ? `${serverUrl}/${repo}/commit/${sha}` : undefined;
+const shortSha = sha !== undefined && sha !== "" ? sha.slice(0, 7) : "unknown";
 
 function sourceLink(_packletName: string, indexPath?: string): string {
-  if (!indexPath) return "#";
+  if (indexPath === undefined || indexPath === "") return "#";
   return `${serverUrl}/${repo}/blob/${branch}/${indexPath}`;
 }
 
@@ -80,8 +82,8 @@ const html = `<!DOCTYPE html>
       </div>
       <div class="Box-body">
         <div class="d-flex flex-wrap gap-4">
-          ${buildUrl ? `<div><span class="text-bold">CI Run:</span> <a href="${buildUrl}" target="_blank" rel="noopener">#${runId}</a></div>` : ""}
-          ${sha ? `<div><span class="text-bold">Commit:</span> <a href="${commitUrl}" target="_blank" rel="noopener">${shortSha}</a></div>` : ""}
+          ${buildUrl === undefined ? "" : `<div><span class="text-bold">CI Run:</span> <a href="${buildUrl}" target="_blank" rel="noopener">#${runId}</a></div>`}
+          ${sha !== undefined && sha !== "" ? `<div><span class="text-bold">Commit:</span> <a href="${commitUrl}" target="_blank" rel="noopener">${shortSha}</a></div>` : ""}
           <div><span class="text-bold">Branch:</span> ${branch}</div>
         </div>
       </div>
@@ -123,7 +125,7 @@ const html = `<!DOCTYPE html>
         <li class="Box-row Box-row--hover-gray d-flex flex-items-center flex-justify-between">
           <div class="flex-auto">
             <a href="${sourceLink(e.name, e.indexPath)}" class="f5 text-bold Link--primary" target="_blank" rel="noopener">${e.name}</a>
-            <div class="color-fg-muted f6 mt-1">${e.description || "(no description)"}</div>
+            <div class="color-fg-muted f6 mt-1">${e.description !== undefined && e.description !== "" ? e.description : "(no description)"}</div>
           </div>
           <a href="${sourceLink(e.name, e.indexPath)}" class="btn btn-sm" target="_blank" rel="noopener">View source</a>
         </li>`,

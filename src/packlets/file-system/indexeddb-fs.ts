@@ -6,7 +6,7 @@
  * secondary store accepted only out of necessity — see ADR 023.
  */
 
-import { openDB, type IDBPDatabase } from "idb";
+import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { FileEntry, ProjectFileSystem } from "./types.ts";
 
 const DB_NAME = "beat-muser-files";
@@ -21,16 +21,21 @@ interface FileRow {
   blob: Blob;
 }
 
-let dbPromise: Promise<IDBPDatabase> | undefined;
+interface FilesDbSchema extends DBSchema {
+  files: {
+    key: [string, string];
+    value: FileRow;
+  };
+}
 
-function getDb(): Promise<IDBPDatabase> {
-  if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, 1, {
-      upgrade(db) {
-        db.createObjectStore(STORE, { keyPath: ["storeId", "path"] });
-      },
-    });
-  }
+let dbPromise: Promise<IDBPDatabase<FilesDbSchema>> | undefined;
+
+function getDb(): Promise<IDBPDatabase<FilesDbSchema>> {
+  dbPromise ??= openDB<FilesDbSchema>(DB_NAME, 1, {
+    upgrade(db) {
+      db.createObjectStore(STORE, { keyPath: ["storeId", "path"] });
+    },
+  });
   return dbPromise;
 }
 
@@ -47,7 +52,7 @@ export function createFileSystemFromIndexedDb(storeId: string): ProjectFileSyste
 
     async listFiles() {
       const db = await getDb();
-      const rows = (await db.getAll(STORE, storeRange(storeId))) as FileRow[];
+      const rows = await db.getAll(STORE, storeRange(storeId));
       return rows.map(
         (row): FileEntry => ({
           name: row.name,
@@ -60,7 +65,7 @@ export function createFileSystemFromIndexedDb(storeId: string): ProjectFileSyste
 
     async readFile(path: string) {
       const db = await getDb();
-      const row = (await db.get(STORE, [storeId, path])) as FileRow | undefined;
+      const row = await db.get(STORE, [storeId, path]);
       if (!row) {
         throw new FileNotFoundError(path);
       }

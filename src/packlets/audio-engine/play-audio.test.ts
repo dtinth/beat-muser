@@ -46,7 +46,12 @@ function createFakePlayback(overrides: Partial<Playback> = {}): {
     abortSignal: abortController.signal,
     ...overrides,
   };
-  return { playback, abort: () => abortController.abort() };
+  return {
+    playback,
+    abort: () => {
+      abortController.abort();
+    },
+  };
 }
 
 function baseOptions(
@@ -75,7 +80,9 @@ describe("startAudioPlayback visual loop", () => {
     vi.useFakeTimers();
     const times: number[] = [];
     const { playback } = createFakePlayback({
-      onPlaybackTimeChange: (sec) => times.push(sec),
+      onPlaybackTimeChange: (sec) => {
+        times.push(sec);
+      },
     });
     const ctx = createFakeAudioContext();
     const driver = createFrameDriver();
@@ -90,7 +97,9 @@ describe("startAudioPlayback visual loop", () => {
     vi.useFakeTimers();
     const times: number[] = [];
     const { playback } = createFakePlayback({
-      onPlaybackTimeChange: (sec) => times.push(sec),
+      onPlaybackTimeChange: (sec) => {
+        times.push(sec);
+      },
     });
     const ctx = createFakeAudioContext();
     const driver = createFrameDriver();
@@ -115,7 +124,7 @@ describe("startAudioPlayback visual loop", () => {
 
   test("keeps audio scheduling on the setInterval tick, not the frame loop", () => {
     vi.useFakeTimers();
-    const getEvents = vi.fn(() => []);
+    const getEvents = vi.fn<Playback["getEvents"]>(() => []);
     const { playback } = createFakePlayback({ getEvents });
     const ctx = createFakeAudioContext();
     const driver = createFrameDriver();
@@ -146,7 +155,9 @@ describe("startAudioPlayback visual loop", () => {
     vi.useFakeTimers();
     const times: number[] = [];
     const { playback } = createFakePlayback({
-      onPlaybackTimeChange: (sec) => times.push(sec),
+      onPlaybackTimeChange: (sec) => {
+        times.push(sec);
+      },
     });
     const ctx = createFakeAudioContext();
     const driver = createFrameDriver();
@@ -169,7 +180,9 @@ describe("startAudioPlayback visual loop", () => {
     vi.useFakeTimers();
     const times: number[] = [];
     const { playback, abort } = createFakePlayback({
-      onPlaybackTimeChange: (sec) => times.push(sec),
+      onPlaybackTimeChange: (sec) => {
+        times.push(sec);
+      },
     });
     abort();
     const ctx = createFakeAudioContext();

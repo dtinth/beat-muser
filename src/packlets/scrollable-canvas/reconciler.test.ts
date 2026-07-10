@@ -6,15 +6,16 @@
 
 import { describe, expect, test, vi } from "vite-plus/test";
 import { RenderObjectReconciler } from "./reconciler.ts";
+import type { ReconcileCallbacks } from "./reconciler.ts";
 import { positionElement } from "./index.tsx";
 import type { RenderHandle, RenderObject } from "./index.tsx";
 
 function makeRenderer() {
-  return vi.fn(
+  return vi.fn<(data: unknown) => RenderHandle>(
     (_data: unknown): RenderHandle => ({
       dom: { tagName: "div" } as unknown as HTMLElement,
-      update: vi.fn(),
-      [Symbol.dispose]: vi.fn(),
+      update: vi.fn<() => void>(),
+      [Symbol.dispose]: vi.fn<() => void>(),
     }),
   );
 }
@@ -39,9 +40,9 @@ function makeObject(
 describe("RenderObjectReconciler", () => {
   test("creates handles for all new keys on first reconcile", () => {
     const renderer = makeRenderer();
-    const onAdd = vi.fn();
-    const onUpdate = vi.fn();
-    const onRemove = vi.fn();
+    const onAdd = vi.fn<ReconcileCallbacks["onAdd"]>();
+    const onUpdate = vi.fn<ReconcileCallbacks["onUpdate"]>();
+    const onRemove = vi.fn<ReconcileCallbacks["onRemove"]>();
     const reconciler = new RenderObjectReconciler({ onAdd, onUpdate, onRemove });
 
     reconciler.reconcile([
@@ -63,9 +64,9 @@ describe("RenderObjectReconciler", () => {
 
   test("reuses existing handles and calls update on subsequent reconciles", () => {
     const renderer = makeRenderer();
-    const onAdd = vi.fn();
-    const onUpdate = vi.fn();
-    const onRemove = vi.fn();
+    const onAdd = vi.fn<ReconcileCallbacks["onAdd"]>();
+    const onUpdate = vi.fn<ReconcileCallbacks["onUpdate"]>();
+    const onRemove = vi.fn<ReconcileCallbacks["onRemove"]>();
     const reconciler = new RenderObjectReconciler({ onAdd, onUpdate, onRemove });
 
     reconciler.reconcile([makeObject("A", renderer), makeObject("B", renderer)]);
@@ -79,20 +80,20 @@ describe("RenderObjectReconciler", () => {
     expect(onRemove).toHaveBeenCalledTimes(0);
 
     // Verify update was called on the same handles
-    const handleA = onAdd.mock.calls.find((call) => call[0] === "A")![1] as RenderHandle;
+    const handleA = onAdd.mock.calls.find((call) => call[0] === "A")![1];
     const updatedA = onUpdate.mock.calls.find((call) => call[1] === handleA);
     expect(updatedA).toBeDefined();
   });
 
   test("disposes and removes stale keys", () => {
     const renderer = makeRenderer();
-    const onAdd = vi.fn();
-    const onUpdate = vi.fn();
-    const onRemove = vi.fn();
+    const onAdd = vi.fn<ReconcileCallbacks["onAdd"]>();
+    const onUpdate = vi.fn<ReconcileCallbacks["onUpdate"]>();
+    const onRemove = vi.fn<ReconcileCallbacks["onRemove"]>();
     const reconciler = new RenderObjectReconciler({ onAdd, onUpdate, onRemove });
 
     reconciler.reconcile([makeObject("A", renderer), makeObject("B", renderer)]);
-    const handleB = onAdd.mock.calls.find((call) => call[0] === "B")![1] as RenderHandle;
+    const handleB = onAdd.mock.calls.find((call) => call[0] === "B")![1];
 
     reconciler.reconcile([makeObject("A", renderer)]);
 
@@ -105,9 +106,9 @@ describe("RenderObjectReconciler", () => {
 
   test("adds new keys while keeping existing ones", () => {
     const renderer = makeRenderer();
-    const onAdd = vi.fn();
-    const onUpdate = vi.fn();
-    const onRemove = vi.fn();
+    const onAdd = vi.fn<ReconcileCallbacks["onAdd"]>();
+    const onUpdate = vi.fn<ReconcileCallbacks["onUpdate"]>();
+    const onRemove = vi.fn<ReconcileCallbacks["onRemove"]>();
     const reconciler = new RenderObjectReconciler({ onAdd, onUpdate, onRemove });
 
     reconciler.reconcile([makeObject("A", renderer)]);
@@ -120,14 +121,14 @@ describe("RenderObjectReconciler", () => {
 
   test("disposeAll removes and disposes every handle", () => {
     const renderer = makeRenderer();
-    const onAdd = vi.fn();
-    const onUpdate = vi.fn();
-    const onRemove = vi.fn();
+    const onAdd = vi.fn<ReconcileCallbacks["onAdd"]>();
+    const onUpdate = vi.fn<ReconcileCallbacks["onUpdate"]>();
+    const onRemove = vi.fn<ReconcileCallbacks["onRemove"]>();
     const reconciler = new RenderObjectReconciler({ onAdd, onUpdate, onRemove });
 
     reconciler.reconcile([makeObject("A", renderer), makeObject("B", renderer)]);
-    const handleA = onAdd.mock.calls.find((call) => call[0] === "A")![1] as RenderHandle;
-    const handleB = onAdd.mock.calls.find((call) => call[0] === "B")![1] as RenderHandle;
+    const handleA = onAdd.mock.calls.find((call) => call[0] === "A")![1];
+    const handleB = onAdd.mock.calls.find((call) => call[0] === "B")![1];
 
     reconciler.disposeAll();
 
@@ -138,9 +139,9 @@ describe("RenderObjectReconciler", () => {
 
   test("handles empty reconcile after populating", () => {
     const renderer = makeRenderer();
-    const onAdd = vi.fn();
-    const onUpdate = vi.fn();
-    const onRemove = vi.fn();
+    const onAdd = vi.fn<ReconcileCallbacks["onAdd"]>();
+    const onUpdate = vi.fn<ReconcileCallbacks["onUpdate"]>();
+    const onRemove = vi.fn<ReconcileCallbacks["onRemove"]>();
     const reconciler = new RenderObjectReconciler({ onAdd, onUpdate, onRemove });
 
     reconciler.reconcile([makeObject("A", renderer)]);
@@ -152,13 +153,13 @@ describe("RenderObjectReconciler", () => {
 
   test("does not call dispose twice for handles removed then disposed via disposeAll", () => {
     const renderer = makeRenderer();
-    const onAdd = vi.fn();
-    const onUpdate = vi.fn();
-    const onRemove = vi.fn();
+    const onAdd = vi.fn<ReconcileCallbacks["onAdd"]>();
+    const onUpdate = vi.fn<ReconcileCallbacks["onUpdate"]>();
+    const onRemove = vi.fn<ReconcileCallbacks["onRemove"]>();
     const reconciler = new RenderObjectReconciler({ onAdd, onUpdate, onRemove });
 
     reconciler.reconcile([makeObject("A", renderer)]);
-    const handleA = onAdd.mock.calls.find((call) => call[0] === "A")![1] as RenderHandle;
+    const handleA = onAdd.mock.calls.find((call) => call[0] === "A")![1];
 
     reconciler.reconcile([]); // A removed
     expect(handleA[Symbol.dispose]).toHaveBeenCalledTimes(1);
@@ -170,13 +171,13 @@ describe("RenderObjectReconciler", () => {
 
   test("calls update with latest data", () => {
     const renderer = makeRenderer();
-    const onAdd = vi.fn();
-    const onUpdate = vi.fn();
-    const onRemove = vi.fn();
+    const onAdd = vi.fn<ReconcileCallbacks["onAdd"]>();
+    const onUpdate = vi.fn<ReconcileCallbacks["onUpdate"]>();
+    const onRemove = vi.fn<ReconcileCallbacks["onRemove"]>();
     const reconciler = new RenderObjectReconciler({ onAdd, onUpdate, onRemove });
 
     reconciler.reconcile([makeObject("A", renderer, { data: { version: 1 } })]);
-    const handleA = onAdd.mock.calls.find((call) => call[0] === "A")![1] as RenderHandle;
+    const handleA = onAdd.mock.calls.find((call) => call[0] === "A")![1];
 
     reconciler.reconcile([makeObject("A", renderer, { data: { version: 2 } })]);
 
@@ -185,16 +186,16 @@ describe("RenderObjectReconciler", () => {
   });
 
   test("reconciler is resilient when handles lack Symbol.dispose", () => {
-    const renderer = vi.fn(
+    const renderer = vi.fn<(data: unknown) => RenderHandle>(
       (_data: unknown): RenderHandle => ({
         dom: { tagName: "div" } as unknown as HTMLElement,
-        update: vi.fn(),
+        update: vi.fn<() => void>(),
         // Intentionally no Symbol.dispose
       }),
     );
-    const onAdd = vi.fn();
-    const onUpdate = vi.fn();
-    const onRemove = vi.fn();
+    const onAdd = vi.fn<ReconcileCallbacks["onAdd"]>();
+    const onUpdate = vi.fn<ReconcileCallbacks["onUpdate"]>();
+    const onRemove = vi.fn<ReconcileCallbacks["onRemove"]>();
     const reconciler = new RenderObjectReconciler({ onAdd, onUpdate, onRemove });
 
     reconciler.reconcile([makeObject("A", renderer)]);
@@ -205,27 +206,27 @@ describe("RenderObjectReconciler", () => {
   });
 });
 
+function makeEl(): HTMLElement {
+  return {
+    style: {} as CSSStyleDeclaration,
+    dataset: {} as DOMStringMap,
+  } as unknown as HTMLElement;
+}
+
+function makeObj(overrides?: Partial<RenderObject>): RenderObject {
+  return {
+    key: "test",
+    x: 10,
+    y: 20,
+    width: 100,
+    height: 50,
+    renderer: vi.fn<(data: unknown) => RenderHandle>(),
+    data: {},
+    ...overrides,
+  };
+}
+
 describe("positionElement", () => {
-  function makeEl(): HTMLElement {
-    return {
-      style: {} as CSSStyleDeclaration,
-      dataset: {} as DOMStringMap,
-    } as unknown as HTMLElement;
-  }
-
-  function makeObj(overrides?: Partial<RenderObject>): RenderObject {
-    return {
-      key: "test",
-      x: 10,
-      y: 20,
-      width: 100,
-      height: 50,
-      renderer: vi.fn() as unknown as RenderObject["renderer"],
-      data: {},
-      ...overrides,
-    };
-  }
-
   test("first call writes all style properties", () => {
     const el = makeEl();
     const obj = makeObj({ zIndex: 2, opacity: 0.5, testId: "my-el" });

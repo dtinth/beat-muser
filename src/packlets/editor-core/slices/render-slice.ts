@@ -38,6 +38,10 @@ import { GameModeRegistrySlice } from "./game-mode-registry-slice.ts";
 import { findMatchingRule } from "../coloring-rule-system.ts";
 import { $extensionDecorations } from "../../extensions/index.ts";
 
+function isNonEmptyString(value: string | null | undefined): value is string {
+  return value !== null && value !== undefined && value !== "";
+}
+
 function getGhostTargetColumn(
   entityId: string,
   originalColumn: TimelineColumn,
@@ -69,15 +73,15 @@ export class RenderSlice extends Slice {
 
   $waveformSlices!: ReadableAtom<WaveformSegment[]>;
 
-  private _specsDirty = true;
-  private _cachedSpecs: TimelineRenderSpec[] = [];
+  private specsDirty = true;
+  private cachedSpecs: TimelineRenderSpec[] = [];
 
-  private _renderEvents = createNanoEvents<{
+  private renderEvents = createNanoEvents<{
     renderRequested: () => void;
   }>();
 
-  private _lastWaveformFingerprint = "";
-  private _cachedWaveformSlices: WaveformSegment[] = [];
+  private lastWaveformFingerprint = "";
+  private cachedWaveformSlices: WaveformSegment[] = [];
 
   constructor(ctx: EditorContext) {
     super(ctx);
@@ -119,22 +123,22 @@ export class RenderSlice extends Slice {
   }
 
   requestRerender(): void {
-    this._specsDirty = true;
-    this._renderEvents.emit("renderRequested");
+    this.specsDirty = true;
+    this.renderEvents.emit("renderRequested");
   }
 
   /** Returns cached render specs, recomputing only when dirty. */
   getVisibleRenderObjects(): TimelineRenderSpec[] {
-    if (this._specsDirty) {
-      this._cachedSpecs = this.computeSpecs();
-      this._specsDirty = false;
+    if (this.specsDirty) {
+      this.cachedSpecs = this.computeSpecs();
+      this.specsDirty = false;
     }
-    return this._cachedSpecs;
+    return this.cachedSpecs;
   }
 
   /** Subscribe to render-requested events. Returns an unsubscribe function. */
   onRenderRequested(cb: () => void): () => void {
-    return this._renderEvents.on("renderRequested", cb);
+    return this.renderEvents.on("renderRequested", cb);
   }
 
   private computeSpecs(): TimelineRenderSpec[] {
@@ -179,7 +183,7 @@ export class RenderSlice extends Slice {
     // --- Column backgrounds (scroll layer) ---
     perf.measure("computeSpecs:misc", () => {
       for (let i = 0; i < columns.length; i++) {
-        const col = columns[i]!;
+        const col = columns[i];
         specs.push({
           key: `column-bg-${col.id}`,
           type: "column-bg",
@@ -250,7 +254,7 @@ export class RenderSlice extends Slice {
         const levelComponent = levelEntity
           ? entityManager.getComponent(levelEntity, LEVEL)
           : undefined;
-        if (levelComponent?.mode) {
+        if (levelComponent !== undefined && levelComponent.mode !== "") {
           const rules = gameModeRegistry.getColoringRulesForMode(levelComponent.mode);
           if (rules.length > 0) {
             const matched = findMatchingRule(rules, entity.components);
@@ -382,12 +386,7 @@ export class RenderSlice extends Slice {
       if (soflanColumns.length > 0) {
         for (const entity of entityManager.entitiesWithComponent(SOFLAN)) {
           const event = entityManager.getComponent(entity, EVENT);
-          const soflan = entityManager.getComponent(entity, SOFLAN) as
-            | {
-                scroll: { numerator: number; denominator: number };
-                skip: { numerator: number; denominator: number };
-              }
-            | undefined;
+          const soflan = entityManager.getComponent(entity, SOFLAN);
           const levelRef = entityManager.getComponent(entity, LEVEL_REF);
           if (!event || !soflan || !levelRef) continue;
           const pulse = event.y;
@@ -537,7 +536,7 @@ export class RenderSlice extends Slice {
         const soundChannelPath = soundChannel
           ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
           : undefined;
-        const soundChannelName = soundChannelPath
+        const soundChannelName = isNonEmptyString(soundChannelPath)
           ? (soundChannelPath.split("/").pop() ?? "?")
           : "?";
 
@@ -600,7 +599,7 @@ export class RenderSlice extends Slice {
     perf.measure("computeSpecs:decorations", () => {
       for (const dec of $extensionDecorations.get()) {
         if (dec.type === "arrow") {
-          const col = dec.levelId
+          const col = isNonEmptyString(dec.levelId)
             ? columns.find((c) => c.laneIndex === dec.lane && c.levelId === dec.levelId)
             : columns.find((c) => c.laneIndex === dec.lane);
           if (!col) continue;
@@ -613,14 +612,14 @@ export class RenderSlice extends Slice {
             y: y - 36,
             width: col.width,
             height: 24,
-            data: { angle: dec.angle, color: dec.color } as Record<string, unknown>,
+            data: { angle: dec.angle, color: dec.color },
             zIndex: 2,
           });
         } else if (dec.type === "line") {
-          const fromCol = dec.levelId
+          const fromCol = isNonEmptyString(dec.levelId)
             ? columns.find((c) => c.laneIndex === dec.from.lane && c.levelId === dec.levelId)
             : columns.find((c) => c.laneIndex === dec.from.lane);
-          const toCol = dec.levelId
+          const toCol = isNonEmptyString(dec.levelId)
             ? columns.find((c) => c.laneIndex === dec.to.lane && c.levelId === dec.levelId)
             : columns.find((c) => c.laneIndex === dec.to.lane);
           if (!fromCol || !toCol) continue;
@@ -685,14 +684,14 @@ export class RenderSlice extends Slice {
               cp2y: cp2Pixel ? cp2Pixel.y - containerY : undefined,
               color: dec.color,
               width: 8,
-            } as Record<string, unknown>,
+            },
             zIndex: 2,
           });
         } else if (dec.type === "rect") {
-          const fromCol = dec.levelId
+          const fromCol = isNonEmptyString(dec.levelId)
             ? columns.find((c) => c.laneIndex === dec.from.lane && c.levelId === dec.levelId)
             : columns.find((c) => c.laneIndex === dec.from.lane);
-          const toCol = dec.levelId
+          const toCol = isNonEmptyString(dec.levelId)
             ? columns.find((c) => c.laneIndex === dec.to.lane && c.levelId === dec.levelId)
             : columns.find((c) => c.laneIndex === dec.to.lane);
           if (!fromCol || !toCol) continue;
@@ -714,11 +713,11 @@ export class RenderSlice extends Slice {
             y: top,
             width: right - left,
             height: bottom - top,
-            data: { color: dec.color } as Record<string, unknown>,
+            data: { color: dec.color },
             zIndex: dec.zIndex,
           });
         } else if (dec.type === "marker") {
-          const col = dec.levelId
+          const col = isNonEmptyString(dec.levelId)
             ? columns.find((c) => c.laneIndex === dec.lane && c.levelId === dec.levelId)
             : columns.find((c) => c.laneIndex === dec.lane);
           if (!col) continue;
@@ -733,7 +732,7 @@ export class RenderSlice extends Slice {
             y,
             width: col.width,
             height: EVENT_HEIGHT,
-            data: { style: dec.style } as Record<string, unknown>,
+            data: { style: dec.style },
             zIndex: dec.zIndex,
           });
         }
@@ -788,7 +787,7 @@ export class RenderSlice extends Slice {
 
       // --- Column cursor indicator ---
       const cursorColumnId = cursor.$cursorColumnId.get();
-      if (cursorColumnId) {
+      if (isNonEmptyString(cursorColumnId)) {
         const col = columns.find((c) => c.id === cursorColumnId);
         if (col) {
           const indicatorHeight = 8;
@@ -806,7 +805,7 @@ export class RenderSlice extends Slice {
         }
       }
 
-      if (rawPulseStart >= rawPulseEnd) return specs;
+      if (rawPulseStart >= rawPulseEnd) return;
 
       // --- Measure lines ---
       const engine = timing.getTimingEngine();
@@ -881,27 +880,26 @@ export class RenderSlice extends Slice {
 
       // --- Selection box (during drag) ---
       const boxRect = boxSelection.getBoxRect();
-      if (boxRect) {
-        if (
-          boxRect.minCol >= 0 &&
-          boxRect.maxCol >= 0 &&
-          boxRect.minCol < columns.length &&
-          boxRect.maxCol < columns.length
-        ) {
-          const startCol = columns[boxRect.minCol]!;
-          const endCol = columns[boxRect.maxCol]!;
-          specs.push({
-            key: "selection-box",
-            type: "selection-box",
-            x: startCol.x,
-            y: trackHeight - boxRect.maxPulse * scaleY,
-            width: endCol.x + endCol.width - startCol.x,
-            height: (boxRect.maxPulse - boxRect.minPulse) * scaleY,
-            data: {},
-            testId: "selection-box",
-            zIndex: 4,
-          });
-        }
+      if (
+        boxRect &&
+        boxRect.minCol >= 0 &&
+        boxRect.maxCol >= 0 &&
+        boxRect.minCol < columns.length &&
+        boxRect.maxCol < columns.length
+      ) {
+        const startCol = columns[boxRect.minCol];
+        const endCol = columns[boxRect.maxCol];
+        specs.push({
+          key: "selection-box",
+          type: "selection-box",
+          x: startCol.x,
+          y: trackHeight - boxRect.maxPulse * scaleY,
+          width: endCol.x + endCol.width - startCol.x,
+          height: (boxRect.maxPulse - boxRect.minPulse) * scaleY,
+          data: {},
+          testId: "selection-box",
+          zIndex: 4,
+        });
       }
     }); // end computeSpecs:grid
 
@@ -912,7 +910,7 @@ export class RenderSlice extends Slice {
     // entityId and are excluded so an in-progress drag never flags an overlap.
     const cellCounts = new Map<string, { x: number; y: number; width: number; count: number }>();
     for (const spec of specs) {
-      if (spec.type !== "event-marker" || !spec.entityId) continue;
+      if (spec.type !== "event-marker" || !isNonEmptyString(spec.entityId)) continue;
       const key = `${spec.x}:${spec.y}`;
       const cell = cellCounts.get(key);
       if (cell) {
@@ -947,7 +945,7 @@ export class RenderSlice extends Slice {
     const entityManager = this.ctx.get(ProjectSlice).entityManager;
 
     const selectedChartId = chartSlice.$selectedChartId.get();
-    if (!selectedChartId) return [];
+    if (!isNonEmptyString(selectedChartId)) return [];
 
     const scaleY = viewport.getScaleY();
     const size = chartSlice.getChartSize();
@@ -997,8 +995,8 @@ export class RenderSlice extends Slice {
       fp += `|${sei.entityId}:${sei.pulse}:${sei.soundLane}:${sei.soundChannelId}:${eventChartSec}:${endChartSec}`;
     }
 
-    if (fp === this._lastWaveformFingerprint) return this._cachedWaveformSlices;
-    this._lastWaveformFingerprint = fp;
+    if (fp === this.lastWaveformFingerprint) return this.cachedWaveformSlices;
+    this.lastWaveformFingerprint = fp;
 
     const channelDurations = new Map<string, { durationSec: number }>();
     for (const sei of soundEventInputs) {
@@ -1006,7 +1004,7 @@ export class RenderSlice extends Slice {
       const channelPath = soundChannel
         ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
         : undefined;
-      if (channelPath && waveformMap.has(channelPath)) {
+      if (isNonEmptyString(channelPath) && waveformMap.has(channelPath)) {
         const wd = waveformMap.get(channelPath)!;
         channelDurations.set(sei.soundChannelId, { durationSec: wd.durationSec });
       }
@@ -1026,7 +1024,7 @@ export class RenderSlice extends Slice {
       const soundChannelPath = soundChannel
         ? entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.path
         : undefined;
-      if (!soundChannelPath || !waveformMap.has(soundChannelPath)) continue;
+      if (!isNonEmptyString(soundChannelPath) || !waveformMap.has(soundChannelPath)) continue;
 
       const wd = waveformMap.get(soundChannelPath)!;
       const offsetInfo = offsets.get(sei.entityId);
@@ -1078,7 +1076,7 @@ export class RenderSlice extends Slice {
       let groupColor: string | undefined;
       if (soundChannel) {
         const groupId = entityManager.getComponent(soundChannel, SOUND_CHANNEL)?.soundGroupId;
-        if (groupId) {
+        if (isNonEmptyString(groupId)) {
           const group = entityManager.get(groupId);
           if (group) {
             groupColor = entityManager.getComponent(group, SOUND_GROUP)?.color;
@@ -1095,14 +1093,14 @@ export class RenderSlice extends Slice {
           y: waveformBottomY - segment.rpStart - segment.rpLength,
           width: soundLaneCol.width - 8,
           rpLength: segment.rpLength,
-          color: groupColor || "#fff",
+          color: groupColor ?? "#fff",
           getWaveformPixels: () => segment.getWaveformPixels(),
         });
       }
     }
 
-    this._lastWaveformFingerprint = fp;
-    this._cachedWaveformSlices = slices;
+    this.lastWaveformFingerprint = fp;
+    this.cachedWaveformSlices = slices;
     return slices;
   }
 }

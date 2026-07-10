@@ -28,8 +28,37 @@ import type {
   ExporterManifest,
 } from "./types.ts";
 import type { DecorationSpec } from "../editor-core/decoration-system.ts";
+import type { GameModeLayout } from "../editor-core/lane-layouts.ts";
 import { globalCommandRegistry } from "../command-registry/index.ts";
 import type { ProjectFile } from "../project-format/index.ts";
+
+/** A single command entry as it appears in a fetched extension manifest. */
+interface RawExtensionCommand {
+  id: string;
+  title: string;
+  shortcut?: string;
+  applyProperty?: { key: string; value: unknown };
+}
+
+/**
+ * Shape of an extension manifest as fetched (and JSON-parsed) from a remote
+ * URL. Fields beyond {@link ExtensionManifest} are optional and validated at
+ * runtime in {@link ExtensionManager.fetchManifest}. The index signature keeps
+ * the object assignable to the `Record<string, unknown>` that
+ * {@link WorkerExtension} expects.
+ */
+type RawExtensionManifest = {
+  id: string;
+  name: string;
+  version: string;
+  worker?: string;
+  gameModes?: GameModeLayout[];
+  propertySets?: Record<string, PropertySet>;
+  coloringRules?: ColoringRule[];
+  exporters?: ExporterManifest[];
+  commands?: RawExtensionCommand[];
+  [key: string]: unknown;
+};
 
 export const BUILT_IN_EXTENSIONS = [BEAT_EXTENSION];
 
@@ -50,18 +79,24 @@ export type {
 };
 
 function isValidUrl(u: string): boolean {
-  try {
-    new URL(u);
-    return true;
-  } catch {
-    return false;
-  }
+  return URL.canParse(u);
+}
+
+/** Type guard narrowing a JSON-parsed value to the expected raw manifest shape. */
+function isRawExtensionManifest(value: unknown): value is RawExtensionManifest {
+  return typeof value === "object" && value !== null;
+}
+
+/** Parse a stored JSON string into an array of URL strings, ignoring anything malformed. */
+function parseStoredUrls(raw: string | null): string[] {
+  if (raw === null || raw === "") return [];
+  const parsed: unknown = JSON.parse(raw);
+  return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
 }
 
 function getSessionTrustedUrls(): Set<string> {
   try {
-    const raw = sessionStorage.getItem(SESSION_TRUST_KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+    return new Set(parseStoredUrls(sessionStorage.getItem(SESSION_TRUST_KEY)));
   } catch {
     return new Set();
   }
@@ -79,8 +114,7 @@ function storeSessionTrustedUrl(url: string): void {
 
 export function getAllExtensionUrls(): string[] {
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
+    return parseStoredUrls(localStorage.getItem(LOCAL_STORAGE_KEY));
   } catch {
     return [];
   }
@@ -146,7 +180,7 @@ export class ExtensionManager {
   /** Called from the route loader. Parses `?extension=`, resolves trust, fetches manifests. */
   async initFromUrl(pageUrl: string): Promise<void> {
     const params = new URLSearchParams(new URL(pageUrl).search);
-    const rawUrls = params.getAll("extension").filter(isValidUrl);
+    const rawUrls = params.getAll("extension").filter((u) => isValidUrl(u));
     const { trustedUrls, urlCleaned } = resolveTrust(rawUrls);
     if (urlCleaned) {
       const cleanUrl = new URL(pageUrl);
@@ -166,7 +200,11 @@ export class ExtensionManager {
   private async fetchManifest(url: string): Promise<Extension> {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const manifest = await res.json();
+    const parsed: unknown = await res.json();
+    if (!isRawExtensionManifest(parsed)) {
+      throw new Error(`Manifest must be a JSON object`);
+    }
+    const manifest = parsed;
     if (!manifest.id || !manifest.name) {
       throw new Error(`Missing id or name`);
     }
@@ -180,7 +218,7 @@ export class ExtensionManager {
 
     // Worker-based extension — fetch the worker source to create a blob worker
     // (avoids cross-origin and MIME type issues with direct Worker(url) construction)
-    if (manifest.worker) {
+    if (manifest.worker !== undefined && manifest.worker !== "") {
       const workerUrl = new URL(manifest.worker, url).href;
       try {
         const workerRes = await fetch(workerUrl);
@@ -199,16 +237,16 @@ export class ExtensionManager {
       manifest: { id: manifest.id, name: manifest.name, version: manifest.version },
       connect(h) {
         for (const [id, ps] of Object.entries(manifest.propertySets ?? {})) {
-          h.registerPropertySet(id, ps as PropertySet);
+          h.registerPropertySet(id, ps);
         }
         for (const rule of manifest.coloringRules ?? []) {
-          h.registerColoringRule(rule as ColoringRule);
+          h.registerColoringRule(rule);
         }
         for (const gm of manifest.gameModes ?? []) {
           h.registerGameMode(gm);
         }
         for (const rule of manifest.coloringRules ?? []) {
-          h.registerColoringRule(rule as ColoringRule);
+          h.registerColoringRule(rule);
         }
         for (const exporter of manifest.exporters ?? []) {
           h.registerExporter(exporter);
@@ -308,8 +346,16 @@ export class ExtensionManager {
     if (this.exporters.length === 0) return;
     const modes = new Set<string>();
     for (const entity of projectFile.entities) {
-      const level = entity.components.level as { mode: string } | undefined;
-      if (level?.mode) modes.add(level.mode);
+      const level: unknown = entity.components.level;
+      if (
+        typeof level === "object" &&
+        level !== null &&
+        "mode" in level &&
+        typeof level.mode === "string" &&
+        level.mode !== ""
+      ) {
+        modes.add(level.mode);
+      }
     }
     const fired = new Set<string>();
     for (const exporter of this.exporters) {
@@ -329,11 +375,11 @@ export class ExtensionManager {
   }
 }
 
-let _instance: ExtensionManager | null = null;
+let instance: ExtensionManager | null = null;
 
 export function getExtensionManager(): ExtensionManager {
-  if (!_instance) _instance = new ExtensionManager();
-  return _instance;
+  instance ??= new ExtensionManager();
+  return instance;
 }
 
 export { BEAT_EXTENSION } from "./beat-extension.ts";

@@ -39,6 +39,7 @@ export class EditorContext {
           `Available slices: ${[...this.slices.keys()].join(", ")}`,
       );
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- heterogeneous slice registry keyed by a runtime string; the downcast to the caller's slice type cannot be expressed statically and is guaranteed by the sliceKey match established at register time
     return slice as T;
   }
 }

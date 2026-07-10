@@ -156,9 +156,9 @@ export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvas
     const container = containerRef.current;
     const stickyLayer = stickyLayerRef.current;
     const scrollLayer = scrollLayerRef.current;
-    if (!container || !stickyLayer || !scrollLayer) return;
-
-    return mountScrollableCanvas(container, stickyLayer, scrollLayer, behaviorFactory);
+    return container !== null && stickyLayer !== null && scrollLayer !== null
+      ? mountScrollableCanvas(container, stickyLayer, scrollLayer, behaviorFactory)
+      : undefined;
   }, [behaviorFactory]);
 
   return (
@@ -202,6 +202,15 @@ export function ScrollableCanvas({ behavior: behaviorFactory }: ScrollableCanvas
   );
 }
 
+// iPadOS Safari (and desktop WebKit) still start a native text selection /
+// drag-image gesture on a mouse drag even with `user-select: none` and
+// `preventDefault()` on pointerdown. Cancelling `selectstart`/`dragstart`
+// directly is the reliable way to suppress it. The canvas has no selectable
+// text of its own, so this is safe.
+function preventDefault(e: Event) {
+  e.preventDefault();
+}
+
 function mountScrollableCanvas(
   container: HTMLDivElement,
   stickyLayer: HTMLDivElement,
@@ -220,7 +229,7 @@ function mountScrollableCanvas(
     onAdd(_key, handle, obj) {
       positionElement(handle.dom, obj);
       const layer = obj.layer === "sticky" ? stickyLayer : scrollLayer;
-      layer?.appendChild(handle.dom);
+      layer?.append(handle.dom);
     },
     onUpdate(_key, handle, obj) {
       positionElement(handle.dom, obj);
@@ -247,16 +256,12 @@ function mountScrollableCanvas(
       if (isInGetVisibleObjects) {
         throw new Error("Cannot call ctx.refresh() from within getVisibleObjects()");
       }
-      if (pendingRaf === null) {
-        pendingRaf = requestAnimationFrame(doRender);
-      }
+      pendingRaf ??= requestAnimationFrame(doRender);
     },
     setScroll({ x, y }) {
       pendingScrollLeft = x;
       pendingScrollTop = y;
-      if (pendingRaf === null) {
-        pendingRaf = requestAnimationFrame(doRender);
-      }
+      pendingRaf ??= requestAnimationFrame(doRender);
     },
     get scrollLeft() {
       return container.scrollLeft;
@@ -284,14 +289,10 @@ function mountScrollableCanvas(
       // Size both layers so that onConnected and pending scroll have a
       // meaningful scrollable area to work with.
       const contentSize = behaviorInstance.getContentSize();
-      if (stickyLayer) {
-        stickyLayer.style.width = `${contentSize.width}px`;
-        stickyLayer.style.height = "0px";
-      }
-      if (scrollLayer) {
-        scrollLayer.style.width = `${contentSize.width}px`;
-        scrollLayer.style.height = `${contentSize.height}px`;
-      }
+      stickyLayer.style.width = `${contentSize.width}px`;
+      stickyLayer.style.height = "0px";
+      scrollLayer.style.width = `${contentSize.width}px`;
+      scrollLayer.style.height = `${contentSize.height}px`;
 
       if (!hasConnected) {
         hasConnected = true;
@@ -326,9 +327,7 @@ function mountScrollableCanvas(
       container.clientWidth,
       container.clientHeight,
     );
-    if (pendingRaf === null) {
-      pendingRaf = requestAnimationFrame(doRender);
-    }
+    pendingRaf ??= requestAnimationFrame(doRender);
   }
 
   function handlePointerEvent(e: PointerEvent) {
@@ -339,13 +338,6 @@ function mountScrollableCanvas(
     const contentY = viewportY + container.scrollTop;
     behaviorInstance.onPointerEvent?.(e, contentX, contentY);
   }
-
-  // iPadOS Safari (and desktop WebKit) still start a native text selection /
-  // drag-image gesture on a mouse drag even with `user-select: none` and
-  // `preventDefault()` on pointerdown. Cancelling `selectstart`/`dragstart`
-  // directly is the reliable way to suppress it. The canvas has no selectable
-  // text of its own, so this is safe.
-  const preventDefault = (e: Event) => e.preventDefault();
 
   container.addEventListener("scroll", handleScroll, { passive: true });
   container.addEventListener("selectstart", preventDefault);
@@ -363,9 +355,7 @@ function mountScrollableCanvas(
       lastViewportHeight = vh;
       behaviorInstance.onScroll?.(container.scrollLeft, container.scrollTop, vw, vh);
     }
-    if (pendingRaf === null) {
-      pendingRaf = requestAnimationFrame(doRender);
-    }
+    pendingRaf ??= requestAnimationFrame(doRender);
   });
   resizeObserver.observe(container);
 
@@ -418,7 +408,7 @@ export function positionElement(el: HTMLElement, obj: RenderObject) {
     if (obj.opacity !== undefined) {
       el.style.opacity = String(obj.opacity);
     }
-    if (obj.testId) {
+    if (obj.testId !== undefined && obj.testId !== "") {
       el.dataset.testid = obj.testId;
     }
     el.dataset.key = obj.key;
@@ -452,23 +442,23 @@ export function positionElement(el: HTMLElement, obj: RenderObject) {
     prev.height = obj.height;
   }
   if (prev.zIndex !== obj.zIndex) {
-    if (obj.zIndex !== undefined) {
-      el.style.zIndex = String(obj.zIndex);
-    } else {
+    if (obj.zIndex === undefined) {
       el.style.removeProperty("z-index");
+    } else {
+      el.style.zIndex = String(obj.zIndex);
     }
     prev.zIndex = obj.zIndex;
   }
   if (prev.opacity !== obj.opacity) {
-    if (obj.opacity !== undefined) {
-      el.style.opacity = String(obj.opacity);
-    } else {
+    if (obj.opacity === undefined) {
       el.style.removeProperty("opacity");
+    } else {
+      el.style.opacity = String(obj.opacity);
     }
     prev.opacity = obj.opacity;
   }
   if (prev.testId !== obj.testId) {
-    if (obj.testId) {
+    if (obj.testId !== undefined && obj.testId !== "") {
       el.dataset.testid = obj.testId;
     }
     prev.testId = obj.testId;

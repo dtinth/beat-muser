@@ -49,7 +49,7 @@ export class SoundColumnsSlice extends Slice {
         containsEntity: (entity) => getSoundLane(entity) === i,
         placementHandler: (pulse) => {
           const channelId = this.ctx.get(SoundChannelSlice).$selectedSoundChannelId.get();
-          if (!channelId) return null;
+          if (channelId === null || channelId === "") return null;
           return new EntityBuilder()
             .with(EVENT, { y: pulse })
             .with(SOUND_EVENT, { soundLane: i, soundChannelId: channelId, command: "play" })
@@ -77,13 +77,17 @@ function applyKeysoundCascade(
   newSoundLane: number,
 ): void {
   const oldPulse = getPulse(soundEntity)!;
-  const chartRef = soundEntity.components[CHART_REF.key] as { chartId: string } | undefined;
+  const chartRef = (soundEntity.components as Record<string, { chartId: string } | undefined>)[
+    CHART_REF.key
+  ];
   if (!chartRef) return;
   for (const noteEntity of em.entitiesWithComponent(KEYSOUND)) {
-    const ks = noteEntity.components[KEYSOUND.key] as { soundLane: number };
+    const ks = (noteEntity.components as Record<string, { soundLane: number }>)[KEYSOUND.key];
     if (ks.soundLane !== oldSoundLane) continue;
     if (getPulse(noteEntity) !== oldPulse) continue;
-    const nr = noteEntity.components[CHART_REF.key] as { chartId: string } | undefined;
+    const nr = (noteEntity.components as Record<string, { chartId: string } | undefined>)[
+      CHART_REF.key
+    ];
     if (nr?.chartId !== chartRef.chartId) continue;
     batch.setKeysoundLane(noteEntity.id, newSoundLane);
   }

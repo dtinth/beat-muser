@@ -1,5 +1,4 @@
 import { Slice } from "../slice.ts";
-import type { EditorContext } from "../editor-context.ts";
 import { ZoomSlice } from "./zoom-slice.ts";
 import { ViewportSlice } from "./viewport-slice.ts";
 import { CursorSlice } from "./cursor-slice.ts";
@@ -11,10 +10,6 @@ import { BASE_SCALE_Y, ZOOM_PRESETS } from "../types.ts";
 
 export class ViewCommandSlice extends Slice {
   static readonly sliceKey = "viewCommand";
-
-  constructor(ctx: EditorContext) {
-    super(ctx);
-  }
 
   setZoom(zoom: number): void {
     const zoomSlice = this.ctx.get(ZoomSlice);
@@ -28,13 +23,13 @@ export class ViewCommandSlice extends Slice {
   zoomIn(): void {
     const current = this.ctx.get(ZoomSlice).$zoom.get();
     const next = ZOOM_PRESETS.find((z) => z > current);
-    if (next) this.setZoom(next);
+    if (next !== undefined) this.setZoom(next);
   }
 
   zoomOut(): void {
     const current = this.ctx.get(ZoomSlice).$zoom.get();
-    const prev = [...ZOOM_PRESETS].reverse().find((z) => z < current);
-    if (prev) this.setZoom(prev);
+    const prev = [...ZOOM_PRESETS].toReversed().find((z) => z < current);
+    if (prev !== undefined) this.setZoom(prev);
   }
 
   navigateSnap(direction: "up" | "down"): void {
@@ -49,11 +44,11 @@ export class ViewCommandSlice extends Slice {
     if (direction === "up") {
       const points = engine.getSnapPoints(snap, { start: currentPulse, end: size });
       const next = points.find((p) => p > currentPulse);
-      targetPulse = next !== undefined ? next : currentPulse;
+      targetPulse = next ?? currentPulse;
     } else {
       const points = engine.getSnapPoints(snap, { start: 0, end: currentPulse });
-      const prev = points.length > 0 ? points[points.length - 1] : undefined;
-      targetPulse = prev !== undefined ? prev : currentPulse;
+      const prev = points.length > 0 ? points.at(-1) : undefined;
+      targetPulse = prev ?? currentPulse;
     }
 
     const scaleY = viewport.getScaleY();
@@ -76,18 +71,18 @@ export class ViewCommandSlice extends Slice {
     const current = cursor.$cursorColumnId.get();
     if (direction === "right") {
       if (current === null) {
-        cursor.$cursorColumnId.set(placeable[0]!.id);
+        cursor.$cursorColumnId.set(placeable[0].id);
       } else {
         const idx = placeable.findIndex((c) => c.id === current);
         if (idx < placeable.length - 1) {
-          cursor.$cursorColumnId.set(placeable[idx + 1]!.id);
+          cursor.$cursorColumnId.set(placeable[idx + 1].id);
         }
       }
     } else {
       if (current === null) return;
       const idx = placeable.findIndex((c) => c.id === current);
       if (idx > 0) {
-        cursor.$cursorColumnId.set(placeable[idx - 1]!.id);
+        cursor.$cursorColumnId.set(placeable[idx - 1].id);
       }
     }
   }

@@ -78,7 +78,7 @@ export class EntityComponentType<T extends TSchema> {
 
 export class EntityManager {
   private entities = new Map<string, Entity>();
-  private _mutationVersion = 1;
+  private mutationVersion = 1;
   $mutationVersion = atom<number>(1);
 
   static from(array: Entity[]): EntityManager {
@@ -99,14 +99,14 @@ export class EntityManager {
 
   insert(entity: Entity): void {
     this.entities.set(entity.id, entity);
-    this._mutationVersion++;
-    this.$mutationVersion.set(this._mutationVersion);
+    this.mutationVersion++;
+    this.$mutationVersion.set(this.mutationVersion);
   }
 
   remove(id: string): void {
     this.entities.delete(id);
-    this._mutationVersion++;
-    this.$mutationVersion.set(this._mutationVersion);
+    this.mutationVersion++;
+    this.$mutationVersion.set(this.mutationVersion);
   }
 
   /**
@@ -118,8 +118,8 @@ export class EntityManager {
     if (!entity) return;
     entity.components = {};
     entity.version = uuidv7();
-    this._mutationVersion++;
-    this.$mutationVersion.set(this._mutationVersion);
+    this.mutationVersion++;
+    this.$mutationVersion.set(this.mutationVersion);
   }
 
   /**
@@ -127,12 +127,12 @@ export class EntityManager {
    */
   restore(entity: Entity): void {
     this.entities.set(entity.id, entity);
-    this._mutationVersion++;
-    this.$mutationVersion.set(this._mutationVersion);
+    this.mutationVersion++;
+    this.$mutationVersion.set(this.mutationVersion);
   }
 
   getMutationVersion(): number {
-    return this._mutationVersion;
+    return this.mutationVersion;
   }
 
   /**
@@ -156,7 +156,11 @@ export class EntityManager {
     entity: Entity,
     component: EntityComponentType<T>,
   ): Static<T> | undefined {
-    const value = entity.components[component.key];
+    const value: unknown = entity.components[component.key];
+    // The component bag is dynamically typed (`Type.Any()`), so the mapping from
+    // a runtime key to its compile-time `Static<T>` cannot be witnessed by the
+    // type system here; this generic cast is the ECS boundary and is unavoidable.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion, typescript/no-unsafe-return -- generic ECS component cast, see comment above
     return value as Static<T> | undefined;
   }
 }

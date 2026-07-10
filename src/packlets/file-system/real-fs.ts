@@ -1,25 +1,25 @@
 import type { FileEntry, ProjectFileSystem } from "./types.ts";
 
-export function createFileSystemFromHandle(handle: FileSystemDirectoryHandle): ProjectFileSystem {
-  async function getEntries(dir: FileSystemDirectoryHandle, prefix = ""): Promise<FileEntry[]> {
-    const entries: FileEntry[] = [];
-    for await (const entry of dir.values()) {
-      const path = prefix ? `${prefix}/${entry.name}` : entry.name;
-      if (entry.kind === "file") {
-        const file = await entry.getFile();
-        entries.push({
-          name: entry.name,
-          path,
-          size: file.size,
-          lastModified: new Date(file.lastModified),
-        });
-      } else if (entry.kind === "directory") {
-        entries.push(...(await getEntries(entry, path)));
-      }
+async function getEntries(dir: FileSystemDirectoryHandle, prefix = ""): Promise<FileEntry[]> {
+  const entries: FileEntry[] = [];
+  for await (const entry of dir.values()) {
+    const path = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.kind === "file") {
+      const file = await entry.getFile();
+      entries.push({
+        name: entry.name,
+        path,
+        size: file.size,
+        lastModified: new Date(file.lastModified),
+      });
+    } else if (entry.kind === "directory") {
+      entries.push(...(await getEntries(entry, path)));
     }
-    return entries;
   }
+  return entries;
+}
 
+export function createFileSystemFromHandle(handle: FileSystemDirectoryHandle): ProjectFileSystem {
   async function getFileHandle(
     path: string,
     options?: FileSystemGetFileOptions,
@@ -27,14 +27,15 @@ export function createFileSystemFromHandle(handle: FileSystemDirectoryHandle): P
     const parts = path.split("/");
     let dir = handle;
     for (let i = 0; i < parts.length - 1; i++) {
+      // oxlint-disable-next-line no-await-in-loop -- each getDirectoryHandle depends on the handle resolved by the previous iteration, so the path walk is inherently sequential.
       dir = await dir.getDirectoryHandle(parts[i], { create: true });
     }
-    return dir.getFileHandle(parts[parts.length - 1], options);
+    return dir.getFileHandle(parts.at(-1) ?? path, options);
   }
 
   return {
     readOnly: false,
-    async listFiles() {
+    listFiles() {
       return getEntries(handle);
     },
     async readFile(path: string) {
@@ -56,9 +57,10 @@ export function createFileSystemFromHandle(handle: FileSystemDirectoryHandle): P
       const parts = path.split("/");
       let dir = handle;
       for (let i = 0; i < parts.length - 1; i++) {
+        // oxlint-disable-next-line no-await-in-loop -- each getDirectoryHandle depends on the handle resolved by the previous iteration, so the path walk is inherently sequential.
         dir = await dir.getDirectoryHandle(parts[i]);
       }
-      await dir.removeEntry(parts[parts.length - 1]);
+      await dir.removeEntry(parts.at(-1) ?? path);
     },
   };
 }

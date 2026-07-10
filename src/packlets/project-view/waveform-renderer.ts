@@ -26,9 +26,10 @@ function centroidColor(value: number): string {
   return HUE_LUT[idx];
 }
 
-export function createWaveformRenderer(): (data: unknown) => RenderHandle<WaveformRendererData> {
-  return (data: unknown) => {
-    const d = data as WaveformRendererData;
+export function createWaveformRenderer(): (
+  data: WaveformRendererData,
+) => RenderHandle<WaveformRendererData> {
+  return (d: WaveformRendererData) => {
     const canvas = document.createElement("canvas");
     canvas.style.pointerEvents = "none";
     canvas.style.display = "block";
@@ -41,8 +42,7 @@ export function createWaveformRenderer(): (data: unknown) => RenderHandle<Wavefo
 
     return {
       dom: canvas,
-      update(newData: unknown) {
-        const nd = newData as WaveformRendererData;
+      update(nd: WaveformRendererData) {
         if (
           nd.peak === last.peak &&
           nd.rms === last.rms &&

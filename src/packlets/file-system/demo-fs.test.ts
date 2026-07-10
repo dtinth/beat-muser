@@ -19,12 +19,14 @@ test("exposes paths relative to the example directory", async () => {
 
 test("throws for missing file", async () => {
   const fs = createFileSystemFromExample("recursivedescent");
-  await expect(fs.readText("nonexistent.json")).rejects.toThrow();
+  await expect(fs.readText("nonexistent.json")).rejects.toThrow("File not found");
 });
 
 test("is read-only", async () => {
   const fs = createFileSystemFromExample("recursivedescent");
   expect(fs.readOnly).toBe(true);
-  await expect(fs.writeFile("x.json", "{}")).rejects.toThrow();
-  await expect(fs.deleteFile("beat-muser-project.json")).rejects.toThrow();
+  await expect(fs.writeFile("x.json", "{}")).rejects.toThrow("Demo file system is read-only");
+  await expect(fs.deleteFile("beat-muser-project.json")).rejects.toThrow(
+    "Demo file system is read-only",
+  );
 });

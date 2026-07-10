@@ -60,7 +60,9 @@ function PropertyControl({
             <button
               key={String(opt.value)}
               type="button"
-              onClick={() => onChange(opt.value)}
+              onClick={() => {
+                onChange(opt.value);
+              }}
               style={{
                 padding: "3px 10px",
                 fontSize: 11,
@@ -85,8 +87,8 @@ function PropertyControl({
     const min = def.ui?.min ?? 0;
     const max = def.ui?.max ?? 1;
     const step = def.ui?.step ?? 0.01;
-    const rawNumVal = value === MULTIPLE ? (min as number) : Number(value);
-    const numVal = Number.isFinite(rawNumVal) ? rawNumVal : (min as number);
+    const rawNumVal = value === MULTIPLE ? min : Number(value);
+    const numVal = Number.isFinite(rawNumVal) ? rawNumVal : min;
     return (
       <Flex align="center" style={{ gap: 6 }}>
         <input
@@ -95,7 +97,9 @@ function PropertyControl({
           max={max}
           step={step}
           value={numVal}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={(e) => {
+            onChange(Number(e.target.value));
+          }}
           style={{ flex: 1, accentColor: "var(--accent-9)" }}
         />
         <Text
@@ -171,7 +175,9 @@ function PropertyControl({
     <input
       type="text"
       value={value === MULTIPLE ? "" : toDisplayString(value)}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => {
+        onChange(e.target.value);
+      }}
       placeholder={value === MULTIPLE ? "(multiple)" : undefined}
       style={{
         width: "100%",
@@ -195,13 +201,15 @@ export function PropertyInspector({ controller }: { controller: EditorController
 
   // Get selected level's game mode
   const em = controller.getEntityManager();
-  const levelEntity = selectedLevelId ? em.get(selectedLevelId) : undefined;
+  const levelEntity =
+    selectedLevelId !== null && selectedLevelId !== "" ? em.get(selectedLevelId) : undefined;
   const levelComponent = levelEntity ? em.getComponent(levelEntity, LEVEL) : undefined;
   const mode = levelComponent?.mode;
 
   // Get property sets for this game mode
   const registry = controller.ctx.get(GameModeRegistrySlice);
-  const propertySets = mode ? registry.getPropertySetsForMode(mode) : [];
+  const propertySets =
+    mode !== undefined && mode !== "" ? registry.getPropertySetsForMode(mode) : [];
 
   // Filter selected entities to those in the active level
   const selectedEntities = [...selection]
@@ -226,7 +234,7 @@ export function PropertyInspector({ controller }: { controller: EditorController
     controller.applyAction(new BatchEditEntitiesUserAction(controller.ctx, edits));
   };
 
-  if (!mode) {
+  if (mode === undefined || mode === "") {
     return (
       <Text size="1" color="gray">
         Select a level to view properties
@@ -250,7 +258,9 @@ export function PropertyInspector({ controller }: { controller: EditorController
             {ps.label}
           </Text>
           {Object.entries(ps.properties).map(([propKey, def]) => {
-            const entityComponents = selectedEntities.map((e) => e.components[def.component]);
+            const entityComponents = selectedEntities.map(
+              (e): unknown => e.components[def.component],
+            );
             const value = getControlValue(propKey, def, entityComponents);
             return (
               <Flex key={propKey} direction="column" style={{ gap: 2 }}>
@@ -260,7 +270,9 @@ export function PropertyInspector({ controller }: { controller: EditorController
                 <PropertyControl
                   def={def}
                   value={value}
-                  onChange={(v) => handleChange(propKey, def, v)}
+                  onChange={(v) => {
+                    handleChange(propKey, def, v);
+                  }}
                 />
               </Flex>
             );

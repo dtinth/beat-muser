@@ -16,7 +16,7 @@ function collectAllEvents(playback: ReturnType<typeof createPlayback>): Playback
   let newEvents = playback.getEvents(999);
   while (newEvents.length > 0) {
     events.push(...newEvents);
-    newEvents = playback.getEvents(events[events.length - 1]!.triggerPlaybackSec + 999);
+    newEvents = playback.getEvents(events.at(-1)!.triggerPlaybackSec + 999);
   }
   return events;
 }
@@ -160,7 +160,7 @@ describe("createPlayback", () => {
     // lane 0: play at 0 + continue at 480 → coalesced into one
     // lane 1: play at 0 + continue at 960 → coalesced into one
     expect(events).toHaveLength(2);
-    const sorted = [...events].sort((a, b) => a.triggerPlaybackSec - b.triggerPlaybackSec);
+    const sorted = [...events].toSorted((a, b) => a.triggerPlaybackSec - b.triggerPlaybackSec);
     expect(sorted[0].triggerPlaybackSec).toBe(0);
     expect(sorted[1].triggerPlaybackSec).toBe(0);
   });

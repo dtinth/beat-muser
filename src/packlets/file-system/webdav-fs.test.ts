@@ -10,6 +10,13 @@ afterEach(() => {
   globalThis.fetch = realFetch;
 });
 
+function encodePath(rel: string): string {
+  return rel
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
 interface Captured {
   method: string;
   path: string;
@@ -29,13 +36,9 @@ function installServer(seed: Record<string, string> = {}) {
   }
   const requests: Captured[] = [];
 
-  function encodePath(rel: string): string {
-    return rel.split("/").map(encodeURIComponent).join("/");
-  }
-
   function relPathFromUrl(url: string): string {
     const pathname = decodeURIComponent(new URL(url).pathname);
-    return pathname.slice(BASE_PATH.length).replace(/^\/+|\/+$/g, "");
+    return pathname.slice(BASE_PATH.length).replaceAll(/^\/+|\/+$/gu, "");
   }
 
   function multistatusFor(dir: string): string {
@@ -78,7 +81,7 @@ function installServer(seed: Record<string, string> = {}) {
     return `<?xml version="1.0" encoding="utf-8" ?>\n<D:multistatus xmlns:D="DAV:">${responses.join("")}</D:multistatus>`;
   }
 
-  globalThis.fetch = (async (input: string | URL, init?: RequestInit) => {
+  globalThis.fetch = ((input: string | URL, init?: RequestInit): Promise<Response> => {
     const url = String(input);
     const method = (init?.method ?? "GET").toUpperCase();
     const headers = new Headers(init?.headers);
@@ -92,16 +95,18 @@ function installServer(seed: Record<string, string> = {}) {
 
     switch (method) {
       case "PROPFIND":
-        return new Response(multistatusFor(path), {
-          status: 207,
-          headers: { "content-type": "application/xml" },
-        });
+        return Promise.resolve(
+          new Response(multistatusFor(path), {
+            status: 207,
+            headers: { "content-type": "application/xml" },
+          }),
+        );
       case "GET": {
         const bytes = files.get(path);
-        if (!bytes) return new Response("Not Found", { status: 404 });
+        if (!bytes) return Promise.resolve(new Response("Not Found", { status: 404 }));
         // Uint8Array<ArrayBufferLike> isn't accepted as BodyInit under the
         // strict lib.dom typings; the bytes are a valid body at runtime.
-        return new Response(bytes as unknown as BodyInit, { status: 200 });
+        return Promise.resolve(new Response(bytes as unknown as BodyInit, { status: 200 }));
       }
       case "PUT": {
         const body = init?.body;
@@ -110,15 +115,15 @@ function installServer(seed: Record<string, string> = {}) {
             ? new TextEncoder().encode(body)
             : new Uint8Array(body as ArrayBuffer);
         files.set(path, bytes);
-        return new Response(null, { status: 201 });
+        return Promise.resolve(new Response(null, { status: 201 }));
       }
       case "DELETE": {
-        if (!files.has(path)) return new Response(null, { status: 404 });
+        if (!files.has(path)) return Promise.resolve(new Response(null, { status: 404 }));
         files.delete(path);
-        return new Response(null, { status: 204 });
+        return Promise.resolve(new Response(null, { status: 204 }));
       }
       default:
-        return new Response("Method Not Allowed", { status: 405 });
+        return Promise.resolve(new Response("Method Not Allowed", { status: 405 }));
     }
   }) as typeof fetch;
 

@@ -9,54 +9,52 @@ import { CommandRegistry, CommandSet, KeyboardShortcutHandler } from "./index.ts
 
 // Polyfill KeyboardEvent for Node.js test environment (tinykeys uses instanceof)
 beforeAll(() => {
-  if (typeof globalThis.KeyboardEvent === "undefined") {
-    globalThis.KeyboardEvent = class KeyboardEvent {
-      key: string;
-      code: string;
-      ctrlKey: boolean;
-      metaKey: boolean;
-      shiftKey: boolean;
-      altKey: boolean;
-      defaultPrevented = false;
+  globalThis.KeyboardEvent ??= class KeyboardEvent {
+    key: string;
+    code: string;
+    ctrlKey: boolean;
+    metaKey: boolean;
+    shiftKey: boolean;
+    altKey: boolean;
+    defaultPrevented = false;
 
-      constructor(
-        _type: string,
-        init: {
-          key?: string;
-          code?: string;
-          ctrlKey?: boolean;
-          metaKey?: boolean;
-          shiftKey?: boolean;
-          altKey?: boolean;
-        } = {},
-      ) {
-        this.key = init.key ?? "";
-        this.code = init.code ?? "";
-        this.ctrlKey = init.ctrlKey ?? false;
-        this.metaKey = init.metaKey ?? false;
-        this.shiftKey = init.shiftKey ?? false;
-        this.altKey = init.altKey ?? false;
-      }
+    constructor(
+      _type: string,
+      init: {
+        key?: string;
+        code?: string;
+        ctrlKey?: boolean;
+        metaKey?: boolean;
+        shiftKey?: boolean;
+        altKey?: boolean;
+      } = {},
+    ) {
+      this.key = init.key ?? "";
+      this.code = init.code ?? "";
+      this.ctrlKey = init.ctrlKey ?? false;
+      this.metaKey = init.metaKey ?? false;
+      this.shiftKey = init.shiftKey ?? false;
+      this.altKey = init.altKey ?? false;
+    }
 
-      preventDefault() {
-        this.defaultPrevented = true;
-      }
+    preventDefault() {
+      this.defaultPrevented = true;
+    }
 
-      getModifierState(key: string) {
-        if (key === "Meta") return this.metaKey;
-        if (key === "Control") return this.ctrlKey;
-        if (key === "Shift") return this.shiftKey;
-        if (key === "Alt") return this.altKey;
-        return false;
-      }
-    } as unknown as typeof KeyboardEvent;
-  }
+    getModifierState(key: string) {
+      if (key === "Meta") return this.metaKey;
+      if (key === "Control") return this.ctrlKey;
+      if (key === "Shift") return this.shiftKey;
+      if (key === "Alt") return this.altKey;
+      return false;
+    }
+  } as unknown as typeof KeyboardEvent;
 });
 
 describe("CommandRegistry", () => {
   test("registers a command and executes it", () => {
     const registry = new CommandRegistry();
-    const execute = vi.fn();
+    const execute = vi.fn<() => void>();
 
     registry.register({ id: "test", title: "Test", execute });
     registry.execute("test");
@@ -66,17 +64,19 @@ describe("CommandRegistry", () => {
 
   test("throws when registering duplicate command id", () => {
     const registry = new CommandRegistry();
-    registry.register({ id: "test", title: "Test", execute: vi.fn() });
+    registry.register({ id: "test", title: "Test", execute: vi.fn<() => void>() });
 
     expect(() => {
-      registry.register({ id: "test", title: "Test 2", execute: vi.fn() });
+      registry.register({ id: "test", title: "Test 2", execute: vi.fn<() => void>() });
     }).toThrow('Command "test" is already registered');
   });
 
   test("throws when executing unknown command", () => {
     const registry = new CommandRegistry();
 
-    expect(() => registry.execute("unknown")).toThrow('Command "unknown" not found');
+    expect(() => {
+      registry.execute("unknown");
+    }).toThrow('Command "unknown" not found');
   });
 
   test("get returns undefined for unknown command", () => {
@@ -86,7 +86,7 @@ describe("CommandRegistry", () => {
 
   test("get returns the registered command", () => {
     const registry = new CommandRegistry();
-    const command = { id: "test", title: "Test", execute: vi.fn() };
+    const command = { id: "test", title: "Test", execute: vi.fn<() => void>() };
 
     registry.register(command);
 
@@ -95,8 +95,8 @@ describe("CommandRegistry", () => {
 
   test("getAll returns all registered commands", () => {
     const registry = new CommandRegistry();
-    const a = { id: "a", title: "A", execute: vi.fn() };
-    const b = { id: "b", title: "B", execute: vi.fn() };
+    const a = { id: "a", title: "A", execute: vi.fn<() => void>() };
+    const b = { id: "b", title: "B", execute: vi.fn<() => void>() };
 
     registry.register(a);
     registry.register(b);
@@ -111,13 +111,15 @@ describe("CommandRegistry", () => {
     const unregister = registry.register({
       id: "test",
       title: "Test",
-      execute: vi.fn(),
+      execute: vi.fn<() => void>(),
     });
 
     unregister();
 
     expect(registry.get("test")).toBeUndefined();
-    expect(() => registry.execute("test")).toThrow();
+    expect(() => {
+      registry.execute("test");
+    }).toThrow('Command "test" not found');
   });
 
   test("findByShortcut returns command matching shortcut", () => {
@@ -126,7 +128,7 @@ describe("CommandRegistry", () => {
       id: "zoomIn",
       title: "Zoom In",
       shortcut: "Equal",
-      execute: vi.fn(),
+      execute: vi.fn<() => void>(),
     };
 
     registry.register(command);
@@ -137,18 +139,18 @@ describe("CommandRegistry", () => {
 
   test("subscribe is notified on register and unregister", () => {
     const registry = new CommandRegistry();
-    const callback = vi.fn();
+    const callback = vi.fn<() => void>();
 
     const unsub = registry.subscribe(callback);
     expect(callback).not.toHaveBeenCalled();
 
-    registry.register({ id: "a", title: "A", execute: vi.fn() });
+    registry.register({ id: "a", title: "A", execute: vi.fn<() => void>() });
     expect(callback).toHaveBeenCalledTimes(1);
 
     const unregister = registry.register({
       id: "b",
       title: "B",
-      execute: vi.fn(),
+      execute: vi.fn<() => void>(),
     });
     expect(callback).toHaveBeenCalledTimes(2);
 
@@ -163,8 +165,8 @@ describe("CommandSet", () => {
   test("registers multiple commands to a registry", () => {
     const registry = new CommandRegistry();
     const set = new CommandSet();
-    const a = { id: "a", title: "A", execute: vi.fn() };
-    const b = { id: "b", title: "B", execute: vi.fn() };
+    const a = { id: "a", title: "A", execute: vi.fn<() => void>() };
+    const b = { id: "b", title: "B", execute: vi.fn<() => void>() };
 
     set.add(a);
     set.add(b);
@@ -178,10 +180,10 @@ describe("CommandSet", () => {
 
   test("unregistering a set removes only its commands", () => {
     const registry = new CommandRegistry();
-    registry.register({ id: "pre", title: "Pre", execute: vi.fn() });
+    registry.register({ id: "pre", title: "Pre", execute: vi.fn<() => void>() });
 
     const set = new CommandSet();
-    set.add({ id: "a", title: "A", execute: vi.fn() });
+    set.add({ id: "a", title: "A", execute: vi.fn<() => void>() });
     const unregister = set.registerTo(registry);
 
     expect(registry.getAll()).toHaveLength(2);
@@ -192,21 +194,21 @@ describe("CommandSet", () => {
   });
 });
 
-describe("KeyboardShortcutHandler", () => {
-  function keyEvent(
-    init: {
-      key?: string;
-      code?: string;
-      ctrlKey?: boolean;
-      metaKey?: boolean;
-    } = {},
-  ): KeyboardEvent {
-    return new KeyboardEvent("keydown", init);
-  }
+function keyEvent(
+  init: {
+    key?: string;
+    code?: string;
+    ctrlKey?: boolean;
+    metaKey?: boolean;
+  } = {},
+): KeyboardEvent {
+  return new KeyboardEvent("keydown", init);
+}
 
+describe("KeyboardShortcutHandler", () => {
   test("onKeyDown executes command for matching shortcut", () => {
     const registry = new CommandRegistry();
-    const execute = vi.fn();
+    const execute = vi.fn<() => void>();
     registry.register({ id: "zoomIn", title: "Zoom In", shortcut: "Equal", execute });
 
     const handler = new KeyboardShortcutHandler({ registry });
@@ -217,7 +219,12 @@ describe("KeyboardShortcutHandler", () => {
 
   test("onKeyDown calls preventDefault for matched shortcuts", () => {
     const registry = new CommandRegistry();
-    registry.register({ id: "zoomIn", title: "Zoom In", shortcut: "Equal", execute: vi.fn() });
+    registry.register({
+      id: "zoomIn",
+      title: "Zoom In",
+      shortcut: "Equal",
+      execute: vi.fn<() => void>(),
+    });
 
     const handler = new KeyboardShortcutHandler({ registry });
     const event = keyEvent({ code: "Equal", key: "=" });
@@ -228,7 +235,7 @@ describe("KeyboardShortcutHandler", () => {
 
   test("onKeyDown does nothing for unmatched keys", () => {
     const registry = new CommandRegistry();
-    const execute = vi.fn();
+    const execute = vi.fn<() => void>();
     registry.register({ id: "zoomIn", title: "Zoom In", shortcut: "Equal", execute });
 
     const handler = new KeyboardShortcutHandler({ registry });
@@ -239,8 +246,13 @@ describe("KeyboardShortcutHandler", () => {
 
   test("rebuilds bindings when registry changes", () => {
     const registry = new CommandRegistry();
-    const zoomOut = vi.fn();
-    registry.register({ id: "zoomIn", title: "Zoom In", shortcut: "Equal", execute: vi.fn() });
+    const zoomOut = vi.fn<() => void>();
+    registry.register({
+      id: "zoomIn",
+      title: "Zoom In",
+      shortcut: "Equal",
+      execute: vi.fn<() => void>(),
+    });
 
     const handler = new KeyboardShortcutHandler({ registry });
     handler.onKeyDown(keyEvent({ code: "Minus", key: "-" }));
@@ -268,7 +280,7 @@ describe("KeyboardShortcutHandler", () => {
       });
 
       const registry = new CommandRegistry();
-      const execute = vi.fn();
+      const execute = vi.fn<() => void>();
       registry.register({
         id: "save",
         title: "Save",
@@ -291,7 +303,7 @@ describe("KeyboardShortcutHandler", () => {
       });
 
       const registry = new CommandRegistry();
-      const execute = vi.fn();
+      const execute = vi.fn<() => void>();
       registry.register({
         id: "save",
         title: "Save",

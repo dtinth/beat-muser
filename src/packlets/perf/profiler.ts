@@ -68,8 +68,8 @@ export function percentile(sorted: number[], p: number): number {
   const idx = (p / 100) * (sorted.length - 1);
   const lo = Math.floor(idx);
   const hi = Math.ceil(idx);
-  if (lo === hi) return sorted[lo]!;
-  return sorted[lo]! + (sorted[hi]! - sorted[lo]!) * (idx - lo);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
 }
 
 export function avg(arr: number[]): number {
@@ -98,13 +98,13 @@ export function aggregateSamples(samples: FrameSample[], wallTimeMs: number): Ag
   const avgFps = wallTimeMs > 0 ? (frameCount / wallTimeMs) * 1000 : 0;
 
   const deltas = samples.map((s) => s.deltaMs);
-  const sortedDeltas = [...deltas].sort((a, b) => a - b);
+  const sortedDeltas = [...deltas].toSorted((a, b) => a - b);
 
   const frameDelta = {
     avg: avg(deltas),
     median: percentile(sortedDeltas, 50),
     p95: percentile(sortedDeltas, 95),
-    max: sortedDeltas[sortedDeltas.length - 1] ?? 0,
+    max: sortedDeltas.at(-1) ?? 0,
   };
 
   // Aggregate per-measure-type across all frames
@@ -121,7 +121,7 @@ export function aggregateSamples(samples: FrameSample[], wallTimeMs: number): Ag
   }
 
   const measureBreakdown = Array.from(typeMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
+    .toSorted(([a], [b]) => a.localeCompare(b))
     .map(([type, durations]) => ({
       type,
       callsPerFrame: durations.length / frameCount,
@@ -169,68 +169,69 @@ function rpad(s: string, width: number): string {
 
 export function formatProfileReport(result: ProfileResult): string {
   const stats = aggregateSamples(result.samples, result.wallTimeMs);
-  const lines: string[] = [];
-
-  lines.push("=".repeat(60));
-  lines.push("Beat Muser — Render Performance Profile");
-  lines.push("=".repeat(60));
-  lines.push("");
-  lines.push("Environment");
-  lines.push("-".repeat(40));
-  lines.push(`  User agent      : ${result.environment.userAgent}`);
-  lines.push(`  Device pixel ratio: ${result.environment.devicePixelRatio}`);
-  lines.push(
-    `  Viewport         : ${result.environment.viewportWidth}x${result.environment.viewportHeight}`,
-  );
-  lines.push("");
-  lines.push("Scroll range profiled");
-  lines.push("-".repeat(40));
   const centerY = result.scrollCenterY;
   const half = result.scrollRangeHalf;
-  lines.push(`  Content center Y : ${centerY.toFixed(0)} px`);
-  lines.push(
-    `  Scroll range     : ${(centerY - half).toFixed(0)}..${(centerY + half).toFixed(0)} px`,
-  );
-  lines.push("");
-  lines.push("Summary");
-  lines.push("-".repeat(40));
-  lines.push(`  Warmup frames    : ${result.framesWarmup}`);
-  lines.push(`  Frames measured  : ${stats.frameCount}`);
-  lines.push(`  Wall time        : ${stats.wallTimeMs.toFixed(1)} ms`);
-  lines.push(`  Avg FPS          : ${stats.avgFps.toFixed(1)}`);
-  lines.push("");
-  lines.push("Frame time (ms)");
-  lines.push("-".repeat(40));
-  lines.push(`  avg   : ${rpad(stats.frameDelta.avg.toFixed(2), 8)}`);
-  lines.push(`  median: ${rpad(stats.frameDelta.median.toFixed(2), 8)}`);
-  lines.push(`  p95   : ${rpad(stats.frameDelta.p95.toFixed(2), 8)}`);
-  lines.push(`  max   : ${rpad(stats.frameDelta.max.toFixed(2), 8)}`);
-  lines.push("");
-  lines.push("JS measure breakdown (avg ms per call, total ms)");
-  lines.push("-".repeat(60));
   const col1 = 32;
   const col2 = 10;
   const col3 = 10;
   const col4 = 10;
-  lines.push(
+
+  const lines: string[] = [
+    "=".repeat(60),
+    "Beat Muser — Render Performance Profile",
+    "=".repeat(60),
+    "",
+    "Environment",
+    "-".repeat(40),
+    `  User agent      : ${result.environment.userAgent}`,
+    `  Device pixel ratio: ${result.environment.devicePixelRatio}`,
+    `  Viewport         : ${result.environment.viewportWidth}x${result.environment.viewportHeight}`,
+    "",
+    "Scroll range profiled",
+    "-".repeat(40),
+    `  Content center Y : ${centerY.toFixed(0)} px`,
+    `  Scroll range     : ${(centerY - half).toFixed(0)}..${(centerY + half).toFixed(0)} px`,
+    "",
+    "Summary",
+    "-".repeat(40),
+    `  Warmup frames    : ${result.framesWarmup}`,
+    `  Frames measured  : ${stats.frameCount}`,
+    `  Wall time        : ${stats.wallTimeMs.toFixed(1)} ms`,
+    `  Avg FPS          : ${stats.avgFps.toFixed(1)}`,
+    "",
+    "Frame time (ms)",
+    "-".repeat(40),
+    `  avg   : ${rpad(stats.frameDelta.avg.toFixed(2), 8)}`,
+    `  median: ${rpad(stats.frameDelta.median.toFixed(2), 8)}`,
+    `  p95   : ${rpad(stats.frameDelta.p95.toFixed(2), 8)}`,
+    `  max   : ${rpad(stats.frameDelta.max.toFixed(2), 8)}`,
+    "",
+    "JS measure breakdown (avg ms per call, total ms)",
+    "-".repeat(60),
     `  ${pad("type", col1)}${rpad("calls/f", col2)}${rpad("avg ms", col3)}${rpad("total ms", col4)}`,
-  );
-  lines.push(`  ${"-".repeat(col1 + col2 + col3 + col4)}`);
+    `  ${"-".repeat(col1 + col2 + col3 + col4)}`,
+  ];
+
   for (const m of stats.measureBreakdown) {
     lines.push(
       `  ${pad(m.type, col1)}${rpad(m.callsPerFrame.toFixed(2), col2)}${rpad(m.avgMs.toFixed(3), col3)}${rpad(m.totalMs.toFixed(1), col4)}`,
     );
   }
-  lines.push("");
-  lines.push(`  Unaccounted (layout/paint est): ${stats.unaccountedAvgMs.toFixed(2)} ms/frame`);
-  lines.push("");
+
+  lines.push(
+    "",
+    `  Unaccounted (layout/paint est): ${stats.unaccountedAvgMs.toFixed(2)} ms/frame`,
+    "",
+  );
 
   if (stats.domNodeCount.avg !== null) {
-    lines.push("DOM node counts (scroll layer)");
-    lines.push("-".repeat(40));
-    lines.push(`  avg: ${stats.domNodeCount.avg.toFixed(1)}`);
-    lines.push(`  max: ${stats.domNodeCount.max!.toFixed(0)}`);
-    lines.push("");
+    lines.push(
+      "DOM node counts (scroll layer)",
+      "-".repeat(40),
+      `  avg: ${stats.domNodeCount.avg.toFixed(1)}`,
+      `  max: ${stats.domNodeCount.max!.toFixed(0)}`,
+      "",
+    );
   }
 
   lines.push("=".repeat(60));
@@ -292,12 +293,7 @@ export function runRenderProfile(
       if (frameIndex > warmupFrames) {
         const measures: Record<string, number[]> = {};
         for (const ev of pendingEvents) {
-          let arr = measures[ev.type];
-          if (!arr) {
-            arr = [];
-            measures[ev.type] = arr;
-          }
-          arr.push(ev.duration);
+          (measures[ev.type] ??= []).push(ev.duration);
         }
         pendingEvents.length = 0;
 
