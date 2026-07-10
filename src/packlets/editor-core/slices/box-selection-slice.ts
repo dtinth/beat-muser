@@ -81,17 +81,19 @@ export class BoxSelectionSlice extends Slice {
     const next = new Set(this.ctx.get(SelectionSlice).$selection.get());
 
     for (const entity of entities) {
-      const event = entity.components[EVENT.key];
+      const event = (entity.components as Record<string, { y: number } | undefined>)[EVENT.key];
       if (!event) continue;
       const pulse = event.y;
       if (pulse < minPulse || pulse > maxPulse) continue;
 
       let colIndex = -1;
-      const note = entity.components[NOTE.key];
-      const levelRef = entity.components[LEVEL_REF.key];
+      const note = (entity.components as Record<string, { lane: number } | undefined>)[NOTE.key];
+      const levelRef = (entity.components as Record<string, { levelId: string } | undefined>)[
+        LEVEL_REF.key
+      ];
       if (note && levelRef) {
         for (let i = 0; i < columns.length; i++) {
-          const col = columns[i]!;
+          const col = columns[i];
           if (col.levelId === levelRef.levelId && col.laneIndex === note.lane) {
             colIndex = i;
             break;
@@ -99,10 +101,10 @@ export class BoxSelectionSlice extends Slice {
         }
       }
       if (colIndex === -1) {
-        const bpm = entity.components[BPM_CHANGE.key];
+        const bpm = (entity.components as Record<string, object | undefined>)[BPM_CHANGE.key];
         if (bpm) {
           for (let i = 0; i < columns.length; i++) {
-            if (columns[i]!.id === "bpm") {
+            if (columns[i].id === "bpm") {
               colIndex = i;
               break;
             }
@@ -110,10 +112,10 @@ export class BoxSelectionSlice extends Slice {
         }
       }
       if (colIndex === -1) {
-        const ts = entity.components[TIME_SIGNATURE.key];
+        const ts = (entity.components as Record<string, object | undefined>)[TIME_SIGNATURE.key];
         if (ts) {
           for (let i = 0; i < columns.length; i++) {
-            if (columns[i]!.id === "time-sig") {
+            if (columns[i].id === "time-sig") {
               colIndex = i;
               break;
             }
@@ -121,10 +123,12 @@ export class BoxSelectionSlice extends Slice {
         }
       }
       if (colIndex === -1) {
-        const soundEvent = entity.components[SOUND_EVENT.key];
+        const soundEvent = (entity.components as Record<string, { soundLane: number } | undefined>)[
+          SOUND_EVENT.key
+        ];
         if (soundEvent) {
           for (let i = 0; i < columns.length; i++) {
-            if (columns[i]!.soundLane === soundEvent.soundLane) {
+            if (columns[i].soundLane === soundEvent.soundLane) {
               colIndex = i;
               break;
             }
@@ -132,14 +136,16 @@ export class BoxSelectionSlice extends Slice {
         }
       }
       if (colIndex === -1) {
-        const soflan = entity.components[SOFLAN.key];
+        const soflan = (entity.components as Record<string, object | undefined>)[SOFLAN.key];
         if (soflan) {
-          const levelRef = entity.components[LEVEL_REF.key] as { levelId: string } | undefined;
-          if (levelRef) {
+          const soflanLevelRef = (
+            entity.components as Record<string, { levelId: string } | undefined>
+          )[LEVEL_REF.key];
+          if (soflanLevelRef) {
             for (let i = 0; i < columns.length; i++) {
               if (
-                columns[i]!.levelId === levelRef.levelId &&
-                columns[i]!.id?.startsWith("soflan-")
+                columns[i].levelId === soflanLevelRef.levelId &&
+                columns[i].id?.startsWith("soflan-")
               ) {
                 colIndex = i;
                 break;

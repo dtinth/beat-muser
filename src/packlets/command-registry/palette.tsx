@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Box, Text, TextField } from "@radix-ui/themes";
-import { CommandRegistry } from "./index.ts";
+import { CommandRegistry, type Command } from "./index.ts";
 
 interface CommandPaletteProps {
   registry: CommandRegistry;
@@ -39,7 +39,7 @@ export function CommandPalette({ registry, open, onClose }: CommandPaletteProps)
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) return () => {};
 
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -59,8 +59,8 @@ export function CommandPalette({ registry, open, onClose }: CommandPaletteProps)
       }
       if (e.key === "Enter") {
         e.preventDefault();
-        const cmd = commands[selectedIndex];
-        if (cmd) {
+        const cmd: Command | undefined = commands[selectedIndex];
+        if (cmd !== undefined) {
           cmd.execute();
           onClose();
         }
@@ -69,12 +69,13 @@ export function CommandPalette({ registry, open, onClose }: CommandPaletteProps)
       if (e.key === "Tab") {
         e.preventDefault();
         inputRef.current?.focus();
-        return;
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [open, commands, selectedIndex, onClose]);
 
   if (!open) return null;
@@ -102,12 +103,16 @@ export function CommandPalette({ registry, open, onClose }: CommandPaletteProps)
           overflow: "hidden",
           border: "1px solid var(--gray-5)",
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
       >
         <TextField.Root
           ref={inputRef}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+          }}
           placeholder="Type a command..."
           size="3"
           style={{
@@ -135,13 +140,18 @@ export function CommandPalette({ registry, open, onClose }: CommandPaletteProps)
                 alignItems: "center",
                 justifyContent: "space-between",
               }}
-              onMouseEnter={() => setSelectedIndex(i)}
+              onMouseEnter={() => {
+                setSelectedIndex(i);
+              }}
             >
               <Text size="2">{cmd.title}</Text>
               {(() => {
                 const isMac = navigator.platform.includes("Mac");
-                const shortcut = isMac && cmd.shortcutMac ? cmd.shortcutMac : cmd.shortcut;
-                if (!shortcut) return null;
+                const shortcut =
+                  isMac && cmd.shortcutMac !== undefined && cmd.shortcutMac !== ""
+                    ? cmd.shortcutMac
+                    : cmd.shortcut;
+                if (shortcut === undefined || shortcut === "") return null;
                 return (
                   <Text size="1" color="gray">
                     {shortcut}

@@ -41,9 +41,8 @@ interface GridLineData {
   label?: string;
 }
 
-function createGridLineRenderer(): (data: unknown) => RenderHandle<GridLineData> {
-  return (data: unknown) => {
-    const d = data as GridLineData;
+function createGridLineRenderer(): Renderer<GridLineData> {
+  return (d: GridLineData) => {
     const el = document.createElement("div");
     el.style.backgroundColor = d.color;
 
@@ -56,25 +55,24 @@ function createGridLineRenderer(): (data: unknown) => RenderHandle<GridLineData>
     labelEl.style.color = "var(--gray-11)";
     labelEl.style.fontFamily = "var(--default-font-family)";
     labelEl.style.pointerEvents = "none";
-    if (d.label) {
+    if (d.label !== undefined && d.label !== "") {
       labelEl.textContent = d.label;
-      el.appendChild(labelEl);
+      el.append(labelEl);
     }
 
     let last = d;
 
     return {
       dom: el,
-      update(newData: unknown) {
-        const nd = newData as GridLineData;
+      update(nd: GridLineData) {
         if (nd.color === last.color && nd.label === last.label) return;
         last = nd;
         el.style.backgroundColor = nd.color;
-        if (nd.label !== undefined) {
-          labelEl.textContent = nd.label;
-          if (!labelEl.parentNode) el.appendChild(labelEl);
-        } else {
+        if (nd.label === undefined) {
           labelEl.textContent = "";
+        } else {
+          labelEl.textContent = nd.label;
+          if (labelEl.parentNode === null) el.append(labelEl);
         }
       },
     };
@@ -86,11 +84,10 @@ interface ColumnBgData {
   showBorder: boolean;
 }
 
-function createColumnBgRenderer(): (data: unknown) => RenderHandle<ColumnBgData> {
-  return (data: unknown) => {
-    const d = data as ColumnBgData;
+function createColumnBgRenderer(): Renderer<ColumnBgData> {
+  return (d: ColumnBgData) => {
     const el = document.createElement("div");
-    if (d.backgroundColor) {
+    if (d.backgroundColor !== undefined && d.backgroundColor !== "") {
       el.style.backgroundColor = d.backgroundColor;
     }
 
@@ -103,19 +100,18 @@ function createColumnBgRenderer(): (data: unknown) => RenderHandle<ColumnBgData>
       border.style.bottom = "0";
       border.style.width = "1px";
       border.style.backgroundColor = "var(--gray-5)";
-      el.appendChild(border);
+      el.append(border);
     }
 
     let last = d;
 
     return {
       dom: el,
-      update(newData: unknown) {
-        const nd = newData as ColumnBgData;
+      update(nd: ColumnBgData) {
         if (nd.backgroundColor === last.backgroundColor && nd.showBorder === last.showBorder)
           return;
         last = nd;
-        if (nd.backgroundColor) {
+        if (nd.backgroundColor !== undefined && nd.backgroundColor !== "") {
           el.style.backgroundColor = nd.backgroundColor;
         }
       },
@@ -127,9 +123,8 @@ interface ColumnTitleData {
   title: string;
 }
 
-function createColumnTitleRenderer(): (data: unknown) => RenderHandle<ColumnTitleData> {
-  return (data: unknown) => {
-    const d = data as ColumnTitleData;
+function createColumnTitleRenderer(): Renderer<ColumnTitleData> {
+  return (d: ColumnTitleData) => {
     const el = document.createElement("div");
     el.textContent = d.title;
     el.style.display = "flex";
@@ -144,8 +139,7 @@ function createColumnTitleRenderer(): (data: unknown) => RenderHandle<ColumnTitl
 
     return {
       dom: el,
-      update(newData: unknown) {
-        const nd = newData as ColumnTitleData;
+      update(nd: ColumnTitleData) {
         if (nd.title === last.title) return;
         last = nd;
         el.textContent = nd.title;
@@ -154,7 +148,7 @@ function createColumnTitleRenderer(): (data: unknown) => RenderHandle<ColumnTitl
   };
 }
 
-function createTrailingBorderRenderer(): () => RenderHandle<{}> {
+function createTrailingBorderRenderer(): () => RenderHandle {
   return () => {
     const el = document.createElement("div");
     el.style.backgroundColor = "var(--gray-5)";
@@ -172,9 +166,8 @@ interface EventMarkerData {
   selected?: boolean;
 }
 
-function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarkerData> {
-  return (data: unknown) => {
-    const d = data as EventMarkerData;
+function createEventMarkerRenderer(): Renderer<EventMarkerData> {
+  return (d: EventMarkerData) => {
     const el = document.createElement("div");
     el.style.backgroundColor = d.backgroundColor;
     el.style.color = d.textColor;
@@ -186,21 +179,20 @@ function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarke
     el.style.justifyContent = "center";
     el.style.boxShadow = "inset 1px 1px 0 #fff5, inset -1px -1px 0 #0005";
     el.style.pointerEvents = "auto";
-    if (d.selected) {
+    if (d.selected === true) {
       el.style.backgroundColor = "var(--cyan-10)";
       el.style.color = "#000";
     }
 
     const textEl = document.createElement("span");
     textEl.textContent = d.text;
-    el.appendChild(textEl);
+    el.append(textEl);
 
     let last = d;
 
     return {
       dom: el,
-      update(newData: unknown) {
-        const nd = newData as EventMarkerData;
+      update(nd: EventMarkerData) {
         if (
           nd.text === last.text &&
           nd.backgroundColor === last.backgroundColor &&
@@ -210,7 +202,7 @@ function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarke
           return;
         last = nd;
         textEl.textContent = nd.text;
-        if (nd.selected) {
+        if (nd.selected === true) {
           el.style.backgroundColor = "var(--cyan-10)";
           el.style.color = "#000";
         } else {
@@ -222,7 +214,7 @@ function createEventMarkerRenderer(): (data: unknown) => RenderHandle<EventMarke
   };
 }
 
-function createPlayheadRenderer(): () => RenderHandle<{}> {
+function createPlayheadRenderer(): () => RenderHandle {
   return () => {
     const el = document.createElement("div");
     el.style.backgroundColor = "var(--accent-9)";
@@ -238,7 +230,7 @@ function createPlayheadRenderer(): () => RenderHandle<{}> {
 // Behavior factory
 // ---------------------------------------------------------------------------
 
-function createSelectionBoxRenderer(): () => RenderHandle<{}> {
+function createSelectionBoxRenderer(): () => RenderHandle {
   return () => {
     const el = document.createElement("div");
     el.style.backgroundColor = "rgba(159, 238, 42, 0.15)";
@@ -251,7 +243,7 @@ function createSelectionBoxRenderer(): () => RenderHandle<{}> {
   };
 }
 
-function createColumnCursorRenderer(): (data: unknown) => RenderHandle<{}> {
+function createColumnCursorRenderer(): (data: unknown) => RenderHandle {
   return () => {
     const el = document.createElement("div");
     el.style.clipPath = "polygon(50% 0%, 0% 100%, 100% 100%)";
@@ -261,7 +253,7 @@ function createColumnCursorRenderer(): (data: unknown) => RenderHandle<{}> {
   };
 }
 
-function createOverlapIndicatorRenderer(): () => RenderHandle<{}> {
+function createOverlapIndicatorRenderer(): () => RenderHandle {
   return () => {
     const el = document.createElement("div");
     // A warning ring drawn over a cell that holds 2+ stacked entities. Sits
@@ -276,9 +268,13 @@ function createOverlapIndicatorRenderer(): () => RenderHandle<{}> {
   };
 }
 
-function createDecorationArrowRenderer(): Renderer {
-  return (data: unknown) => {
-    const d = data as { angle: number; color: string };
+interface DecorationArrowData {
+  angle: number;
+  color: string;
+}
+
+function createDecorationArrowRenderer(): Renderer<DecorationArrowData> {
+  return (d: DecorationArrowData) => {
     const el = document.createElement("div");
     el.style.width = "12px";
     el.style.height = "12px";
@@ -291,8 +287,7 @@ function createDecorationArrowRenderer(): Renderer {
     let last = d;
     return {
       dom: el,
-      update(newData: unknown) {
-        const nd = newData as typeof d;
+      update(nd: DecorationArrowData) {
         if (nd.color === last.color && nd.angle === last.angle) return;
         last = nd;
         el.style.backgroundColor = nd.color;
@@ -303,20 +298,21 @@ function createDecorationArrowRenderer(): Renderer {
   };
 }
 
-function createDecorationLineRenderer(): Renderer {
-  return (data: unknown) => {
-    const d = data as {
-      fromX: number;
-      fromY: number;
-      toX: number;
-      toY: number;
-      color: string;
-      width: number;
-      cp1x?: number;
-      cp1y?: number;
-      cp2x?: number;
-      cp2y?: number;
-    };
+interface DecorationLineData {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  color: string;
+  width: number;
+  cp1x?: number;
+  cp1y?: number;
+  cp2x?: number;
+  cp2y?: number;
+}
+
+function createDecorationLineRenderer(): Renderer<DecorationLineData> {
+  return (d: DecorationLineData) => {
     const el = document.createElement("div");
     el.style.position = "absolute";
     el.style.top = "0";
@@ -330,15 +326,15 @@ function createDecorationLineRenderer(): Renderer {
     svg.style.display = "block";
     svg.style.width = "100%";
     svg.style.height = "100%";
-    el.appendChild(svg);
+    el.append(svg);
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("fill", "none");
     path.setAttribute("stroke-linecap", "round");
     path.setAttribute("stroke", d.color);
     path.setAttribute("stroke-width", String(d.width ?? 8));
-    svg.appendChild(path);
+    svg.append(path);
 
-    function setPath(nd: typeof d) {
+    function setPath(nd: DecorationLineData) {
       if (nd.cp1x !== undefined && nd.cp2x !== undefined) {
         path.setAttribute(
           "d",
@@ -349,7 +345,9 @@ function createDecorationLineRenderer(): Renderer {
       }
     }
 
-    const update = (newData: unknown) => setPath(newData as typeof d);
+    const update = (nd: DecorationLineData) => {
+      setPath(nd);
+    };
     setPath(d);
     return { dom: el, update };
   };
@@ -365,9 +363,12 @@ const RECT_ZIGZAG_POINTS: readonly [number, number][] = [
   [0.5, 1],
 ];
 
-function createDecorationRectRenderer(): Renderer {
-  return (data: unknown) => {
-    const d = data as { color: string };
+interface DecorationRectData {
+  color: string;
+}
+
+function createDecorationRectRenderer(): Renderer<DecorationRectData> {
+  return (d: DecorationRectData) => {
     const el = document.createElement("div");
     el.style.boxSizing = "border-box";
     el.style.width = "100%";
@@ -389,7 +390,7 @@ function createDecorationRectRenderer(): Renderer {
     svg.style.display = "block";
     svg.style.width = "100%";
     svg.style.height = "100%";
-    el.appendChild(svg);
+    el.append(svg);
 
     const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
     polyline.setAttribute(
@@ -401,9 +402,9 @@ function createDecorationRectRenderer(): Renderer {
     polyline.setAttribute("stroke-linejoin", "round");
     polyline.setAttribute("vector-effect", "non-scaling-stroke");
     polyline.setAttribute("stroke-width", "3");
-    svg.appendChild(polyline);
+    svg.append(polyline);
 
-    function setStyle(nd: typeof d) {
+    function setStyle(nd: DecorationRectData) {
       el.style.border = `2px solid ${nd.color}`;
       polyline.setAttribute("stroke", nd.color);
     }
@@ -413,8 +414,7 @@ function createDecorationRectRenderer(): Renderer {
 
     return {
       dom: el,
-      update(newData: unknown) {
-        const nd = newData as typeof d;
+      update(nd: DecorationRectData) {
         if (nd.color === last.color) return;
         last = nd;
         setStyle(nd);
@@ -438,7 +438,11 @@ function createDecorationMarkerRenderer(): Renderer {
   };
 }
 
-const rendererMap: Record<string, Renderer> = {
+// The registry bridges strongly-typed renderers (each expecting its own data
+// shape) to the canvas's untyped `Renderer` contract. The per-type data shape
+// is guaranteed by the EditorController that emits matching `type`+`data`
+// pairs, so `Renderer<any>` is the deliberate join point for that erasure.
+const rendererMap: Record<string, Renderer<any>> = {
   "column-bg": createColumnBgRenderer(),
   "column-title": createColumnTitleRenderer(),
   "trailing-border": createTrailingBorderRenderer(),
@@ -456,8 +460,8 @@ const rendererMap: Record<string, Renderer> = {
 };
 
 function specToRenderObject(spec: TimelineRenderSpec): RenderObject {
-  const renderer = rendererMap[spec.type];
-  if (!renderer) {
+  const renderer = rendererMap[spec.type] as Renderer<any> | undefined;
+  if (renderer === undefined) {
     throw new Error(`Unknown render spec type: ${spec.type}`);
   }
   return {
@@ -552,7 +556,7 @@ export function createTimelineBehaviorFactory(
       },
 
       getVisibleObjects(): RenderObject[] {
-        return controller.getVisibleRenderObjects().map(specToRenderObject);
+        return controller.getVisibleRenderObjects().map((spec) => specToRenderObject(spec));
       },
 
       [Symbol.dispose]() {

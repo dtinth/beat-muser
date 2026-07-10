@@ -56,6 +56,10 @@ interface BlockData {
 
 function createBlockRenderer(): (data: unknown) => RenderHandle<BlockData> {
   return (data: unknown) => {
+    // `data` arrives through the reconciler's type-erased `unknown` boundary
+    // (`obj.data`). Every RenderObject produced by this behavior carries
+    // BlockData, so narrowing here is safe.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- data is always BlockData at the reconciler boundary
     const d = data as BlockData;
     const el = document.createElement("div");
     el.dataset.testid = "test-block";
@@ -73,10 +77,9 @@ function createBlockRenderer(): (data: unknown) => RenderHandle<BlockData> {
 
     return {
       dom: el,
-      update(newData: unknown) {
-        const nd = newData as BlockData;
-        el.style.backgroundColor = nd.color;
-        el.textContent = nd.label;
+      update(newData: BlockData) {
+        el.style.backgroundColor = newData.color;
+        el.textContent = newData.label;
       },
     };
   };
@@ -123,10 +126,10 @@ class ScrollableCanvasTestController {
   countNodes(wrapperEl: HTMLElement | null) {
     if (!wrapperEl) return;
     // wrapperEl -> ScrollableCanvas root -> [sticky layer, scroll layer]
-    const root = wrapperEl.firstElementChild as HTMLElement | null;
-    if (!root) return;
-    const scrollLayer = root.children[1] as HTMLElement | null;
-    if (!scrollLayer) return;
+    const root = wrapperEl.firstElementChild;
+    if (!(root instanceof HTMLElement)) return;
+    const scrollLayer = root.children[1];
+    if (!(scrollLayer instanceof HTMLElement)) return;
     this.$domNodeCount.set(scrollLayer.childElementCount);
   }
 
@@ -225,7 +228,9 @@ export function ScrollableCanvasTestPage() {
   const [controller] = useState(() => new ScrollableCanvasTestController());
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const handleCountNodes = () => controller.countNodes(wrapperRef.current);
+  const handleCountNodes = () => {
+    controller.countNodes(wrapperRef.current);
+  };
 
   return (
     <ProjectLayout
@@ -292,10 +297,20 @@ function Controls({
 
   return (
     <Flex direction="column" style={{ gap: 8 }}>
-      <Button size="1" onClick={() => controller.extend()}>
+      <Button
+        size="1"
+        onClick={() => {
+          controller.extend();
+        }}
+      >
         Extend +20 blocks
       </Button>
-      <Button size="1" onClick={() => controller.shrink()}>
+      <Button
+        size="1"
+        onClick={() => {
+          controller.shrink();
+        }}
+      >
         Shrink -20 blocks
       </Button>
       <Button size="1" onClick={onCountNodes}>

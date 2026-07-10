@@ -118,8 +118,8 @@ describe("parseProjectFile", () => {
       }),
     );
     expect((result.metadata as any).bpm).toBe(180);
-    expect((result.entities[0].components.chart as any).difficulty).toBe(12);
-    expect((result.entities[1].components.note as any).channel).toBe("A");
+    expect(result.entities[0].components.chart.difficulty).toBe(12);
+    expect(result.entities[1].components.note.channel).toBe("A");
     expect((result as any).customTopLevel).toBe(42);
   });
 
@@ -198,7 +198,7 @@ describe("parseProjectFile", () => {
   });
 
   it("rejects empty string", () => {
-    expect(() => parseProjectFile("")).toThrow();
+    expect(() => parseProjectFile("")).toThrow(SyntaxError);
   });
 });
 

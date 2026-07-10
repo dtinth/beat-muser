@@ -8,14 +8,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useStore } from "@nanostores/react";
 import { Dialog, Button, TextField, Text, Box, Flex } from "@radix-ui/themes";
-import type { ModalManager, ModalRequest, SelectItem } from "./index.ts";
+import type { ModalManager, InputRequest, SelectRequest, SelectItem } from "./index.ts";
 
 export function ModalHost({ manager }: { manager: ModalManager }) {
   const stack = useStore(manager.$stack);
 
   const active = stack[0];
 
-  if (!active) return null;
+  if (active === undefined) return null;
 
   if (active.type === "input") {
     return <InputModal request={active} manager={manager} />;
@@ -27,26 +27,28 @@ export function ModalHost({ manager }: { manager: ModalManager }) {
   return null;
 }
 
-function InputModal({ request, manager }: { request: ModalRequest; manager: ModalManager }) {
-  const [value, setValue] = useState((request as { value?: string }).value);
-  const [error, setError] = useState<string | undefined>(undefined);
+function InputModal({ request, manager }: { request: InputRequest; manager: ModalManager }) {
+  const [value, setValue] = useState(request.value);
+  const [error, setError] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setValue((request as { value?: string }).value);
+    setValue(request.value);
     setError(undefined);
     const timer = setTimeout(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
     }, 50);
-    return () => clearTimeout(timer);
-  }, [request.id]);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [request.id, request.value]);
 
   const handleConfirm = () => {
-    const validate = (request as { validate?: (value: string) => string | undefined }).validate;
+    const validate = request.validate;
     if (validate) {
       const validationError = validate(value ?? "");
-      if (validationError) {
+      if (validationError !== undefined && validationError !== "") {
         setError(validationError);
         return;
       }
@@ -55,7 +57,12 @@ function InputModal({ request, manager }: { request: ModalRequest; manager: Moda
   };
 
   return (
-    <Dialog.Root open={true} onOpenChange={(open) => !open && manager.cancel(request.id)}>
+    <Dialog.Root
+      open={true}
+      onOpenChange={(open) => {
+        if (!open) manager.cancel(request.id);
+      }}
+    >
       <Dialog.Content maxWidth="300px">
         <Dialog.Title>{request.title}</Dialog.Title>
         <TextField.Root
@@ -70,13 +77,18 @@ function InputModal({ request, manager }: { request: ModalRequest; manager: Moda
             if (e.key === "Escape") manager.cancel(request.id);
           }}
         />
-        {error && (
+        {error !== undefined && error !== "" && (
           <Text size="1" color="red" mt="1">
             {error}
           </Text>
         )}
         <Flex gap="2" mt="3" justify="end">
-          <Button variant="soft" onClick={() => manager.cancel(request.id)}>
+          <Button
+            variant="soft"
+            onClick={() => {
+              manager.cancel(request.id);
+            }}
+          >
             Cancel
           </Button>
           <Button onClick={handleConfirm}>OK</Button>
@@ -86,8 +98,8 @@ function InputModal({ request, manager }: { request: ModalRequest; manager: Moda
   );
 }
 
-function SelectModal({ request, manager }: { request: ModalRequest; manager: ModalManager }) {
-  const { items, placeholder } = request as { items: SelectItem[]; placeholder?: string };
+function SelectModal({ request, manager }: { request: SelectRequest; manager: ModalManager }) {
+  const { items, placeholder } = request;
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -106,7 +118,9 @@ function SelectModal({ request, manager }: { request: ModalRequest; manager: Mod
     const timer = setTimeout(() => {
       inputRef.current?.focus();
     }, 50);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [request.id]);
 
   function handleSelect(item: SelectItem) {
@@ -114,13 +128,20 @@ function SelectModal({ request, manager }: { request: ModalRequest; manager: Mod
   }
 
   return (
-    <Dialog.Root open={true} onOpenChange={(open) => !open && manager.cancel(request.id)}>
+    <Dialog.Root
+      open={true}
+      onOpenChange={(open) => {
+        if (!open) manager.cancel(request.id);
+      }}
+    >
       <Dialog.Content maxWidth="560px" style={{ padding: 0, overflow: "hidden" }}>
         <Dialog.Title style={{ display: "none" }}>{request.title}</Dialog.Title>
         <TextField.Root
           ref={inputRef}
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+          }}
           placeholder={placeholder ?? "Search..."}
           size="3"
           style={{
@@ -145,7 +166,7 @@ function SelectModal({ request, manager }: { request: ModalRequest; manager: Mod
             if (e.key === "Enter") {
               e.preventDefault();
               const item = filtered[selectedIndex];
-              if (item) handleSelect(item);
+              if (item !== undefined) handleSelect(item);
             }
           }}
         />
@@ -154,7 +175,9 @@ function SelectModal({ request, manager }: { request: ModalRequest; manager: Mod
             <Box
               key={item.id}
               data-testid={item.testId ?? `select-item-${item.id}`}
-              onClick={() => handleSelect(item)}
+              onClick={() => {
+                handleSelect(item);
+              }}
               style={{
                 padding: "8px 12px",
                 cursor: "pointer",
@@ -164,10 +187,12 @@ function SelectModal({ request, manager }: { request: ModalRequest; manager: Mod
                 alignItems: "center",
                 justifyContent: "space-between",
               }}
-              onMouseEnter={() => setSelectedIndex(i)}
+              onMouseEnter={() => {
+                setSelectedIndex(i);
+              }}
             >
               <Text size="2">{item.label}</Text>
-              {item.detail && (
+              {item.detail !== undefined && item.detail !== "" && (
                 <Text size="1" color="gray">
                   {item.detail}
                 </Text>

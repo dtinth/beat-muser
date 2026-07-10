@@ -19,14 +19,12 @@ export class WaveformSlice extends Slice {
   $waveformStatus = atom<Map<string, WaveformStatus>>(new Map());
 
   setWaveformData(path: string, data: WaveformData): void {
-    const map = new Map(this.$waveformData.get());
-    map.set(path, data);
+    const map = new Map<string, WaveformData>([...this.$waveformData.get(), [path, data]]);
     this.$waveformData.set(map);
   }
 
   setWaveformStatus(path: string, status: WaveformStatus): void {
-    const map = new Map(this.$waveformStatus.get());
-    map.set(path, status);
+    const map = new Map<string, WaveformStatus>([...this.$waveformStatus.get(), [path, status]]);
     this.$waveformStatus.set(map);
   }
 

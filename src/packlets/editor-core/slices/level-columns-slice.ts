@@ -33,7 +33,7 @@ export class LevelColumnsSlice extends Slice {
 
   getColumns(): ColumnDefinition[] {
     const chartId = this.ctx.get(ChartSlice).$selectedChartId.get();
-    if (!chartId) return [];
+    if (chartId === null || chartId === "") return [];
 
     const registry = this.ctx.get(GameModeRegistrySlice);
     const visibleLevels = this.ctx.get(LevelSlice).getVisibleLevels(chartId);
@@ -75,7 +75,7 @@ export class LevelColumnsSlice extends Slice {
           },
         });
       }
-      if (layout.supportsSoflan) {
+      if (layout.supportsSoflan === true) {
         defs.push({
           id: `soflan-${level.id}`,
           title: "S",
@@ -83,7 +83,9 @@ export class LevelColumnsSlice extends Slice {
           levelId: level.id,
           backgroundColor: "var(--gray-2)",
           containsEntity: (entity) => {
-            const lr = entity.components[LEVEL_REF.key] as { levelId: string } | undefined;
+            const lr = (entity.components as Record<string, { levelId: string } | undefined>)[
+              LEVEL_REF.key
+            ];
             return lr?.levelId === level.id && entity.components[SOFLAN.key] !== undefined;
           },
           placementHandler: (pulse) => {

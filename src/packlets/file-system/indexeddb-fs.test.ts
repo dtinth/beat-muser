@@ -1,3 +1,4 @@
+// oxlint-disable-next-line no-unassigned-import -- side-effect import that installs the fake IndexedDB globals for the test environment.
 import "fake-indexeddb/auto";
 import { test, expect } from "vite-plus/test";
 import { uuidv7 } from "uuidv7";

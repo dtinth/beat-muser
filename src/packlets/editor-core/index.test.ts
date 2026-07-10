@@ -5,6 +5,8 @@
  * against an `EditorTester` that simulates the timeline behavior layer.
  */
 
+/* oxlint-disable vitest/expect-expect -- Many tests assert exclusively through the `EditorTester` fluent-assertion helpers (e.g. `editor.chart.shouldHaveName`, `editor.columns.shouldHaveCount`), which call `expect` internally; the rule cannot see through those helpers and configuring assertFunctionNames is out of scope. */
+
 import { describe, expect, test } from "vite-plus/test";
 import { EditorTester, makeProject, entity } from "./tester.ts";
 import {
@@ -38,8 +40,81 @@ import type { WaveformData } from "./slices/waveform-slice.ts";
 import { EditEntityUserAction } from "./user-actions.ts";
 import type { Extension, PropertySet } from "../extensions/index.ts";
 import { $extensionDecorations } from "../extensions/index.ts";
+import type { TimelineColumn } from "./types.ts";
 
-const UUID_V7_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_V7_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+
+function findLevelLaneColumn(
+  columns: TimelineColumn[],
+  levelId: string,
+  laneIndex: number,
+): TimelineColumn | undefined {
+  return columns.find((c) => c.levelId === levelId && c.laneIndex === laneIndex);
+}
+
+function isPopulatedLaneColumn(c: TimelineColumn): boolean {
+  return c.levelId !== undefined && c.levelId !== "" && c.laneIndex !== undefined;
+}
+
+function setupColumnCursor(): EditorTester {
+  return new EditorTester({
+    getProjectToLoad: () =>
+      makeProject((p) => {
+        const chart = p.addChart("Hard", undefined, 15360);
+        p.addLevel(chart.id, "Easy", "beat-7k");
+      }),
+  });
+}
+
+function makeWaveformData(seconds: number): WaveformData {
+  const chunkCount = Math.max(1, Math.floor(seconds * 120));
+  const peak = new Float32Array(chunkCount);
+  const rms = new Float32Array(chunkCount);
+  const centroid = new Float32Array(chunkCount);
+  for (let i = 0; i < chunkCount; i++) {
+    peak[i] = (i + 1) / chunkCount;
+    rms[i] = peak[i] * 0.7;
+    centroid[i] = i / chunkCount;
+  }
+  return { peak, rms, centroid, durationSec: seconds, sampleRate: 48000 };
+}
+
+function setChannelPath(editor: EditorTester, channelId: string, path: string): void {
+  const entityManager = editor.instance.getEntityManager();
+  const channelEntity = entityManager.get(channelId);
+  if (!channelEntity) return;
+  const oldComponents = structuredClone(channelEntity.components);
+  const newComponents = structuredClone(oldComponents);
+  (newComponents as Record<string, unknown>)["soundChannel"] = {
+    ...(oldComponents as Record<string, Record<string, unknown>>)["soundChannel"],
+    path,
+  };
+  editor.instance.ctx
+    .get(HistorySlice)
+    .applyAction(
+      new EditEntityUserAction(editor.instance.ctx, channelId, oldComponents, newComponents),
+    );
+}
+
+function setupRectDecoration(chartSize = 1000): { editor: EditorTester; levelId: string } {
+  const editor = new EditorTester({
+    getProjectToLoad: () =>
+      makeProject((p) => {
+        const chart = p.addChart("Hard", undefined, chartSize);
+        p.addLevel(chart.id, "Level A", "beat-7k");
+      }),
+  });
+  const levelId = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0].id;
+  return { editor, levelId };
+}
+
+function rectSpecs(editor: EditorTester) {
+  return editor.instance.getVisibleRenderObjects().filter((s) => s.type === "decoration-rect");
+}
+
+function markerSpecs(editor: EditorTester) {
+  return editor.instance.getVisibleRenderObjects().filter((s) => s.type === "decoration-marker");
+}
 
 // ---------------------------------------------------------------------------
 // Acceptance tests
@@ -85,7 +160,9 @@ describe("EditorController", () => {
     const editor = new EditorTester({
       getProjectToLoad: () =>
         makeProject((p) => {
-          p.addEntity((e) => e.with(CHART, { name: "Test" }));
+          p.addEntity((e) => {
+            e.with(CHART, { name: "Test" });
+          });
         }),
     });
 
@@ -242,7 +319,7 @@ describe("EditorController", () => {
       editor.instance.addLevel(chartId, "Easy", "beat-7k");
 
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
-      const lastLane = [...columns].reverse().find((c) => c.levelId && c.laneIndex !== undefined);
+      const lastLane = [...columns].toReversed().find((c) => isPopulatedLaneColumn(c));
       const soflanCol = columns.find((c) => c.id.startsWith("soflan-"));
       expect(soflanCol).toBeDefined();
       expect(lastLane).toBeDefined();
@@ -309,10 +386,10 @@ describe("EditorController", () => {
       const specs = editor.instance.getVisibleRenderObjects();
       const soflanMarkers = specs.filter((s) => s.key.startsWith("soflan-"));
       expect(soflanMarkers.length).toBeGreaterThan(0);
-      const marker = soflanMarkers[0]!;
+      const marker = soflanMarkers[0];
       expect(marker.type).toBe("event-marker");
-      const data = marker.data as Record<string, unknown>;
-      expect(data.text).toMatch(/×2\s+\+1\/4/);
+      const data = marker.data;
+      expect(data.text).toMatch(/×2\s+\+1\/4/u);
     });
   });
 
@@ -635,7 +712,7 @@ describe("EditorController", () => {
         .getVisibleRenderObjects()
         .find((s) => s.key.endsWith(`-${bpmEntity!.id}`));
       expect(spec).toBeDefined();
-      expect((spec!.data as Record<string, unknown>).selected).toBe(true);
+      expect(spec!.data.selected).toBe(true);
     });
 
     test("hit-test within tolerance selects event", () => {
@@ -723,8 +800,8 @@ describe("EditorController", () => {
       const specs = editor.instance.getVisibleRenderObjects();
       const specA = specs.find((s) => s.key === `bpm-${bpmA!.id}`);
       const specB = specs.find((s) => s.key === `bpm-${bpmB!.id}`);
-      expect((specA!.data as Record<string, unknown>).selected).toBe(true);
-      expect((specB!.data as Record<string, unknown>).selected).toBe(true);
+      expect(specA!.data.selected).toBe(true);
+      expect(specB!.data.selected).toBe(true);
 
       editor.pointerUp();
       editor.selection.shouldContain(bpmA!.id);
@@ -1032,56 +1109,45 @@ describe("EditorController", () => {
   });
 
   describe("column cursor", () => {
-    function setup() {
-      const editor = new EditorTester({
-        getProjectToLoad: () =>
-          makeProject((p) => {
-            const chart = p.addChart("Hard", undefined, 15360);
-            p.addLevel(chart.id, "Easy", "beat-7k");
-          }),
-      });
-      return editor;
-    }
-
     test("starts as null (inactive)", () => {
-      const editor = setup();
+      const editor = setupColumnCursor();
       expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBeNull();
     });
 
     test("navigateRight from null moves to first placeable column", () => {
-      const editor = setup();
+      const editor = setupColumnCursor();
       editor.navigateRight();
       expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBe("time-sig");
     });
 
     test("navigateRight twice moves to second placeable column", () => {
-      const editor = setup();
+      const editor = setupColumnCursor();
       editor.navigateRight();
       editor.navigateRight();
       expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBe("bpm");
     });
 
     test("navigateLeft from null stays null", () => {
-      const editor = setup();
+      const editor = setupColumnCursor();
       editor.navigateLeft();
       expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBeNull();
     });
 
     test("navigateLeft from first placeable column stays at first", () => {
-      const editor = setup();
+      const editor = setupColumnCursor();
       editor.navigateRight();
       editor.navigateLeft();
       expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBe("time-sig");
     });
 
     test("mouse hover over timeline sets column cursor to column under pointer", () => {
-      const editor = setup();
+      const editor = setupColumnCursor();
       editor.pointerMove({ x: 50, y: 200 });
       expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBe("time-sig");
     });
 
     test("mouse hover over bpm column sets column cursor to bpm", () => {
-      const editor = setup();
+      const editor = setupColumnCursor();
       editor.pointerMove({ x: 100, y: 200 });
       expect(editor.instance.ctx.get(CursorSlice).$cursorColumnId.get()).toBe("bpm");
     });
@@ -1233,7 +1299,7 @@ describe("EditorController", () => {
         .entitiesWithComponent(NOTE)
         .filter((e) => (e.components.event as { y: number })?.y === 240);
       expect(notes).toHaveLength(1);
-      expect((notes[0]!.components.note as { lane: number })?.lane).toBe(8);
+      expect((notes[0].components.note as { lane: number })?.lane).toBe(8);
     });
 
     test("placing a BPM change creates a BPM change entity with current BPM", () => {
@@ -1259,7 +1325,7 @@ describe("EditorController", () => {
         .entitiesWithComponent(BPM_CHANGE)
         .filter((e) => (e.components.event as { y: number })?.y === 240);
       expect(bpms).toHaveLength(1);
-      expect((bpms[0]!.components.bpmChange as { bpm: number })?.bpm).toBe(128);
+      expect((bpms[0].components.bpmChange as { bpm: number })?.bpm).toBe(128);
     });
 
     test("placing a time signature creates a time signature entity with current sig", () => {
@@ -1285,8 +1351,8 @@ describe("EditorController", () => {
         .entitiesWithComponent(TIME_SIGNATURE)
         .filter((e) => (e.components.event as { y: number })?.y === 240);
       expect(tss).toHaveLength(1);
-      expect((tss[0]!.components.timeSignature as { numerator: number })?.numerator).toBe(4);
-      expect((tss[0]!.components.timeSignature as { denominator: number })?.denominator).toBe(4);
+      expect((tss[0].components.timeSignature as { numerator: number })?.numerator).toBe(4);
+      expect((tss[0].components.timeSignature as { denominator: number })?.denominator).toBe(4);
     });
 
     test("undo removes a placed note", () => {
@@ -1742,7 +1808,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(noteEntity!.id);
 
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
-      const targetCol = columns.find((c) => c.levelId === levelEntity!.id && c.laneIndex === 3);
+      const targetCol = findLevelLaneColumn(columns, levelEntity!.id, 3);
       expect(targetCol).toBeDefined();
 
       // A small vertical offset ensures the drag threshold is crossed reliably,
@@ -1786,7 +1852,7 @@ describe("EditorController", () => {
       editor.selection.shouldContain(noteEntity!.id);
 
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
-      const targetCol = columns.find((c) => c.levelId === level2!.id && c.laneIndex === 3);
+      const targetCol = findLevelLaneColumn(columns, level2!.id, 3);
       expect(targetCol).toBeDefined();
 
       editor.pointerMove({
@@ -1822,7 +1888,7 @@ describe("EditorController", () => {
       editor.pointerDown(Rect.center(editor.eventRect(noteEntity!.id)));
 
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
-      const targetCol = columns.find((c) => c.levelId === levelEntity!.id && c.laneIndex === 3);
+      const targetCol = findLevelLaneColumn(columns, levelEntity!.id, 3);
       expect(targetCol).toBeDefined();
 
       const fromRect = editor.eventRect(noteEntity!.id);
@@ -1881,10 +1947,10 @@ describe("EditorController", () => {
       editor.instance.addSoundChannel(groupId);
 
       const channels = editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get();
-      expect(channels[0]!.handle).toBe("PNO-001");
-      expect(channels[0]!.displayNumber).toBe("001");
-      expect(channels[1]!.handle).toBe("PNO-002");
-      expect(channels[1]!.displayNumber).toBe("002");
+      expect(channels[0].handle).toBe("PNO-001");
+      expect(channels[0].displayNumber).toBe("001");
+      expect(channels[1].handle).toBe("PNO-002");
+      expect(channels[1].displayNumber).toBe("002");
     });
 
     test("removing a sound channel deletes the entity", () => {
@@ -1894,9 +1960,9 @@ describe("EditorController", () => {
 
       editor.instance.removeSoundChannel(channelId);
 
-      const entity = editor.instance.getEntityManager().get(channelId);
-      expect(entity).toBeDefined();
-      expect(Object.keys(entity!.components)).toHaveLength(0);
+      const channelEntity = editor.instance.getEntityManager().get(channelId);
+      expect(channelEntity).toBeDefined();
+      expect(Object.keys(channelEntity!.components)).toHaveLength(0);
     });
 
     test("removing a sound group removes its channels", () => {
@@ -1911,9 +1977,9 @@ describe("EditorController", () => {
       expect(group).toBeDefined();
       expect(Object.keys(group!.components)).toHaveLength(0);
       for (const id of [channel1, channel2]) {
-        const entity = editor.instance.getEntityManager().get(id);
-        expect(entity).toBeDefined();
-        expect(Object.keys(entity!.components)).toHaveLength(0);
+        const channelEntity = editor.instance.getEntityManager().get(id);
+        expect(channelEntity).toBeDefined();
+        expect(Object.keys(channelEntity!.components)).toHaveLength(0);
       }
     });
 
@@ -1927,7 +1993,7 @@ describe("EditorController", () => {
       const channels = editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get();
 
       expect(groups).toHaveLength(1);
-      expect(groups[0]!.name).toBe("Drums");
+      expect(groups[0].name).toBe("Drums");
       expect(channels).toHaveLength(2);
       expect(channels.map((c) => c.displayNumber)).toEqual(["001", "002"]);
     });
@@ -1953,10 +2019,10 @@ describe("EditorController", () => {
         .entitiesWithComponent(SOUND_EVENT)
         .filter((e) => (e.components.event as { y: number })?.y === 240);
       expect(events).toHaveLength(1);
-      expect((events[0]!.components.soundEvent as { soundChannelId: string })?.soundChannelId).toBe(
+      expect((events[0].components.soundEvent as { soundChannelId: string })?.soundChannelId).toBe(
         channelId,
       );
-      expect((events[0]!.components.soundEvent as { soundLane: number })?.soundLane).toBe(0);
+      expect((events[0].components.soundEvent as { soundLane: number })?.soundLane).toBe(0);
     });
   });
 
@@ -1989,14 +2055,14 @@ describe("EditorController", () => {
           }),
       });
       const chartId = editor.instance.ctx.get(ChartSlice).$selectedChartId.get()!;
-      const levelId = editor.instance.getLevelsForChart(chartId)[0]!.id;
+      const levelId = editor.instance.getLevelsForChart(chartId)[0].id;
 
       editor.instance.removeLevel(levelId);
       expect(editor.instance.getLevelsForChart(chartId)).toHaveLength(0);
 
       editor.undo();
       expect(editor.instance.getLevelsForChart(chartId)).toHaveLength(1);
-      expect(editor.instance.getLevelsForChart(chartId)[0]!.id).toBe(levelId);
+      expect(editor.instance.getLevelsForChart(chartId)[0].id).toBe(levelId);
     });
 
     test("undo addChart removes the chart and restores previous selection", () => {
@@ -2025,7 +2091,7 @@ describe("EditorController", () => {
           }),
       });
       const charts = editor.instance.getCharts();
-      const chartId = charts[0]!.id;
+      const chartId = charts[0].id;
 
       editor.instance.removeChart(chartId);
       expect(editor.instance.getCharts()).toHaveLength(1);
@@ -2055,9 +2121,7 @@ describe("EditorController", () => {
       editor.undo();
       expect(editor.instance.ctx.get(SoundChannelSlice).$soundGroups.get()).toHaveLength(1);
       expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()).toHaveLength(1);
-      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()[0]!.id).toBe(
-        channelId,
-      );
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()[0].id).toBe(channelId);
     });
 
     test("undo addSoundChannel removes the channel", () => {
@@ -2080,9 +2144,7 @@ describe("EditorController", () => {
 
       editor.undo();
       expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()).toHaveLength(1);
-      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()[0]!.id).toBe(
-        channelId,
-      );
+      expect(editor.instance.ctx.get(SoundChannelSlice).$soundChannels.get()[0].id).toBe(channelId);
     });
   });
 
@@ -2129,36 +2191,6 @@ describe("EditorController", () => {
   });
 
   describe("waveform slice computation", () => {
-    function makeWaveformData(seconds: number): WaveformData {
-      const chunkCount = Math.max(1, Math.floor(seconds * 120));
-      const peak = new Float32Array(chunkCount);
-      const rms = new Float32Array(chunkCount);
-      const centroid = new Float32Array(chunkCount);
-      for (let i = 0; i < chunkCount; i++) {
-        peak[i] = (i + 1) / chunkCount;
-        rms[i] = peak[i] * 0.7;
-        centroid[i] = i / chunkCount;
-      }
-      return { peak, rms, centroid, durationSec: seconds, sampleRate: 48000 };
-    }
-
-    function setChannelPath(editor: EditorTester, channelId: string, path: string): void {
-      const entityManager = editor.instance.getEntityManager();
-      const entity = entityManager.get(channelId);
-      if (!entity) return;
-      const oldComponents = structuredClone(entity.components);
-      const newComponents = structuredClone(oldComponents);
-      (newComponents as Record<string, unknown>)["soundChannel"] = {
-        ...(oldComponents as Record<string, Record<string, unknown>>)["soundChannel"],
-        path,
-      };
-      editor.instance.ctx
-        .get(HistorySlice)
-        .applyAction(
-          new EditEntityUserAction(editor.instance.ctx, channelId, oldComponents, newComponents),
-        );
-    }
-
     test("no waveform slices when no waveform data is available", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
@@ -2224,13 +2256,12 @@ describe("EditorController", () => {
       const slices = renderSlice.$waveformSlices.get();
       expect(slices.length, "should produce at least one waveform slice").toBeGreaterThan(0);
 
-      const sorted = [...slices].sort((a, b) => a.y - b.y);
+      const sorted = [...slices].toSorted((a, b) => a.y - b.y);
       for (let i = 1; i < sorted.length; i++) {
         const prev = sorted[i - 1];
         const curr = sorted[i];
         const gap = curr.y - (prev.y + prev.rpLength);
-        const label = `segment at y=${prev.y.toFixed(1)} h=${prev.rpLength.toFixed(1)} → next at y=${curr.y.toFixed(1)}`;
-        expect(Math.abs(gap), label).toBeLessThan(1);
+        expect(Math.abs(gap)).toBeLessThan(1);
       }
     });
   });
@@ -2300,7 +2331,9 @@ describe("EditorController", () => {
         .filter((e) => em.getComponent(e, EVENT)!.y >= 600);
       expect(allBpmEvents).toHaveLength(2);
 
-      const pulses = allBpmEvents.map((e) => em.getComponent(e, EVENT)!.y).sort((a, b) => a - b);
+      const pulses = allBpmEvents
+        .map((e) => em.getComponent(e, EVENT)!.y)
+        .toSorted((a, b) => a - b);
       expect(pulses[0]).toBe(600);
       expect(pulses[1]).toBe(840);
 
@@ -2460,7 +2493,7 @@ describe("EditorController", () => {
       const notes = em.entitiesWithComponent(NOTE);
       expect(notes).toHaveLength(1);
       // Extension properties are NOT injected — notes start clean
-      expect((notes[0]!.components as Record<string, unknown>).fingerId).toBeUndefined();
+      expect((notes[0].components as Record<string, unknown>).fingerId).toBeUndefined();
     });
 
     test("coloring rule overrides note color in render output", () => {
@@ -2508,7 +2541,9 @@ describe("EditorController", () => {
       });
 
       const specs = editor.instance.getVisibleRenderObjects();
-      const noteSpec = specs.find((s) => s.type === "event-marker" && s.testId === "note");
+      const noteSpec = specs
+        .filter((s) => s.type === "event-marker")
+        .find((s) => s.testId === "note");
       expect(noteSpec).toBeDefined();
       expect((noteSpec!.data as { backgroundColor: string }).backgroundColor).toBe("#ff0000");
     });
@@ -2552,7 +2587,9 @@ describe("EditorController", () => {
       });
 
       const specs = editor.instance.getVisibleRenderObjects();
-      const noteSpec = specs.find((s) => s.type === "event-marker" && s.testId === "note");
+      const noteSpec = specs
+        .filter((s) => s.type === "event-marker")
+        .find((s) => s.testId === "note");
       expect(noteSpec).toBeDefined();
       // Should fall back to lane noteColor
       expect((noteSpec!.data as { backgroundColor: string }).backgroundColor).toBe("#00ff00");
@@ -2571,8 +2608,8 @@ describe("EditorController", () => {
       });
 
       // Add a decoration spec targeting Level B lane 1
-      const levelA = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0]!;
-      const levelB = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[1]!;
+      const levelA = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0];
+      const levelB = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[1];
       $extensionDecorations.set([
         {
           type: "line",
@@ -2591,12 +2628,12 @@ describe("EditorController", () => {
       expect(lineSpecs).toHaveLength(1);
       // The line should anchor to Level B's columns (lane 1, 2), not Level A's
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
-      const levelBLane1Col = columns.find((c) => c.levelId === levelB.id && c.laneIndex === 1);
-      const levelALane1Col = columns.find((c) => c.levelId === levelA.id && c.laneIndex === 1);
+      const levelBLane1Col = findLevelLaneColumn(columns, levelB.id, 1);
+      const levelALane1Col = findLevelLaneColumn(columns, levelA.id, 1);
       expect(levelALane1Col).toBeDefined();
       // Should anchor to Level B, not Level A
-      expect(lineSpecs[0]!.x).not.toBe(levelALane1Col!.x + levelALane1Col!.width / 2);
-      expect(lineSpecs[0]!.x).toBe(levelBLane1Col!.x + levelBLane1Col!.width / 2);
+      expect(lineSpecs[0].x).not.toBe(levelALane1Col!.x + levelALane1Col!.width / 2);
+      expect(lineSpecs[0].x).toBe(levelBLane1Col!.x + levelBLane1Col!.width / 2);
     });
 
     test("arrow decoration with levelId anchors to the correct level's columns", () => {
@@ -2609,7 +2646,7 @@ describe("EditorController", () => {
           }),
       });
 
-      const levelB = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[1]!;
+      const levelB = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[1];
       $extensionDecorations.set([
         {
           type: "arrow",
@@ -2628,32 +2665,15 @@ describe("EditorController", () => {
       const arrowSpecs = specs.filter((s) => s.type === "decoration-arrow");
       expect(arrowSpecs).toHaveLength(1);
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
-      const levelBLane1Col = columns.find((c) => c.levelId === levelB.id && c.laneIndex === 1)!;
+      const levelBLane1Col = findLevelLaneColumn(columns, levelB.id, 1)!;
       // Arrow should be positioned above Level B's lane 1, not Level A's
-      expect(arrowSpecs[0]!.x).toBe(levelBLane1Col.x);
+      expect(arrowSpecs[0].x).toBe(levelBLane1Col.x);
     });
   });
 
   describe("rect decoration", () => {
-    function setup(chartSize = 1000) {
-      const editor = new EditorTester({
-        getProjectToLoad: () =>
-          makeProject((p) => {
-            const chart = p.addChart("Hard", undefined, chartSize);
-            p.addLevel(chart.id, "Level A", "beat-7k");
-          }),
-      });
-      const levelId = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0]!
-        .id;
-      return { editor, levelId };
-    }
-
-    function rectSpecs(editor: EditorTester) {
-      return editor.instance.getVisibleRenderObjects().filter((s) => s.type === "decoration-rect");
-    }
-
     test("spans the full lane-column width and pulse range (forward order)", () => {
-      const { editor, levelId } = setup();
+      const { editor, levelId } = setupRectDecoration();
       $extensionDecorations.set([
         {
           type: "rect",
@@ -2669,8 +2689,8 @@ describe("EditorController", () => {
       const specs = rectSpecs(editor);
       expect(specs).toHaveLength(1);
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
-      const lane1Col = columns.find((c) => c.levelId === levelId && c.laneIndex === 1)!;
-      const lane3Col = columns.find((c) => c.levelId === levelId && c.laneIndex === 3)!;
+      const lane1Col = findLevelLaneColumn(columns, levelId, 1)!;
+      const lane3Col = findLevelLaneColumn(columns, levelId, 3)!;
       const scaleY = editor.instance.ctx.get(ViewportSlice).getScaleY();
       const trackHeight = editor.instance.ctx.get(ViewportSlice).getTrackHeight();
 
@@ -2681,14 +2701,14 @@ describe("EditorController", () => {
       const expectedTop = Math.min(y240, y480);
       const expectedBottom = Math.max(y240, y480);
 
-      expect(specs[0]!.x).toBe(expectedLeft);
-      expect(specs[0]!.width).toBe(expectedRight - expectedLeft);
-      expect(specs[0]!.y).toBe(expectedTop);
-      expect(specs[0]!.height).toBe(expectedBottom - expectedTop);
+      expect(specs[0].x).toBe(expectedLeft);
+      expect(specs[0].width).toBe(expectedRight - expectedLeft);
+      expect(specs[0].y).toBe(expectedTop);
+      expect(specs[0].height).toBe(expectedBottom - expectedTop);
     });
 
     test("normalizes when from.lane > to.lane and from.pulse > to.pulse", () => {
-      const { editor, levelId } = setup();
+      const { editor, levelId } = setupRectDecoration();
       $extensionDecorations.set([
         {
           type: "rect",
@@ -2704,8 +2724,8 @@ describe("EditorController", () => {
       const specs = rectSpecs(editor);
       expect(specs).toHaveLength(1);
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
-      const lane1Col = columns.find((c) => c.levelId === levelId && c.laneIndex === 1)!;
-      const lane3Col = columns.find((c) => c.levelId === levelId && c.laneIndex === 3)!;
+      const lane1Col = findLevelLaneColumn(columns, levelId, 1)!;
+      const lane3Col = findLevelLaneColumn(columns, levelId, 3)!;
       const scaleY = editor.instance.ctx.get(ViewportSlice).getScaleY();
       const trackHeight = editor.instance.ctx.get(ViewportSlice).getTrackHeight();
 
@@ -2716,16 +2736,16 @@ describe("EditorController", () => {
       const expectedTop = Math.min(y240, y480);
       const expectedBottom = Math.max(y240, y480);
 
-      expect(specs[0]!.x).toBe(expectedLeft);
-      expect(specs[0]!.width).toBe(expectedRight - expectedLeft);
-      expect(specs[0]!.y).toBe(expectedTop);
-      expect(specs[0]!.height).toBe(expectedBottom - expectedTop);
+      expect(specs[0].x).toBe(expectedLeft);
+      expect(specs[0].width).toBe(expectedRight - expectedLeft);
+      expect(specs[0].y).toBe(expectedTop);
+      expect(specs[0].height).toBe(expectedBottom - expectedTop);
     });
 
     test("is culled when the whole pulse range is outside the visible window", () => {
       // Default scroll position shows pulses near the start of a long chart,
       // so a decoration near the very end sits well outside the visible window.
-      const { editor, levelId } = setup(20000);
+      const { editor, levelId } = setupRectDecoration(20000);
       $extensionDecorations.set([
         {
           type: "rect",
@@ -2741,7 +2761,7 @@ describe("EditorController", () => {
     });
 
     test("is skipped when a lane's column cannot be found", () => {
-      const { editor, levelId } = setup();
+      const { editor, levelId } = setupRectDecoration();
       $extensionDecorations.set([
         {
           type: "rect",
@@ -2757,7 +2777,7 @@ describe("EditorController", () => {
     });
 
     test("is skipped when levelId does not match any column", () => {
-      const { editor } = setup();
+      const { editor } = setupRectDecoration();
       $extensionDecorations.set([
         {
           type: "rect",
@@ -2774,12 +2794,6 @@ describe("EditorController", () => {
   });
 
   describe("marker decoration", () => {
-    function markerSpecs(editor: EditorTester) {
-      return editor.instance
-        .getVisibleRenderObjects()
-        .filter((s) => s.type === "decoration-marker");
-    }
-
     test("produces a render spec positioned/sized like an event marker", () => {
       const editor = new EditorTester({
         getProjectToLoad: () =>
@@ -2788,7 +2802,7 @@ describe("EditorController", () => {
             p.addLevel(chart.id, "Level A", "beat-7k");
           }),
       });
-      const levelId = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0]!
+      const levelId = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0]
         .id;
       $extensionDecorations.set([
         {
@@ -2806,15 +2820,15 @@ describe("EditorController", () => {
       const specs = markerSpecs(editor);
       expect(specs).toHaveLength(1);
       const columns = editor.instance.ctx.get(ColumnsSlice).$columns.get();
-      const lane1Col = columns.find((c) => c.levelId === levelId && c.laneIndex === 1)!;
+      const lane1Col = findLevelLaneColumn(columns, levelId, 1)!;
       const scaleY = editor.instance.ctx.get(ViewportSlice).getScaleY();
       const trackHeight = editor.instance.ctx.get(ViewportSlice).getTrackHeight();
 
-      expect(specs[0]!.x).toBe(lane1Col.x);
-      expect(specs[0]!.width).toBe(lane1Col.width);
-      expect(specs[0]!.height).toBe(14);
-      expect(specs[0]!.y).toBe(trackHeight - 240 * scaleY - 14);
-      expect((specs[0]!.data as { style: string }).style).toBe("warning");
+      expect(specs[0].x).toBe(lane1Col.x);
+      expect(specs[0].width).toBe(lane1Col.width);
+      expect(specs[0].height).toBe(14);
+      expect(specs[0].y).toBe(trackHeight - 240 * scaleY - 14);
+      expect((specs[0].data as { style: string }).style).toBe("warning");
     });
 
     test("is culled when outside the visible pulse range", () => {
@@ -2825,7 +2839,7 @@ describe("EditorController", () => {
             p.addLevel(chart.id, "Level A", "beat-7k");
           }),
       });
-      const levelId = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0]!
+      const levelId = editor.instance.getLevelsForChart(editor.instance.$selectedChartId.get()!)[0]
         .id;
       $extensionDecorations.set([
         {

@@ -37,8 +37,10 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     channelGains,
     lookaheadPlaybackSec: window = 0.2,
     tickIntervalMs = 25,
-    requestFrame = (callback) => globalThis.requestAnimationFrame(callback),
-    cancelFrame = (handle) => globalThis.cancelAnimationFrame(handle),
+    requestFrame = (callback: () => void) => globalThis.requestAnimationFrame(callback),
+    cancelFrame = (handle: number) => {
+      globalThis.cancelAnimationFrame(handle);
+    },
   } = options;
 
   if (!Number.isFinite(rate) || rate <= 0) {
@@ -77,7 +79,9 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     activeSources.length = 0;
   }
 
-  const onAbort = () => stop();
+  const onAbort = () => {
+    stop();
+  };
   if (playback.abortSignal.aborted) return () => {};
   playback.abortSignal.addEventListener("abort", onAbort, { once: true });
 
@@ -136,10 +140,14 @@ export function startAudioPlayback(options: AudioPlaybackOptions): () => void {
     const entry: ActiveSource = { source, gain: channelGain };
     activeSources.push(entry);
 
-    source.onended = () => {
-      const idx = activeSources.indexOf(entry);
-      if (idx >= 0) activeSources.splice(idx, 1);
-    };
+    source.addEventListener(
+      "ended",
+      () => {
+        const idx = activeSources.indexOf(entry);
+        if (idx >= 0) activeSources.splice(idx, 1);
+      },
+      { once: true },
+    );
   }
 
   function start(): void {

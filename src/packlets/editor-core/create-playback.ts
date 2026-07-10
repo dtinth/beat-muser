@@ -55,7 +55,7 @@ export function createPlayback(options: CreatePlaybackOptions): Playback {
 
     for (let i = 0; i < group.length; i++) {
       const event = group[i];
-      const nextEvent = group[i + 1] ?? null;
+      const nextEvent = group.at(i + 1);
 
       if (event.command === "play" || chainStart === -1) {
         chainStartPulse = event.pulse;

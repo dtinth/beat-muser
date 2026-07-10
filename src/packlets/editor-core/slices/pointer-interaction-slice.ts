@@ -1,6 +1,5 @@
 import { atom } from "nanostores";
 import { Slice } from "../slice.ts";
-import type { EditorContext } from "../editor-context.ts";
 import { ProjectSlice } from "./project-slice.ts";
 import { ViewportSlice } from "./viewport-slice.ts";
 import { ColumnsSlice } from "./columns-slice.ts";
@@ -31,10 +30,6 @@ export class PointerInteractionSlice extends Slice {
   private lastCompatibleColumnIndex: number | null = null;
   private dragFlatList: TimelineColumn[] = [];
 
-  constructor(ctx: EditorContext) {
-    super(ctx);
-  }
-
   hitTest(point: Point): string | null {
     const scroll = this.ctx.get(ViewportSlice).$scroll.get();
     const contentX = point.x + scroll.x;
@@ -47,7 +42,7 @@ export class PointerInteractionSlice extends Slice {
     let bestDistance = Infinity;
 
     for (const spec of specs) {
-      if (!spec.entityId) continue;
+      if (spec.entityId === undefined || spec.entityId === "") continue;
 
       const hitRect = Rect.expand(
         { x: spec.x, y: spec.y, width: spec.width, height: spec.height },
@@ -71,9 +66,9 @@ export class PointerInteractionSlice extends Slice {
     const contentX = viewportX + this.ctx.get(ViewportSlice).$scroll.get().x;
     const columns = this.ctx.get(ColumnsSlice).$columns.get();
     if (columns.length === 0) return 0;
-    if (contentX < columns[0]!.x) return 0;
+    if (contentX < columns[0].x) return 0;
     for (let i = 0; i < columns.length; i++) {
-      const col = columns[i]!;
+      const col = columns[i];
       if (contentX >= col.x && contentX < col.x + col.width) {
         return i;
       }
@@ -111,7 +106,7 @@ export class PointerInteractionSlice extends Slice {
   placeAtCursor(): void {
     if (this.ctx.get(PlaybackSlice).$transportState.get() === "playing") return;
     const columnId = this.ctx.get(CursorSlice).$cursorColumnId.get();
-    if (!columnId) return;
+    if (columnId === null || columnId === "") return;
     const columns = this.ctx.get(ColumnsSlice).$columns.get();
     const column = columns.find((c) => c.id === columnId);
     if (!column?.placementHandler) return;
@@ -162,7 +157,7 @@ export class PointerInteractionSlice extends Slice {
 
     if (activeTool === "erase") {
       const hit = this.hitTest(point);
-      if (hit) {
+      if (hit !== null && hit !== "") {
         const entity = this.ctx.get(ProjectSlice).entityManager.get(hit);
         if (entity) {
           this.ctx
@@ -174,7 +169,7 @@ export class PointerInteractionSlice extends Slice {
     }
 
     const hit = this.hitTest(point);
-    if (hit) {
+    if (hit !== null && hit !== "") {
       const currentSelection = this.ctx.get(SelectionSlice).$selection.get();
       const em = this.ctx.get(ProjectSlice).entityManager;
 
@@ -186,24 +181,21 @@ export class PointerInteractionSlice extends Slice {
           dragSelection = currentSelection;
         } else {
           // Shift+click on an unselected event adds it to selection
-          const next = new Set(currentSelection);
-          next.add(hit);
+          const next = new Set([...currentSelection, hit]);
           this.ctx.get(SelectionSlice).$selection.set(next);
           dragSelection = next;
         }
+      } else if (currentSelection.has(hit)) {
+        // Clicked a selected event — preserve selection
+        dragSelection = currentSelection;
       } else {
-        if (currentSelection.has(hit)) {
-          // Clicked a selected event — preserve selection
-          dragSelection = currentSelection;
-        } else {
-          // Clicked an unselected event — select it and switch to its level
-          dragSelection = new Set([hit]);
-          this.ctx.get(SelectionSlice).$selection.set(dragSelection);
-          const hitEntity = em.get(hit);
-          if (hitEntity) {
-            const lr = em.getComponent(hitEntity, LEVEL_REF);
-            if (lr) this.ctx.get(LevelSlice).setSelectedLevelId(lr.levelId);
-          }
+        // Clicked an unselected event — select it and switch to its level
+        dragSelection = new Set([hit]);
+        this.ctx.get(SelectionSlice).$selection.set(dragSelection);
+        const hitEntity = em.get(hit);
+        if (hitEntity) {
+          const lr = em.getComponent(hitEntity, LEVEL_REF);
+          if (lr) this.ctx.get(LevelSlice).setSelectedLevelId(lr.levelId);
         }
       }
 
@@ -221,7 +213,7 @@ export class PointerInteractionSlice extends Slice {
 
       // ---------- horizontal dragging support ----------
       const columns = this.ctx.get(ColumnsSlice).$columns.get();
-      const anchorColumn = columns.find((c) => c.containsEntity?.(hitEntity!));
+      const anchorColumn = columns.find((c) => c.containsEntity?.(hitEntity!) === true);
       const flatList = anchorColumn ? buildFlatList(columns, anchorColumn) : [];
       const startColumnIndex = anchorColumn ? (findFlatIndex(flatList, anchorColumn.id) ?? 0) : 0;
 
@@ -229,7 +221,7 @@ export class PointerInteractionSlice extends Slice {
       for (const entityId of dragSelection) {
         const entity = em.get(entityId);
         if (!entity) continue;
-        const col = flatList.find((c) => c.containsEntity?.(entity));
+        const col = flatList.find((c) => c.containsEntity?.(entity) === true);
         if (col) {
           const idx = findFlatIndex(flatList, col.id);
           if (idx !== undefined) originalColumnIndices.set(entityId, idx);
@@ -331,7 +323,7 @@ export class PointerInteractionSlice extends Slice {
         if (deltaColumnIndex !== 0 && originalColumnIndices.has(entityId)) {
           const newIndex = originalColumnIndices.get(entityId)! + deltaColumnIndex;
           if (newIndex >= 0 && newIndex < flatList.length) {
-            flatList[newIndex]!.moveEntityTo?.(batch, em, entity);
+            flatList[newIndex].moveEntityTo?.(batch, em, entity);
           }
         }
       }

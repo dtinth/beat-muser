@@ -74,7 +74,9 @@ export class CommandSet {
   registerTo(registry: CommandRegistry): () => void {
     const unregisters = this.commands.map((c) => registry.register(c));
     return () => {
-      unregisters.forEach((fn) => fn());
+      unregisters.forEach((fn) => {
+        fn();
+      });
     };
   }
 }
@@ -86,7 +88,9 @@ export class KeyboardShortcutHandler {
 
   constructor(options: { registry: CommandRegistry }) {
     this.registry = options.registry;
-    this.unsubRegistry = this.registry.subscribe(() => this.refresh());
+    this.unsubRegistry = this.registry.subscribe(() => {
+      this.refresh();
+    });
     this.refresh();
   }
 
@@ -95,8 +99,11 @@ export class KeyboardShortcutHandler {
     const isMac = navigator.platform.includes("Mac");
 
     for (const command of this.registry.getAll()) {
-      const shortcut = isMac && command.shortcutMac ? command.shortcutMac : command.shortcut;
-      if (!shortcut) continue;
+      const shortcut =
+        isMac && command.shortcutMac !== undefined && command.shortcutMac !== ""
+          ? command.shortcutMac
+          : command.shortcut;
+      if (shortcut === undefined || shortcut === "") continue;
 
       bindings[shortcut] = (event) => {
         event.preventDefault();

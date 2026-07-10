@@ -64,7 +64,7 @@ export class SoundChannelSlice extends Slice {
           color: group?.color,
         };
       })
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+      .toSorted((a, b) => a.sortOrder - b.sortOrder);
 
     const groupMap = new Map(groups.map((g) => [g.id, g]));
 
@@ -79,7 +79,7 @@ export class SoundChannelSlice extends Slice {
           sortOrder: channel?.sortOrder ?? 0,
         };
       })
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+      .toSorted((a, b) => a.sortOrder - b.sortOrder);
 
     // Compute handle and displayNumber per group
     const groupCounters = new Map<string, number>();

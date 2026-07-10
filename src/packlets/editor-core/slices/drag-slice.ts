@@ -50,7 +50,7 @@ export class DragSlice extends Slice {
   updateDrag(params: UpdateDragParams): void {
     if (this.state.mode === "idle") return;
 
-    const dx = params.viewportX !== undefined ? params.viewportX - this.state.startViewportX : 0;
+    const dx = params.viewportX === undefined ? 0 : params.viewportX - this.state.startViewportX;
     const dy = params.viewportY - this.state.startViewportY;
     const distance = Math.sqrt(dx * dx + dy * dy);
     if (this.state.mode === "pending" && distance >= 5) {
@@ -73,7 +73,9 @@ export class DragSlice extends Slice {
           minOriginalColumnIndex = Math.min(minOriginalColumnIndex, index);
           maxOriginalColumnIndex = Math.max(maxOriginalColumnIndex, index);
         }
-        if (params.maxColumnIndex !== undefined) {
+        if (params.maxColumnIndex === undefined) {
+          this.state.deltaColumnIndex = rawColumnDelta;
+        } else {
           this.state.deltaColumnIndex = rawColumnDelta;
           this.state.deltaColumnIndex = Math.max(
             -minOriginalColumnIndex,
@@ -83,8 +85,6 @@ export class DragSlice extends Slice {
             params.maxColumnIndex - maxOriginalColumnIndex,
             this.state.deltaColumnIndex,
           );
-        } else {
-          this.state.deltaColumnIndex = rawColumnDelta;
         }
       }
     }

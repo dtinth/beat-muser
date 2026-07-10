@@ -75,17 +75,17 @@ function getMeasureLength(sig: TimeSignature): number {
 }
 
 function parseSnapInterval(snap: string): number {
-  const match = snap.match(/^1\/(\d+)$/);
+  const match = snap.match(/^1\/(\d+)$/u);
   if (!match) {
     throw new Error(`Invalid snap format: ${snap}`);
   }
-  const n = parseInt(match[1], 10);
+  const n = Math.trunc(Number(match[1]));
   if (n <= 0) {
     throw new Error(`Invalid snap denominator: ${n}`);
   }
   const interval = (4 * PPQN) / n;
   if (!Number.isInteger(interval)) {
-    throw new Error(`Snap ${snap} does not produce an integer pulse interval`);
+    throw new TypeError(`Snap ${snap} does not produce an integer pulse interval`);
   }
   return interval;
 }
@@ -100,8 +100,8 @@ export function createTimingEngine(
   bpmChanges: BpmChange[],
   timeSignatures: TimeSignature[],
 ): TimingEngine {
-  const sortedBpms = [...bpmChanges].sort((a, b) => a.pulse - b.pulse);
-  const sortedSigs = [...timeSignatures].sort((a, b) => a.pulse - b.pulse);
+  const sortedBpms = [...bpmChanges].toSorted((a, b) => a.pulse - b.pulse);
+  const sortedSigs = [...timeSignatures].toSorted((a, b) => a.pulse - b.pulse);
 
   if (sortedBpms.length === 0) {
     sortedBpms.push({ pulse: 0, bpm: 60 });
@@ -178,7 +178,7 @@ export function createTimingEngine(
       measureStart = effectiveSigs[0].pulse;
       sigIndex = 0;
     } else {
-      measureStart = boundaries[boundaries.length - 1];
+      measureStart = boundaries.at(-1) ?? 0;
       sigIndex = findSigIndex(measureStart);
       [measureStart, sigIndex] = computeNextBoundary(measureStart, sigIndex);
     }

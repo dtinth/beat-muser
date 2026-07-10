@@ -43,7 +43,10 @@ export class DeleteUserAction implements UserAction {
     }
     const chartId = this.ctx.get(ChartSlice).$selectedChartId.get();
     const visibleLevels = new Set(
-      (chartId ? this.ctx.get(LevelSlice).getVisibleLevels(chartId) : []).map((l) => l.id),
+      (chartId !== null && chartId !== ""
+        ? this.ctx.get(LevelSlice).getVisibleLevels(chartId)
+        : []
+      ).map((l) => l.id),
     );
     const selection = new Set<string>();
     for (const entity of this.entities) {

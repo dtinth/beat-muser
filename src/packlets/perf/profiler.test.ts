@@ -89,7 +89,9 @@ describe("aggregateSamples", () => {
 
   test("p95 is computed for frame deltas", () => {
     // 20 samples: index 19 is a spike. p95 idx = 0.95 * 19 = 18.05 → interpolates between 16 and 100.
-    const samples = Array.from({ length: 20 }, (_, i) => makeSample(i === 19 ? 100 : 16, 5));
+    const deltas = Array.from({ length: 20 }, () => 16);
+    deltas[19] = 100;
+    const samples = deltas.map((d) => makeSample(d, 5));
     const stats = aggregateSamples(samples, 320);
     // p95 index = 18.05 → 16 + 0.05 * (100 - 16) = 20.2
     expect(stats.frameDelta.p95).toBeGreaterThan(16);
@@ -195,7 +197,7 @@ describe("formatProfileReport", () => {
   test("contains FPS estimate", () => {
     const report = formatProfileReport(makeResult());
     // 100 frames / 1.667s ≈ 59.9 FPS
-    expect(report).toMatch(/\d+\.\d\s*$/m); // some numeric fps-like value
+    expect(report).toMatch(/\d+\.\d\s*$/mu); // some numeric fps-like value
     expect(report).toContain("Avg FPS");
   });
 

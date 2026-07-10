@@ -36,7 +36,9 @@ export function SidebarPanel({ tabs }: SidebarPanelProps) {
             <button
               key={tab.label}
               type="button"
-              onClick={() => setActiveIndex(i)}
+              onClick={() => {
+                setActiveIndex(i);
+              }}
               style={{
                 padding: "6px 12px",
                 fontSize: 11,
@@ -71,7 +73,7 @@ export function SidebarPanel({ tabs }: SidebarPanelProps) {
         }}
       >
         {tabs.map((tab, i) => (
-          <div key={i} style={{ display: i === activeIndex ? undefined : "none" }}>
+          <div key={tab.label} style={{ display: i === activeIndex ? undefined : "none" }}>
             {tab.content}
           </div>
         ))}

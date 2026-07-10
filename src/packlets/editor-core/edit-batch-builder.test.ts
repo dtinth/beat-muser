@@ -18,10 +18,10 @@ describe("EditBatchBuilder", () => {
     const edits = batch.build();
 
     expect(edits).toHaveLength(1);
-    expect(edits[0]!.entityId).toBe(e.id);
-    expect((edits[0]!.oldComponents[EVENT.key] as { y: number }).y).toBe(500);
-    expect((edits[0]!.newComponents[EVENT.key] as { y: number }).y).toBe(300);
-    expect((edits[0]!.newComponents[NOTE.key] as { lane: number }).lane).toBe(1);
+    expect(edits[0].entityId).toBe(e.id);
+    expect((edits[0].oldComponents[EVENT.key] as { y: number }).y).toBe(500);
+    expect((edits[0].newComponents[EVENT.key] as { y: number }).y).toBe(300);
+    expect((edits[0].newComponents[NOTE.key] as { lane: number }).lane).toBe(1);
   });
 
   test("setNoteColumn updates lane and level", () => {
@@ -35,7 +35,7 @@ describe("EditBatchBuilder", () => {
     batch.setNoteColumn(e.id, "l2", 3);
     const edits = batch.build();
 
-    const nc = edits[0]!.newComponents;
+    const nc = edits[0].newComponents;
     expect((nc[NOTE.key] as { lane: number }).lane).toBe(3);
     expect((nc[LEVEL_REF.key] as { levelId: string }).levelId).toBe("l2");
   });
@@ -53,7 +53,7 @@ describe("EditBatchBuilder", () => {
     batch.setSoundLane(e.id, 2);
     const edits = batch.build();
 
-    expect((edits[0]!.newComponents[SOUND_EVENT.key] as { soundLane: number }).soundLane).toBe(2);
+    expect((edits[0].newComponents[SOUND_EVENT.key] as { soundLane: number }).soundLane).toBe(2);
   });
 
   test("multiple mutations on same entity merge into single edit", () => {
@@ -69,7 +69,7 @@ describe("EditBatchBuilder", () => {
     const edits = batch.build();
 
     expect(edits).toHaveLength(1);
-    const nc = edits[0]!.newComponents;
+    const nc = edits[0].newComponents;
     expect((nc[EVENT.key] as { y: number }).y).toBe(300);
     expect((nc[NOTE.key] as { lane: number }).lane).toBe(3);
     expect((nc[LEVEL_REF.key] as { levelId: string }).levelId).toBe("l2");
@@ -87,7 +87,7 @@ describe("EditBatchBuilder", () => {
     batch.setNoteColumn(e.id, "l2", 5);
     const edits = batch.build();
 
-    const oc = edits[0]!.oldComponents;
+    const oc = edits[0].oldComponents;
     expect((oc[EVENT.key] as { y: number }).y).toBe(500);
     expect((oc[NOTE.key] as { lane: number }).lane).toBe(1);
     expect((oc[LEVEL_REF.key] as { levelId: string }).levelId).toBe("l1");
@@ -102,7 +102,7 @@ describe("EditBatchBuilder", () => {
     batch.setKeysoundLane(e.id, 2);
     const edits = batch.build();
 
-    expect((edits[0]!.newComponents[KEYSOUND.key] as { soundLane: number }).soundLane).toBe(2);
+    expect((edits[0].newComponents[KEYSOUND.key] as { soundLane: number }).soundLane).toBe(2);
   });
 
   test("getModifiedEntityIds returns set of touched entities", () => {

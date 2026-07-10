@@ -34,7 +34,7 @@ export function computeWaveformOffsets(
     let cumulativeChartSec = 0;
     for (let i = 0; i < group.length; i++) {
       const event = group[i];
-      const nextEvent = group[i + 1];
+      const nextEvent = group.at(i + 1);
 
       if (event.command === "play") {
         cumulativeChartSec = 0;

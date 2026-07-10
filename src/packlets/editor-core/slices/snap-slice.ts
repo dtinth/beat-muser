@@ -1,17 +1,12 @@
 import { atom } from "nanostores";
 import { createNanoEvents } from "nanoevents";
 import { Slice } from "../slice.ts";
-import type { EditorContext } from "../editor-context.ts";
 
 export class SnapSlice extends Slice {
   static readonly sliceKey = "snap";
 
   $snap = atom<string>("1/16");
   private events = createNanoEvents<{ snapChanged: (snap: string) => void }>();
-
-  constructor(ctx: EditorContext) {
-    super(ctx);
-  }
 
   setSnap(snap: string): void {
     this.$snap.set(snap);

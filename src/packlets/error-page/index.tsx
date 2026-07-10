@@ -30,7 +30,7 @@ export function ErrorPage() {
     console.error("Unknown error:", error);
   }
 
-  const fullTrace = `${title}\n${message}${stack ? `\n\n${stack}` : ""}`;
+  const fullTrace = `${title}\n${message}${stack !== undefined && stack !== "" ? `\n\n${stack}` : ""}`;
 
   return (
     <Flex
@@ -52,7 +52,7 @@ export function ErrorPage() {
         {message}
       </Text>
 
-      {stack && (
+      {stack !== undefined && stack !== "" && (
         <Box
           style={{
             position: "relative",
@@ -74,8 +74,8 @@ export function ErrorPage() {
             size="1"
             variant="soft"
             style={{ position: "absolute", top: 8, right: 8 }}
-            onClick={async () => {
-              await navigator.clipboard.writeText(fullTrace);
+            onClick={() => {
+              void navigator.clipboard.writeText(fullTrace);
             }}
           >
             <Copy size={14} />
@@ -85,7 +85,12 @@ export function ErrorPage() {
       )}
 
       <Flex gap="3">
-        <Button variant="soft" onClick={() => navigate("/")}>
+        <Button
+          variant="soft"
+          onClick={() => {
+            void navigate("/");
+          }}
+        >
           <Home size={16} />
           Go Home
         </Button>

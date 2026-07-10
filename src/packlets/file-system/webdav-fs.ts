@@ -47,21 +47,23 @@ export interface WebDavEntry {
 
 // Local-name matchers that ignore any `prefix:` (D:, d:, lp1:, or none) so the
 // scanner tolerates whatever namespace prefix the server emits.
-const RESPONSE_RE = /<(?:[\w-]+:)?response[\s>][\s\S]*?<\/(?:[\w-]+:)?response>/g;
-const HREF_RE = /<(?:[\w-]+:)?href[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?href>/;
-const LENGTH_RE = /<(?:[\w-]+:)?getcontentlength[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?getcontentlength>/;
-const MODIFIED_RE = /<(?:[\w-]+:)?getlastmodified[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?getlastmodified>/;
-const COLLECTION_RE = /<(?:[\w-]+:)?collection[\s/>]/;
+const RESPONSE_RE = /<(?:[\w-]+:)?response[\s>][\s\S]*?<\/(?:[\w-]+:)?response>/gu;
+const HREF_RE = /<(?:[\w-]+:)?href[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?href>/u;
+const LENGTH_RE = /<(?:[\w-]+:)?getcontentlength[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?getcontentlength>/u;
+const MODIFIED_RE = /<(?:[\w-]+:)?getlastmodified[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?getlastmodified>/u;
+const COLLECTION_RE = /<(?:[\w-]+:)?collection[\s/>]/u;
 
 function decodeXmlText(text: string): string {
   return text
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
-    .replace(/&amp;/g, "&"); // must be last so decoded entities aren't re-decoded
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'")
+    .replaceAll(/&#(\d+);/gu, (_: string, d: string) => String.fromCodePoint(Number(d)))
+    .replaceAll(/&#x([0-9a-fA-F]+);/gu, (_: string, h: string) =>
+      String.fromCodePoint(parseInt(h, 16)),
+    )
+    .replaceAll("&amp;", "&"); // must be last so decoded entities aren't re-decoded
 }
 
 /** Parses a WebDAV 207 multistatus XML body into flat entries. */
@@ -75,8 +77,9 @@ export function parseMultistatus(xml: string): WebDavEntry[] {
     entries.push({
       href: decodeXmlText(hrefMatch[1].trim()),
       isCollection: COLLECTION_RE.test(block),
-      contentLength: lengthText ? Number(lengthText) : undefined,
-      lastModified: modifiedText ? decodeXmlText(modifiedText) : undefined,
+      contentLength: lengthText !== undefined && lengthText !== "" ? Number(lengthText) : undefined,
+      lastModified:
+        modifiedText !== undefined && modifiedText !== "" ? decodeXmlText(modifiedText) : undefined,
     });
   }
   return entries;
@@ -95,18 +98,21 @@ export function createFileSystemFromWebDav(config: WebDavConfig): ProjectFileSys
     // would otherwise crash every request (RFC 7617 also mandates UTF-8).
     const bytes = new TextEncoder().encode(`${config.username}:${config.password ?? ""}`);
     let binary = "";
-    for (const byte of bytes) binary += String.fromCharCode(byte);
+    for (const byte of bytes) binary += String.fromCodePoint(byte);
     return { Authorization: `Basic ${btoa(binary)}` };
   }
 
   function urlFor(path: string): string {
     // Encode each segment so spaces/unicode in file names survive, but keep
     // the slashes as path separators.
-    const encoded = path.split("/").map(encodeURIComponent).join("/");
+    const encoded = path
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
     return new URL(encoded, base).toString();
   }
 
-  async function request(
+  function request(
     method: string,
     path: string,
     opts?: { headers?: Record<string, string>; body?: BodyInit },
@@ -123,7 +129,7 @@ export function createFileSystemFromWebDav(config: WebDavConfig): ProjectFileSys
     // hrefs may be absolute URLs or absolute paths; both resolve against base.
     const pathname = decodeURIComponent(new URL(href, base).pathname);
     if (!pathname.startsWith(basePath)) return undefined;
-    const relative = pathname.slice(basePath.length).replace(/^\/+|\/+$/g, "");
+    const relative = pathname.slice(basePath.length).replaceAll(/^\/+|\/+$/gu, "");
     return relative === "" ? undefined : relative;
   }
 
@@ -154,7 +160,10 @@ export function createFileSystemFromWebDav(config: WebDavConfig): ProjectFileSys
         name: path.split("/").pop() ?? path,
         path,
         size: entry.contentLength ?? 0,
-        lastModified: entry.lastModified ? new Date(entry.lastModified) : new Date(0),
+        lastModified:
+          entry.lastModified !== undefined && entry.lastModified !== ""
+            ? new Date(entry.lastModified)
+            : new Date(0),
       });
     }
     return { files, dirs };
@@ -169,6 +178,7 @@ export function createFileSystemFromWebDav(config: WebDavConfig): ProjectFileSys
       const queue = [""];
       while (queue.length > 0) {
         const dir = queue.shift()!;
+        // oxlint-disable-next-line no-await-in-loop -- breadth-first walk whose queue is populated by each PROPFIND's result, so the requests must run sequentially (dufs caps PROPFIND at Depth:1).
         const { files, dirs } = await propfindDepth1(dir);
         all.push(...files);
         queue.push(...dirs);

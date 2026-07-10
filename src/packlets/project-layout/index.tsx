@@ -37,12 +37,12 @@ export function ProjectLayout({
       }}
     >
       {/* Toolbar */}
-      {toolbar && <Box style={{ flexShrink: 0 }}>{toolbar}</Box>}
+      {Boolean(toolbar) && <Box style={{ flexShrink: 0 }}>{toolbar}</Box>}
 
       {/* Main area */}
       <Flex style={{ flex: 1, overflow: "hidden" }}>
         {/* Left panels */}
-        {leftPanels && (
+        {Boolean(leftPanels) && (
           <Box
             style={{
               width: 256,
@@ -56,7 +56,7 @@ export function ProjectLayout({
         )}
 
         {/* Note chart timeline */}
-        {timeline && (
+        {Boolean(timeline) && (
           <Box
             style={{
               flex: 1,
@@ -68,7 +68,7 @@ export function ProjectLayout({
         )}
 
         {/* Right panels */}
-        {rightPanels && (
+        {Boolean(rightPanels) && (
           <Box
             style={{
               width: 256,
@@ -83,7 +83,7 @@ export function ProjectLayout({
       </Flex>
 
       {/* Status bar */}
-      {statusBar && <Box style={{ flexShrink: 0 }}>{statusBar}</Box>}
+      {Boolean(statusBar) && <Box style={{ flexShrink: 0 }}>{statusBar}</Box>}
     </Flex>
   );
 }

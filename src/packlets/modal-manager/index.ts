@@ -41,8 +41,8 @@ export interface SelectModalOptions {
   placeholder?: string;
 }
 
-type InputRequest = { type: "input"; id: string } & InputModalOptions;
-type SelectRequest = { type: "select"; id: string } & SelectModalOptions;
+export type InputRequest = { type: "input"; id: string } & InputModalOptions;
+export type SelectRequest = { type: "select"; id: string } & SelectModalOptions;
 
 export type ModalRequest = InputRequest | SelectRequest;
 
@@ -53,7 +53,9 @@ export class ModalManager {
   input(options: InputModalOptions): Promise<string | undefined> {
     const id = generateId();
     return new Promise<string | undefined>((resolve) => {
-      this.resolvers.set(id, resolve as (value: unknown) => void);
+      this.resolvers.set(id, (value: unknown) => {
+        resolve(typeof value === "string" ? value : undefined);
+      });
       const request: InputRequest = {
         type: "input",
         id,
@@ -70,19 +72,25 @@ export class ModalManager {
   ): Promise<SelectItem<T> | undefined> {
     const id = generateId();
     return new Promise<SelectItem<T> | undefined>((resolve) => {
-      this.resolvers.set(id, resolve as (value: unknown) => void);
+      this.resolvers.set(id, (value: unknown) => {
+        // The generic item type is erased at this shared resolver boundary;
+        // dismiss() is only ever called with the SelectItem<T> (or undefined)
+        // produced for this request, so this reconstruction is runtime-safe.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- generic value type erased at shared resolver map boundary
+        resolve(value as SelectItem<T> | undefined);
+      });
       const request: SelectRequest = {
         type: "select",
         id,
         title: options.title,
-        items: options.items as SelectItem[],
+        items: options.items,
         placeholder: options.placeholder,
       };
       this.$stack.set([...this.$stack.get(), request]);
     });
   }
 
-  dismiss(id: string, value: unknown): void {
+  dismiss(id: string, value?: unknown): void {
     const resolve = this.resolvers.get(id);
     if (resolve) {
       resolve(value);
@@ -92,7 +100,7 @@ export class ModalManager {
   }
 
   cancel(id: string): void {
-    this.dismiss(id, undefined);
+    this.dismiss(id);
   }
 }
 

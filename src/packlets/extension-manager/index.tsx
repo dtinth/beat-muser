@@ -36,9 +36,7 @@ export function ExtensionManagerPage() {
     const url = urlInput.trim();
     if (!url) return;
 
-    try {
-      new URL(url);
-    } catch {
+    if (!URL.canParse(url)) {
       showError({ title: "Invalid URL", description: "Please enter a valid URL." });
       return;
     }
@@ -55,13 +53,21 @@ export function ExtensionManagerPage() {
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const manifest = await res.json();
-      if (!manifest.id || !manifest.name) {
+      const manifest: unknown = await res.json();
+      const id =
+        typeof manifest === "object" && manifest !== null && "id" in manifest
+          ? manifest.id
+          : undefined;
+      const name =
+        typeof manifest === "object" && manifest !== null && "name" in manifest
+          ? manifest.name
+          : undefined;
+      if (typeof id !== "string" || id === "" || typeof name !== "string" || name === "") {
         throw new Error("Manifest missing required fields: id, name");
       }
 
       const confirmed = window.confirm(
-        `Add extension "${manifest.name}"?\n\n${url}\n\nOnly add extensions from sources you trust. ` +
+        `Add extension "${name}"?\n\n${url}\n\nOnly add extensions from sources you trust. ` +
           `Extensions can read and modify your project data.`,
       );
       if (!confirmed) {
@@ -75,7 +81,7 @@ export function ExtensionManagerPage() {
     } catch (error) {
       showError({
         title: "Failed to add extension",
-        description: (error as Error).message,
+        description: error instanceof Error ? error.message : String(error),
       });
     } finally {
       setAdding(false);
@@ -94,7 +100,12 @@ export function ExtensionManagerPage() {
     <Box p="4" style={{ maxWidth: 600, width: "100%" }}>
       <Flex direction="column" gap="4">
         <Flex align="center" gap="2">
-          <Button variant="ghost" onClick={() => navigate("/")}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              void navigate("/");
+            }}
+          >
             &larr; Back
           </Button>
           <Heading size="6">Manage Extensions</Heading>
@@ -115,14 +126,21 @@ export function ExtensionManagerPage() {
         <Flex gap="2" align="center">
           <TextField.Root
             value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
+            onChange={(e) => {
+              setUrlInput(e.target.value);
+            }}
             placeholder="Paste extension manifest URL..."
             onKeyDown={(e) => {
               if (e.key === "Enter" && !adding) void handleAdd();
             }}
             style={{ flex: 1 }}
           />
-          <Button onClick={handleAdd} disabled={adding || !urlInput.trim()}>
+          <Button
+            onClick={() => {
+              void handleAdd();
+            }}
+            disabled={adding || !urlInput.trim()}
+          >
             {adding ? "Adding..." : "Add"}
           </Button>
         </Flex>
@@ -153,7 +171,9 @@ export function ExtensionManagerPage() {
                     variant="ghost"
                     color="red"
                     size="1"
-                    onClick={() => handleRemove(ext.url)}
+                    onClick={() => {
+                      handleRemove(ext.url);
+                    }}
                   >
                     Remove
                   </Button>

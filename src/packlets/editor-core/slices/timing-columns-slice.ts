@@ -24,7 +24,7 @@ export class TimingColumnsSlice extends Slice {
         width: 48,
         placementHandler: (pulse) => {
           const chartId = this.ctx.get(ChartSlice).$selectedChartId.get();
-          if (!chartId) return null;
+          if (chartId === null || chartId === "") return null;
           const ts = this.ctx.get(TimingSlice).getTimingEngine().getTimeSignatureAtPulse(pulse);
           return new EntityBuilder()
             .with(EVENT, { y: pulse })
@@ -39,7 +39,7 @@ export class TimingColumnsSlice extends Slice {
         width: 56,
         placementHandler: (pulse) => {
           const chartId = this.ctx.get(ChartSlice).$selectedChartId.get();
-          if (!chartId) return null;
+          if (chartId === null || chartId === "") return null;
           const bpm = this.ctx.get(TimingSlice).getTimingEngine().getBpmAtPulse(pulse);
           return new EntityBuilder()
             .with(EVENT, { y: pulse })

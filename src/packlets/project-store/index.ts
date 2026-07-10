@@ -29,6 +29,8 @@ export function createProjectFileSystem(source: ProjectSource): ProjectFileSyste
       return createFileSystemFromIndexedDb(source.storeId);
     case "webdav":
       return createFileSystemFromWebDav(source);
+    default:
+      throw new Error("Unknown project source provider");
   }
 }
 

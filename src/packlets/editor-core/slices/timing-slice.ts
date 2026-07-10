@@ -1,5 +1,4 @@
 import { Slice } from "../slice.ts";
-import type { EditorContext } from "../editor-context.ts";
 import { ProjectSlice } from "./project-slice.ts";
 import { ChartSlice } from "./chart-slice.ts";
 import { createTimingEngine } from "../../timing-engine/index.ts";
@@ -11,10 +10,6 @@ export class TimingSlice extends Slice {
 
   private cache: TimingEngine | null = null;
   private cacheVersion = 0;
-
-  constructor(ctx: EditorContext) {
-    super(ctx);
-  }
 
   getTimingEngine(): TimingEngine {
     const em = this.ctx.get(ProjectSlice).entityManager;
@@ -28,7 +23,7 @@ export class TimingSlice extends Slice {
     const bpmChanges = em
       .entitiesWithComponent(BPM_CHANGE)
       .filter((entity) => {
-        if (!chartId) return true;
+        if (chartId === null || chartId === "") return true;
         const ref = em.getComponent(entity, CHART_REF);
         return !ref || ref.chartId === chartId;
       })
@@ -40,12 +35,12 @@ export class TimingSlice extends Slice {
           bpm: bpm?.bpm ?? 60,
         };
       })
-      .sort((a, b) => a.pulse - b.pulse);
+      .toSorted((a, b) => a.pulse - b.pulse);
 
     const timeSignatures = em
       .entitiesWithComponent(TIME_SIGNATURE)
       .filter((entity) => {
-        if (!chartId) return true;
+        if (chartId === null || chartId === "") return true;
         const ref = em.getComponent(entity, CHART_REF);
         return !ref || ref.chartId === chartId;
       })
@@ -58,7 +53,7 @@ export class TimingSlice extends Slice {
           denominator: ts?.denominator ?? 4,
         };
       })
-      .sort((a, b) => a.pulse - b.pulse);
+      .toSorted((a, b) => a.pulse - b.pulse);
 
     const engine = createTimingEngine(bpmChanges, timeSignatures);
     this.cache = engine;

@@ -34,26 +34,35 @@ export class EditBatchBuilder {
 
   setPulse(entityId: string, pulse: number): this {
     const entry = this.getOrCreateEdit(entityId);
-    (entry.newComponents[EVENT.key] as { y: number }).y = pulse;
+    (entry.newComponents as Record<string, any> as Record<string, { y: number }>)[EVENT.key].y =
+      pulse;
     return this;
   }
 
   setNoteColumn(entityId: string, levelId: string, laneIndex: number): this {
     const entry = this.getOrCreateEdit(entityId);
-    (entry.newComponents[NOTE.key] as { lane: number }).lane = laneIndex;
-    (entry.newComponents[LEVEL_REF.key] as { levelId: string }).levelId = levelId;
+    (entry.newComponents as Record<string, any> as Record<string, { lane: number }>)[
+      NOTE.key
+    ].lane = laneIndex;
+    (entry.newComponents as Record<string, any> as Record<string, { levelId: string }>)[
+      LEVEL_REF.key
+    ].levelId = levelId;
     return this;
   }
 
   setSoundLane(entityId: string, soundLane: number): this {
     const entry = this.getOrCreateEdit(entityId);
-    (entry.newComponents[SOUND_EVENT.key] as { soundLane: number }).soundLane = soundLane;
+    (entry.newComponents as Record<string, any> as Record<string, { soundLane: number }>)[
+      SOUND_EVENT.key
+    ].soundLane = soundLane;
     return this;
   }
 
   setKeysoundLane(entityId: string, soundLane: number): this {
     const entry = this.getOrCreateEdit(entityId);
-    (entry.newComponents[KEYSOUND.key] as { soundLane: number }).soundLane = soundLane;
+    (entry.newComponents as Record<string, any> as Record<string, { soundLane: number }>)[
+      KEYSOUND.key
+    ].soundLane = soundLane;
     return this;
   }
 

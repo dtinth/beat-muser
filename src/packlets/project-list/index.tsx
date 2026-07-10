@@ -27,14 +27,15 @@ import { useToast } from "../toast/index.tsx";
 import type { Project } from "../project-store/types.ts";
 
 function isFileSystemAccessSupported(): boolean {
-  return (
-    typeof (window as unknown as { showDirectoryPicker?: unknown }).showDirectoryPicker ===
-    "function"
-  );
+  return typeof Reflect.get(window, "showDirectoryPicker") === "function";
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export function ProjectListPage() {
-  const projects = useLoaderData() as Project[];
+  const projects = useLoaderData<Project[]>();
   const navigate = useNavigate();
   const revalidator = useRevalidator();
   const { showError } = useToast();
@@ -62,7 +63,7 @@ export function ProjectListPage() {
       console.error(error);
       showError({
         title: "Failed to create project",
-        description: (error as Error).message,
+        description: errorMessage(error),
       });
     }
   }, [newName, navigate, showError]);
@@ -76,7 +77,7 @@ export function ProjectListPage() {
       const project = await addProject(name, {
         provider: "webdav",
         url,
-        ...(user !== "" ? { username: user, password: webdavPass } : {}),
+        ...(user === "" ? {} : { username: user, password: webdavPass }),
       });
       setWebdavOpen(false);
       setWebdavName("");
@@ -88,7 +89,7 @@ export function ProjectListPage() {
       console.error(error);
       showError({
         title: "Failed to connect WebDAV server",
-        description: (error as Error).message,
+        description: errorMessage(error),
       });
     }
   }, [webdavName, webdavUrl, webdavUser, webdavPass, navigate, showError]);
@@ -110,11 +111,11 @@ export function ProjectListPage() {
       });
       void navigate(`/projects/${project.slug}`);
     } catch (error) {
-      if ((error as Error).name !== "AbortError") {
+      if (!(error instanceof Error) || error.name !== "AbortError") {
         console.error(error);
         showError({
           title: "Failed to open folder",
-          description: (error as Error).message,
+          description: errorMessage(error),
         });
       }
     }
@@ -133,7 +134,7 @@ export function ProjectListPage() {
         console.error(error);
         showError({
           title: "Failed to create demo project",
-          description: (error as Error).message,
+          description: errorMessage(error),
         });
       }
     },
@@ -149,7 +150,7 @@ export function ProjectListPage() {
         console.error(error);
         showError({
           title: "Failed to remove project",
-          description: (error as Error).message,
+          description: errorMessage(error),
         });
       }
     },
@@ -161,17 +162,43 @@ export function ProjectListPage() {
       <Flex direction="column" gap="4" align="center">
         <Heading size="8">Beat Muser</Heading>
         <Flex gap="2">
-          <Button onClick={() => setNewOpen(true)}>New Project</Button>
-          <Button variant="soft" onClick={handleOpenFolder}>
+          <Button
+            onClick={() => {
+              setNewOpen(true);
+            }}
+          >
+            New Project
+          </Button>
+          <Button
+            variant="soft"
+            onClick={() => {
+              void handleOpenFolder();
+            }}
+          >
             Open Folder
           </Button>
-          <Button variant="soft" onClick={() => setWebdavOpen(true)}>
+          <Button
+            variant="soft"
+            onClick={() => {
+              setWebdavOpen(true);
+            }}
+          >
             Connect WebDAV
           </Button>
-          <Button variant="soft" onClick={() => setDemoOpen(true)}>
+          <Button
+            variant="soft"
+            onClick={() => {
+              setDemoOpen(true);
+            }}
+          >
             Try Demo
           </Button>
-          <Button variant="outline" onClick={() => navigate("/extensions")}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void navigate("/extensions");
+            }}
+          >
             Manage Extensions
           </Button>
         </Flex>
@@ -179,7 +206,9 @@ export function ProjectListPage() {
           {projects.map((project) => (
             <Card
               key={project.slug}
-              onClick={() => navigate(`/projects/${project.slug}`)}
+              onClick={() => {
+                void navigate(`/projects/${project.slug}`);
+              }}
               style={{ cursor: "pointer" }}
             >
               <Flex justify="between" align="center">
@@ -191,7 +220,13 @@ export function ProjectListPage() {
                 </Flex>
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger>
-                    <IconButton variant="ghost" size="1" onClick={(e) => e.stopPropagation()}>
+                    <IconButton
+                      variant="ghost"
+                      size="1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
                       ⋯
                     </IconButton>
                   </DropdownMenu.Trigger>
@@ -229,7 +264,10 @@ export function ProjectListPage() {
             <TextField.Root
               placeholder="Project name"
               value={newName}
-              onChange={(e) => setNewName(e.target.value)}
+              onChange={(e) => {
+                setNewName(e.target.value);
+              }}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- intentional focus of the dialog's primary input when it opens
               autoFocus
             />
             <Flex gap="2" mt="4" justify="end">
@@ -264,25 +302,34 @@ export function ProjectListPage() {
               <TextField.Root
                 placeholder="Project name"
                 value={webdavName}
-                onChange={(e) => setWebdavName(e.target.value)}
+                onChange={(e) => {
+                  setWebdavName(e.target.value);
+                }}
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- intentional focus of the dialog's primary input when it opens
                 autoFocus
               />
               <TextField.Root
                 placeholder="Server URL (https://host:5000/path/)"
                 value={webdavUrl}
-                onChange={(e) => setWebdavUrl(e.target.value)}
+                onChange={(e) => {
+                  setWebdavUrl(e.target.value);
+                }}
               />
               <TextField.Root
                 placeholder="Username (optional)"
                 value={webdavUser}
-                onChange={(e) => setWebdavUser(e.target.value)}
+                onChange={(e) => {
+                  setWebdavUser(e.target.value);
+                }}
                 autoComplete="username"
               />
               <TextField.Root
                 type="password"
                 placeholder="Password (optional)"
                 value={webdavPass}
-                onChange={(e) => setWebdavPass(e.target.value)}
+                onChange={(e) => {
+                  setWebdavPass(e.target.value);
+                }}
                 autoComplete="current-password"
               />
             </Flex>
@@ -309,7 +356,9 @@ export function ProjectListPage() {
           <Flex direction="column" gap="2">
             <Button
               variant="soft"
-              onClick={() => handleTryDemo("recursivedescent", "RECURSIVE DESCENT")}
+              onClick={() => {
+                void handleTryDemo("recursivedescent", "RECURSIVE DESCENT");
+              }}
             >
               RECURSIVE DESCENT
             </Button>

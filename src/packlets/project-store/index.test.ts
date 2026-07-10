@@ -1,3 +1,4 @@
+// oxlint-disable-next-line import/no-unassigned-import -- side-effect import that installs the fake IndexedDB global
 import "fake-indexeddb/auto";
 import { test, expect } from "vite-plus/test";
 import { addProject, removeProject, createProjectFileSystem } from "./index.ts";

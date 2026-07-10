@@ -215,7 +215,7 @@ export class EditorController {
 
   playChart(cursorPulse: number, scrollY: number): void {
     const chartId = this.$selectedChartId.get();
-    if (!chartId) return;
+    if (chartId === null || chartId === "") return;
 
     const chartEntity = this.entityManager.get(chartId);
     const chartSize =
@@ -254,10 +254,11 @@ export class EditorController {
       const sc = channelEntity
         ? this.entityManager.getComponent(channelEntity, SOUND_CHANNEL)
         : undefined;
-      if (!sc?.path) continue;
-      const waveformData = this.waveform.$waveformData.get().get(sc.path);
+      const path = sc?.path;
+      if (path === undefined || path === "") continue;
+      const waveformData = this.waveform.$waveformData.get().get(path);
       const durationSec = waveformData?.durationSec ?? 0;
-      channels.set(channelId, { path: sc.path, durationSec });
+      channels.set(channelId, { path, durationSec });
     }
 
     const abortController = this.playback.newAbortController();
@@ -506,7 +507,9 @@ export class EditorController {
       .filter(
         (e): e is NonNullable<typeof e> =>
           !!e &&
-          (selectedLevelId ? em.getComponent(e, LEVEL_REF)?.levelId === selectedLevelId : true),
+          (selectedLevelId !== null && selectedLevelId !== ""
+            ? em.getComponent(e, LEVEL_REF)?.levelId === selectedLevelId
+            : true),
       );
     if (entities.length === 0) return;
     const edits = entities.map((e) => ({

@@ -31,10 +31,10 @@ describe("perf", () => {
 
     const state = perf.$state.get();
     expect(state.events).toHaveLength(1);
-    expect(state.events[0]!.type).toBe("events");
-    expect(state.events[0]!.renderNumber).toBe(1);
-    expect(state.events[0]!.reconcileNumber).toBe(1);
-    expect(state.events[0]!.duration).toBeGreaterThanOrEqual(0);
+    expect(state.events[0].type).toBe("events");
+    expect(state.events[0].renderNumber).toBe(1);
+    expect(state.events[0].reconcileNumber).toBe(1);
+    expect(state.events[0].duration).toBeGreaterThanOrEqual(0);
   });
 
   test("evicts oldest events when exceeding 100 render number groups", () => {
@@ -58,7 +58,9 @@ describe("perf", () => {
   test("onEvent delivers every event, unaffected by eviction", () => {
     const perf = createPerf();
     const seen: string[] = [];
-    const unsubscribe = perf.onEvent((event) => seen.push(event.type));
+    const unsubscribe = perf.onEvent((event) => {
+      seen.push(event.type);
+    });
 
     // Exceed the 100-render eviction cap; the listener must still see all.
     for (let i = 0; i < 105; i++) {
@@ -116,12 +118,12 @@ describe("perf", () => {
 
     const events = perf.$state.get().events;
     expect(events).toHaveLength(3);
-    expect(events[0]!.renderNumber).toBe(1);
-    expect(events[0]!.reconcileNumber).toBe(0);
-    expect(events[1]!.renderNumber).toBe(1);
-    expect(events[1]!.reconcileNumber).toBe(0);
-    expect(events[2]!.renderNumber).toBe(1);
+    expect(events[0].renderNumber).toBe(1);
+    expect(events[0].reconcileNumber).toBe(0);
+    expect(events[1].renderNumber).toBe(1);
+    expect(events[1].reconcileNumber).toBe(0);
+    expect(events[2].renderNumber).toBe(1);
     // reconcileNumber reflects current value at measure time
-    expect(events[2]!.reconcileNumber).toBe(2);
+    expect(events[2].reconcileNumber).toBe(2);
   });
 });

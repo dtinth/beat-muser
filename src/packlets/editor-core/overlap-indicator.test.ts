@@ -86,7 +86,7 @@ describe("overlap indicator", () => {
     });
     const overlaps = overlapSpecs(editor);
     expect(overlaps).toHaveLength(1);
-    expect(overlaps[0]!.data.count).toBe(3);
+    expect(overlaps[0].data.count).toBe(3);
   });
 
   test("the same note placed on two levels does not overlap (different columns)", () => {

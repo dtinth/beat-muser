@@ -22,7 +22,7 @@ export class LevelSlice extends Slice {
     super(ctx);
 
     ctx.get(ChartSlice).$selectedChartId.subscribe((chartId) => {
-      if (!chartId) {
+      if (chartId === null || chartId === "") {
         this.$selectedLevelId.set(null);
         return;
       }
@@ -30,7 +30,7 @@ export class LevelSlice extends Slice {
       const currentId = this.$selectedLevelId.get();
       const stillExists = levels.some((l) => l.id === currentId);
       if (!stillExists) {
-        this.$selectedLevelId.set(levels.length > 0 ? levels[0]!.id : null);
+        this.$selectedLevelId.set(levels.length > 0 ? levels[0].id : null);
       }
     });
   }
@@ -43,7 +43,7 @@ export class LevelSlice extends Slice {
         const ref = em.getComponent(entity, CHART_REF);
         return ref?.chartId === chartId;
       })
-      .sort((a, b) => {
+      .toSorted((a, b) => {
         const levelA = em.getComponent(a, LEVEL);
         const levelB = em.getComponent(b, LEVEL);
         return (levelA?.sortOrder ?? 0) - (levelB?.sortOrder ?? 0);
@@ -116,9 +116,9 @@ export class LevelSlice extends Slice {
           const hidden = new Set(this.$hiddenLevelIds.get());
           hidden.delete(levelId);
           this.$hiddenLevelIds.set(hidden);
-          if (this.$selectedLevelId.get() === levelId && chartId) {
+          if (this.$selectedLevelId.get() === levelId && chartId !== null && chartId !== "") {
             const remaining = this.getLevelEntitiesForChart(chartId);
-            this.$selectedLevelId.set(remaining.length > 0 ? remaining[0]!.id : null);
+            this.$selectedLevelId.set(remaining.length > 0 ? remaining[0].id : null);
           }
           this.events.emit("levelsChanged");
         },

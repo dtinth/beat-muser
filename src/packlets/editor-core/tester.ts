@@ -6,6 +6,8 @@
  * against the EditorController state.
  */
 
+/* oxlint-disable vitest/no-standalone-expect -- Acceptance-test assertion helpers: `expect` intentionally lives in reusable helper methods that `*.test.ts` files call, not directly inside `it`/`test` blocks. */
+
 import { expect } from "vite-plus/test";
 import {
   EditorController,
@@ -56,28 +58,30 @@ export class ChartBuilder {
   }
 
   bpmChange(y: number, bpm: number): Entity {
-    return this.addWithChartRef((e) => e.with(EVENT, { y }).with(BPM_CHANGE, { bpm }));
+    return this.addWithChartRef((e) => {
+      e.with(EVENT, { y }).with(BPM_CHANGE, { bpm });
+    });
   }
 
   timeSignature(y: number, numerator: number, denominator: number): Entity {
-    return this.addWithChartRef((e) =>
-      e.with(EVENT, { y }).with(TIME_SIGNATURE, { numerator, denominator }),
-    );
+    return this.addWithChartRef((e) => {
+      e.with(EVENT, { y }).with(TIME_SIGNATURE, { numerator, denominator });
+    });
   }
 
   note(y: number, lane: number, levelId: string): Entity {
-    return this.addWithChartRef((e) =>
-      e.with(EVENT, { y }).with(NOTE, { lane }).with(LEVEL_REF, { levelId }),
-    );
+    return this.addWithChartRef((e) => {
+      e.with(EVENT, { y }).with(NOTE, { lane }).with(LEVEL_REF, { levelId });
+    });
   }
 }
 
 export class ProjectBuilder {
   private entities: Entity[] = [];
 
-  add(entity: Entity): Entity {
-    this.entities.push(entity);
-    return entity;
+  add(ent: Entity): Entity {
+    this.entities.push(ent);
+    return ent;
   }
 
   addEntity(callback: (e: EntityBuilder) => void): Entity {

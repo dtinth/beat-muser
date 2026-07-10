@@ -26,7 +26,7 @@ interface DemoAsset {
 const examples = new Map<string, Map<string, DemoAsset>>();
 
 function register(fullPath: string, asset: Partial<DemoAsset>): void {
-  const match = fullPath.match(/^\/examples\/([^/]+)\/(.+)$/);
+  const match = fullPath.match(/^\/examples\/([^/]+)\/(.+)$/u);
   if (!match) return;
   const [, exampleName, relativePath] = match;
   let files = examples.get(exampleName);
@@ -62,17 +62,17 @@ export function createFileSystemFromExample(name: string): ProjectFileSystem {
 
   return {
     readOnly: true,
-    async listFiles(): Promise<FileEntry[]> {
+    listFiles(): Promise<FileEntry[]> {
       const entries: FileEntry[] = [];
       for (const asset of files.values()) {
         entries.push({
           name: asset.relativePath,
           path: asset.relativePath,
-          size: asset.text !== undefined ? new TextEncoder().encode(asset.text).length : 0,
+          size: asset.text === undefined ? 0 : new TextEncoder().encode(asset.text).length,
           lastModified: new Date(),
         });
       }
-      return entries;
+      return Promise.resolve(entries);
     },
     readFile(path: string) {
       return readArrayBuffer(path);
@@ -83,11 +83,11 @@ export function createFileSystemFromExample(name: string): ProjectFileSystem {
       const buffer = await readArrayBuffer(path);
       return new TextDecoder().decode(buffer);
     },
-    async writeFile() {
-      throw new Error("Demo file system is read-only");
+    writeFile(): Promise<void> {
+      return Promise.reject(new Error("Demo file system is read-only"));
     },
-    async deleteFile() {
-      throw new Error("Demo file system is read-only");
+    deleteFile(): Promise<void> {
+      return Promise.reject(new Error("Demo file system is read-only"));
     },
   };
 }
