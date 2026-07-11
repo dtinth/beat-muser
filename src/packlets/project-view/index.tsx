@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { useStore } from "@nanostores/react";
-import { useParams, useRouteError, useLoaderData } from "react-router";
+import { useParams, useLoaderData } from "react-router";
 import { Pencil, Plus, Eye, EyeOff, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import { Flex, Text, Dialog, Button, TextField } from "@radix-ui/themes";
 import { useToast } from "../toast/index.tsx";
@@ -922,7 +922,6 @@ export function ProjectViewPage() {
     source: ProjectSource;
   }>();
   const [fileSystem] = useState(() => createProjectFileSystem(source));
-  const routeError = useRouteError();
   const { showError, showSuccess } = useToast();
 
   const [controller] = useState(() => {
@@ -1488,16 +1487,6 @@ export function ProjectViewPage() {
     setTimeSigEditOpen(false);
     setTimeSigEditEntityId(null);
   };
-
-  useEffect(() => {
-    if (routeError instanceof Error) {
-      console.error(routeError);
-      showError({
-        title: "Failed to load project",
-        description: routeError.message,
-      });
-    }
-  }, [routeError, showError]);
 
   return (
     <>

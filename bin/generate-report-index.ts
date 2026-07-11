@@ -9,7 +9,7 @@ function extractSummary(source: string): string | undefined {
   if (block === undefined || block === "") return undefined;
   let text = block.replaceAll(/^\s*\*\s?/gmu, "").trim();
   text = text.replace(/^(?:@[a-zA-Z]+\s*)+/u, "").trim();
-  const paragraph = text.match(/^([\s\S]*?)(?=\n#+\s|\n\n|@[a-zA-Z]|$)/u)?.[1];
+  const paragraph = text.match(/^([\s\S]*?)(?=\n#+\s|\n\n|\r?\n@[a-zA-Z]|$)/u)?.[1];
   if (paragraph === undefined || paragraph === "") return undefined;
   return paragraph.replaceAll("\n", " ").trim();
 }

@@ -245,9 +245,6 @@ export class ExtensionManager {
         for (const gm of manifest.gameModes ?? []) {
           h.registerGameMode(gm);
         }
-        for (const rule of manifest.coloringRules ?? []) {
-          h.registerColoringRule(rule);
-        }
         for (const exporter of manifest.exporters ?? []) {
           h.registerExporter(exporter);
         }

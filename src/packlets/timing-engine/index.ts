@@ -80,7 +80,7 @@ function parseSnapInterval(snap: string): number {
     throw new Error(`Invalid snap format: ${snap}`);
   }
   const n = Math.trunc(Number(match[1]));
-  if (n <= 0) {
+  if (!Number.isSafeInteger(n) || n <= 0) {
     throw new Error(`Invalid snap denominator: ${n}`);
   }
   const interval = (4 * PPQN) / n;
