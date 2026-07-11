@@ -98,7 +98,7 @@ export function aggregateSamples(samples: FrameSample[], wallTimeMs: number): Ag
   const avgFps = wallTimeMs > 0 ? (frameCount / wallTimeMs) * 1000 : 0;
 
   const deltas = samples.map((s) => s.deltaMs);
-  const sortedDeltas = [...deltas].toSorted((a, b) => a - b);
+  const sortedDeltas = deltas.toSorted((a, b) => a - b);
 
   const frameDelta = {
     avg: avg(deltas),

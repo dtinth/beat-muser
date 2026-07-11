@@ -37,7 +37,7 @@ export function findMatchingRule(
   rules: CompiledColoringRule[],
   components: Record<string, unknown>,
 ): { noteColor: string } | null {
-  const sorted = [...rules].toSorted((a, b) => b.priority - a.priority);
+  const sorted = rules.toSorted((a, b) => b.priority - a.priority);
   for (const rule of sorted) {
     if (rule.matches(components)) {
       return rule.apply;

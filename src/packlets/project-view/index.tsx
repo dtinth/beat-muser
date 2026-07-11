@@ -21,6 +21,7 @@ import { getProfilerTarget } from "../perf/profiler-registry.ts";
 import { runRenderProfile, formatProfileReport } from "../perf/profiler.ts";
 import { useInView } from "react-intersection-observer";
 import { ScrollableCanvas } from "../scrollable-canvas/index.tsx";
+import { errorMessage } from "../shared/index.ts";
 import { getExtensionManager } from "../extensions/index.ts";
 import {
   EditorController,
@@ -63,14 +64,14 @@ declare global {
   }
 }
 
+/** No-op cleanup returned from effects whose active branch is conditional. */
+function noop() {}
+
 /**
  * Style reset for icon controls rendered as native `<button>` elements. A
  * real button gives us keyboard activation and the correct a11y role for free
  * (unlike a `<div>`), while these overrides keep the original inline-icon look.
  */
-/** No-op cleanup returned from effects whose active branch is conditional. */
-function noop() {}
-
 const ICON_BUTTON_STYLE: CSSProperties = {
   cursor: "pointer",
   display: "inline-flex",
@@ -155,7 +156,7 @@ function DebugContent({ controller }: { controller: EditorController }) {
     }
     const result: { type: string; count: number; min: number; avg: number; max: number }[] = [];
     for (const [type, durations] of groups) {
-      const sorted = [...durations].toSorted((a, b) => a - b);
+      const sorted = durations.toSorted((a, b) => a - b);
       result.push({
         type,
         count: sorted.length,
@@ -185,7 +186,6 @@ function DebugContent({ controller }: { controller: EditorController }) {
   // Expose profile fn on window so Playwright can call it.
   // This is declared in the global augmentation in this file.
   useEffect(() => {
-    // oxlint-disable-next-line no-underscore-dangle -- external test hook name consumed by Playwright (tests/perf.spec.ts)
     window.__beatMuserProfilePerformance = async () => {
       const target = getProfilerTarget();
       if (!target) throw new Error("No profiler target registered");
@@ -195,7 +195,6 @@ function DebugContent({ controller }: { controller: EditorController }) {
 
     // Audio readiness: resolve when all known waveform paths are "ready" or
     // terminal ("decoding-failed") — i.e. no path is still loading/generating.
-    // oxlint-disable-next-line no-underscore-dangle -- external test hook name consumed by Playwright (tests/perf.spec.ts)
     window.__beatMuserAudioReady = () => {
       return new Promise<void>((resolve) => {
         const waveformSlice = controller.ctx.get(WaveformSlice);
@@ -227,9 +226,7 @@ function DebugContent({ controller }: { controller: EditorController }) {
     };
 
     return () => {
-      // oxlint-disable-next-line no-underscore-dangle -- external test hook name consumed by Playwright (tests/perf.spec.ts)
       delete window.__beatMuserProfilePerformance;
-      // oxlint-disable-next-line no-underscore-dangle -- external test hook name consumed by Playwright (tests/perf.spec.ts)
       delete window.__beatMuserAudioReady;
     };
   }, [controller]);
@@ -1272,7 +1269,7 @@ export function ProjectViewPage() {
             console.error(error);
             showError({
               title: "Failed to save project",
-              description: error instanceof Error ? error.message : String(error),
+              description: errorMessage(error),
             });
           }
         })();

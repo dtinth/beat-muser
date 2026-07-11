@@ -20,13 +20,11 @@ test("@perf: render performance profile on demo chart", async ({ page }) => {
   // Wait for all audio files to be decoded (or settle) so waveform rendering
   // is stable during the profile run.
   await page.evaluate(async () => {
-    // oxlint-disable-next-line no-underscore-dangle -- app-injected debug global declared in project-view
     await window.__beatMuserAudioReady?.();
   });
 
   // Run the profiler (100 rAF frames, 10 warmup).
   const report = await page.evaluate(() => {
-    // oxlint-disable-next-line no-underscore-dangle -- app-injected debug global declared in project-view
     const fn = window.__beatMuserProfilePerformance;
     // oxlint-disable-next-line vitest/no-conditional-in-test -- runs in the browser via page.evaluate; guards presence of the injected global
     if (!fn) throw new Error("window.__beatMuserProfilePerformance not found");

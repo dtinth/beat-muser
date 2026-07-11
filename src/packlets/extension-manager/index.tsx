@@ -11,6 +11,7 @@ import { useNavigate } from "react-router";
 import { Box, Button, Card, Flex, Heading, Text, TextField } from "@radix-ui/themes";
 import { getAllExtensionUrls, addExtensionUrl, removeExtensionUrl } from "../extensions/index.ts";
 import { useToast } from "../toast/index.tsx";
+import { errorMessage } from "../shared/index.ts";
 
 interface ExtensionInfo {
   url: string;
@@ -81,7 +82,7 @@ export function ExtensionManagerPage() {
     } catch (error) {
       showError({
         title: "Failed to add extension",
-        description: error instanceof Error ? error.message : String(error),
+        description: errorMessage(error),
       });
     } finally {
       setAdding(false);

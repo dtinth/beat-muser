@@ -100,8 +100,8 @@ export function createTimingEngine(
   bpmChanges: BpmChange[],
   timeSignatures: TimeSignature[],
 ): TimingEngine {
-  const sortedBpms = [...bpmChanges].toSorted((a, b) => a.pulse - b.pulse);
-  const sortedSigs = [...timeSignatures].toSorted((a, b) => a.pulse - b.pulse);
+  const sortedBpms = bpmChanges.toSorted((a, b) => a.pulse - b.pulse);
+  const sortedSigs = timeSignatures.toSorted((a, b) => a.pulse - b.pulse);
 
   if (sortedBpms.length === 0) {
     sortedBpms.push({ pulse: 0, bpm: 60 });

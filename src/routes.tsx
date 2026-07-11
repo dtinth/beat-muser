@@ -18,14 +18,7 @@ import { isFileNotFoundError } from "./packlets/file-system/index.ts";
 import { parseProjectFile } from "./packlets/project-format/index.ts";
 import type { ProjectFile } from "./packlets/project-format/index.ts";
 import { getExtensionManager } from "./packlets/extensions/index.ts";
-
-// The File System Access API's permission methods are not yet in the TS DOM
-// lib types; augment the handle so we can call them without an `any` cast.
-declare global {
-  interface FileSystemDirectoryHandle {
-    requestPermission(descriptor: { mode: "read" | "readwrite" }): Promise<PermissionState>;
-  }
-}
+import { errorMessage } from "./packlets/shared/index.ts";
 
 export const router = createBrowserRouter([
   {
@@ -113,7 +106,7 @@ export const router = createBrowserRouter([
                 };
               } else {
                 console.error("Failed to load project:", error);
-                const message = error instanceof Error ? error.message : String(error);
+                const message = errorMessage(error);
                 // oxlint-disable-next-line typescript/only-throw-error -- react-router loaders throw Response to trigger HTTP error handling
                 throw new Response(`Failed to load project: ${message}`, {
                   status: 500,
