@@ -15,7 +15,7 @@ function extractSummary(source: string): string | undefined {
   text = text.replace(/^(?:@[a-zA-Z]+\s*)+/u, "").trim();
 
   // First paragraph = text up to first markdown heading or double newline
-  const paragraph = text.match(/^([\s\S]*?)(?=\n#+\s|\n\n|@[a-zA-Z]|$)/u)?.[1];
+  const paragraph = text.match(/^([\s\S]*?)(?=\n#+\s|\n\n|\r?\n@[a-zA-Z]|$)/u)?.[1];
   if (paragraph === undefined || paragraph === "") return undefined;
 
   return paragraph.replaceAll("\n", " ").trim();

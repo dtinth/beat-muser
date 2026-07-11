@@ -1093,7 +1093,7 @@ export class RenderSlice extends Slice {
           y: waveformBottomY - segment.rpStart - segment.rpLength,
           width: soundLaneCol.width - 8,
           rpLength: segment.rpLength,
-          color: groupColor ?? "#fff",
+          color: groupColor === undefined || groupColor === "" ? "#fff" : groupColor,
           getWaveformPixels: () => segment.getWaveformPixels(),
         });
       }

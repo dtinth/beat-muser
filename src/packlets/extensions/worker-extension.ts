@@ -223,8 +223,10 @@ export class WorkerExtension implements Extension {
             "value" in p
           ) {
             host.applyProperty(p.key, p.value);
+            respond({});
+          } else {
+            respondError(new Error("Invalid params for applyProperty"));
           }
-          respond({});
           break;
         }
         case "readEntities": {
@@ -242,8 +244,10 @@ export class WorkerExtension implements Extension {
             typeof p.data === "string"
           ) {
             this.onExportFile?.(p.name, p.data);
+            respond({});
+          } else {
+            respondError(new Error("Invalid params for exportFile"));
           }
-          respond({});
           break;
         }
         default:
