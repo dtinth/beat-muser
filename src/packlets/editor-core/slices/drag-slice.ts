@@ -73,10 +73,8 @@ export class DragSlice extends Slice {
           minOriginalColumnIndex = Math.min(minOriginalColumnIndex, index);
           maxOriginalColumnIndex = Math.max(maxOriginalColumnIndex, index);
         }
-        if (params.maxColumnIndex === undefined) {
-          this.state.deltaColumnIndex = rawColumnDelta;
-        } else {
-          this.state.deltaColumnIndex = rawColumnDelta;
+        this.state.deltaColumnIndex = rawColumnDelta;
+        if (params.maxColumnIndex !== undefined) {
           this.state.deltaColumnIndex = Math.max(
             -minOriginalColumnIndex,
             this.state.deltaColumnIndex,

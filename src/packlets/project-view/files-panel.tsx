@@ -14,15 +14,12 @@ import type { ProjectFileSystem, FileEntry } from "../file-system/index.ts";
 import { nextAvailableName } from "../file-system/index.ts";
 import type { ModalManager } from "../modal-manager/index.ts";
 import { useToast } from "../toast/index.tsx";
+import { errorMessage } from "../shared/index.ts";
 
 function formatBytes(size: number): string {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export function FilesPanel({

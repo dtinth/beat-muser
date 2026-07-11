@@ -24,14 +24,11 @@ import { uuidv7 } from "uuidv7";
 import { addProject, removeProject } from "../project-store/index.ts";
 import { showDirectoryPicker } from "../file-system/index.ts";
 import { useToast } from "../toast/index.tsx";
+import { errorMessage } from "../shared/index.ts";
 import type { Project } from "../project-store/types.ts";
 
 function isFileSystemAccessSupported(): boolean {
   return typeof Reflect.get(window, "showDirectoryPicker") === "function";
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export function ProjectListPage() {

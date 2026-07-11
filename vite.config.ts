@@ -58,6 +58,12 @@ export default defineConfig({
       "max-dependencies": "off",
       // Pure stylistic preference that fights ordinary end-of-line comments.
       "no-inline-comments": "off",
+      // Sanctioned Playwright test hooks intentionally use dunder names so the
+      // e2e suite (tests/perf.spec.ts) can reach them off `window`.
+      "no-underscore-dangle": [
+        "error",
+        { allow: ["__beatMuserProfilePerformance", "__beatMuserAudioReady"] },
+      ],
     },
     overrides: [
       {
